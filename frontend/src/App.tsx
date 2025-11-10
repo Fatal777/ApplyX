@@ -128,6 +128,9 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       
+      {/* Demo PDF Editor - No authentication required */}
+      <Route path="/demo/pdf-editor" element={<PDFEditor />} />
+      
       <Route path="/pricing" element={<Pricing />} />
       
       {/* Catch-all route */}
