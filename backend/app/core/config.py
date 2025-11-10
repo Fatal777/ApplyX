@@ -50,10 +50,10 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: Optional[str] = None
     
     # Supabase
-    SUPABASE_URL: str
-    SUPABASE_KEY: str
-    SUPABASE_JWT_SECRET: str
-    SUPABASE_PROJECT_REF: str  # The project reference ID from Supabase URL
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_KEY: Optional[str] = None
+    SUPABASE_JWT_SECRET: Optional[str] = None
+    SUPABASE_PROJECT_REF: Optional[str] = None
     
     # File Upload
     MAX_FILE_SIZE: int = 5242880  # 5MB
