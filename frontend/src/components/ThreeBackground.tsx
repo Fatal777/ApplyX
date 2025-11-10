@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Float, Sphere } from '@react-three/drei';
 import * as THREE from 'three';
@@ -30,9 +30,41 @@ function FloatingOrb({ position, color, size = 1 }: { position: [number, number,
 }
 
 export default function ThreeBackground() {
+  const [webGLAvailable, setWebGLAvailable] = useState(true);
+
+  useEffect(() => {
+    // Check if WebGL is available
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (!gl) {
+        setWebGLAvailable(false);
+      }
+    } catch (e) {
+      setWebGLAvailable(false);
+    }
+  }, []);
+
+  // If WebGL is not available, return a gradient background instead
+  if (!webGLAvailable) {
+    return (
+      <div className="fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-cyan-900/20" />
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 -z-10 opacity-40">
-      <Canvas camera={{ position: [0, 0, 10], fov: 50 }}>
+      <Canvas 
+        camera={{ position: [0, 0, 10], fov: 50 }}
+        onCreated={({ gl }) => {
+          // Additional WebGL context check
+          if (!gl) {
+            setWebGLAvailable(false);
+          }
+        }}
+      >
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={1} />
         <FloatingOrb position={[-4, 2, -5]} color="#5b68f5" size={1.5} />
