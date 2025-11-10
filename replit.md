@@ -62,10 +62,13 @@ The backend requires the following services to be fully functional:
    - Provided by Replit
    - Tables created automatically
 
-### Optional (for full functionality)
+### Required for Authentication
 2. **Supabase** (Authentication & Storage)
-   - Required for user authentication
+   - **Required** for user login/signup functionality
+   - The app will load without Supabase but authentication features will be disabled
    - Set `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_PROJECT_REF`
+
+### Optional (for enhanced functionality)
 
 3. **Redis** (Caching & Task Queue)
    - Required for Celery background tasks
