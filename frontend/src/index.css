@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Museo Moderno Font */
+@font-face {
+  font-family: 'Museo Moderno';
+  src: url('/fonts/MuseoModerno-ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* ApplyX Color Palette - Black, White, Blue, Neon Green */
+    --background: 0 0% 100%; /* White */
+    --foreground: 0 0% 0%; /* Black */
+
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 0 0% 0%; /* Black */
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+
+    --primary: 245 80% 55%; /* Blue */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 10%; /* Dark Black */
+    --secondary-foreground: 0 0% 100%;
+
+    --accent: 145 100% 50%; /* Neon Green */
+    --accent-foreground: 0 0% 0%;
+
+    --success: 145 100% 50%; /* Neon Green */
+    --success-foreground: 0 0% 0%;
+
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 45%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 95%;
+    --ring: 245 80% 55%;
+
+    --radius: 0.75rem;
+
+    /* Glassmorphism effects */
+    --glass-bg: 0 0% 100% / 0.05;
+    --glass-border: 0 0% 100% / 0.15;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(245 80% 55%), hsl(260 90% 65%));
+    --gradient-hero: linear-gradient(135deg, hsl(245 80% 55%), hsl(245 80% 45%));
+    --gradient-accent: linear-gradient(135deg, hsl(145 100% 50%), hsl(160 100% 45%));
+
+    /* Shadows */
+    --shadow-primary: 0 10px 40px hsl(245 80% 55% / 0.3);
+    --shadow-accent: 0 10px 40px hsl(145 100% 50% / 0.3);
+    --shadow-glow: 0 0 30px hsl(145 100% 50% / 0.5);
+    --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.08);
+
+    /* Animations */
+    --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  .dark {
+    --background: 0 0% 5%; /* Near Black */
+    --foreground: 0 0% 100%; /* White */
+
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 245 80% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 100%;
+
+    --accent: 145 100% 50%;
+    --accent-foreground: 0 0% 0%;
+
+    --success: 145 100% 50%;
+    --success-foreground: 0 0% 0%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 15%;
+    --ring: 145 100% 50%;
+
+    --glass-bg: 0 0% 0% / 0.3;
+    --glass-border: 0 0% 100% / 0.1;
+
+    --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.4);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-outfit;
+    scroll-behavior: smooth;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Smooth transitions for all elements */
+  button, a, .card, .hover\:scale-105, .group, [class*="transition"] {
+    transition: var(--transition-smooth);
+  }
+
+  /* Remove universal transition to avoid conflicts */
+  body * {
+    transition-property: none;
+  }
+
+  /* Apply smooth transitions only to interactive elements */
+  button, a, input, textarea, select,
+  [role="button"], [class*="hover:"] {
+    transition: var(--transition-smooth);
+  }
+
+  /* Optimized animations */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+}

@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: applyx-postgres
+    environment:
+      POSTGRES_USER: applyx
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_DB: applyx
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U applyx"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - applyx-network
+
+  # Redis for caching and Celery
+  redis:
+    image: redis:7-alpine
+    container_name: applyx-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - applyx-network
+
+  # FastAPI Application
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: applyx-api
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://applyx:${DB_PASSWORD:-changeme}@postgres:5432/applyx
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    networks:
+      - applyx-network
+    restart: unless-stopped
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.celery
+    container_name: applyx-celery-worker
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://applyx:${DB_PASSWORD:-changeme}@postgres:5432/applyx
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    networks:
+      - applyx-network
+    restart: unless-stopped
+
+  # Celery Flower (monitoring)
+  celery-flower:
+    build:
+      context: .
+      dockerfile: Dockerfile.celery
+    container_name: applyx-celery-flower
+    command: celery -A app.tasks.celery_app flower --port=5555
+    env_file:
+      - .env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - celery-worker
+    networks:
+      - applyx-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  applyx-network:
+    driver: bridge

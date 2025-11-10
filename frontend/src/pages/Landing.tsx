@@ -1,0 +1,590 @@
+import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
+import { 
+  ArrowRight, 
+  CheckCircle, 
+  Target, 
+  Zap, 
+  Users, 
+  TrendingUp,
+  FileText,
+  MessageSquare,
+  Award,
+  Briefcase,
+  Building2,
+  Video,
+  GraduationCap,
+  Code,
+  Clock,
+  Sparkles
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import ThreeBackground from "@/components/ThreeBackground";
+
+const Landing = () => {
+  const stats = [
+    { value: "500+", label: "Top Employers" },
+    { value: "100+", label: "Academic Institutes" },
+    { value: "20K+", label: "Jobs Posted" },
+    { value: "15K+", label: "Students Placed" },
+  ];
+
+  const features = [
+    {
+      icon: FileText,
+      title: "AI Resume Analysis",
+      description: "Get instant feedback on your resume with our advanced AI scoring system",
+      badge: "AI Assessment",
+    },
+    {
+      icon: Target,
+      title: "Smart Job Matching",
+      description: "Our AI matches you with perfect opportunities based on your profile",
+      badge: "AI Job Match",
+    },
+    {
+      icon: MessageSquare,
+      title: "Interview Preparation",
+      description: "Practice with AI-powered interview simulations tailored to your field",
+      badge: "AI Interview",
+    },
+  ];
+
+  const benefits = [
+    "AI-powered resume scoring and feedback",
+    "Real-time interview preparation",
+    "Direct employer connections",
+    "Personalized career roadmaps",
+    "Exclusive job opportunities",
+    "24/7 career support",
+  ];
+
+  const comingSoonFeatures = [
+    {
+      icon: Video,
+      title: "Mock Interview Platform",
+      description: "Practice interviews with AI-powered feedback and industry-specific questions",
+      color: "from-blue-500 to-cyan-500",
+      badge: "Beta",
+      image: "https://api.dicebear.com/7.x/avataaars/svg?seed=interview&backgroundColor=b6e3f4",
+    },
+    {
+      icon: Briefcase,
+      title: "Job Hiring Portal",
+      description: "Direct connections with top employers and exclusive job opportunities",
+      color: "from-purple-500 to-pink-500",
+      badge: "Active",
+      image: "https://api.dicebear.com/7.x/avataaars/svg?seed=jobs&backgroundColor=c0aede",
+    },
+    {
+      icon: Award,
+      title: "Professional Certifications",
+      description: "Earn industry-recognized certifications to boost your career",
+      color: "from-green-500 to-emerald-500",
+      badge: "New",
+      image: "https://api.dicebear.com/7.x/avataaars/svg?seed=cert&backgroundColor=d1f4dd",
+    },
+    {
+      icon: Building2,
+      title: "College Hiring Solutions",
+      description: "Campus recruitment platform for colleges and universities",
+      color: "from-orange-500 to-red-500",
+      badge: "Active",
+      image: "https://api.dicebear.com/7.x/avataaars/svg?seed=college&backgroundColor=ffd5cd",
+    },
+    {
+      icon: Code,
+      title: "Technical Assessment",
+      description: "Codility-style coding challenges and skill assessments",
+      color: "from-indigo-500 to-violet-500",
+      badge: "Beta",
+      image: "https://api.dicebear.com/7.x/avataaars/svg?seed=code&backgroundColor=dcd3ff",
+    },
+    {
+      icon: Users,
+      title: "Employer Solutions",
+      description: "Complete hiring platform for companies to find top talent",
+      color: "from-teal-500 to-cyan-500",
+      badge: "Active",
+      image: "https://api.dicebear.com/7.x/avataaars/svg?seed=employer&backgroundColor=ccf5f5",
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-white font-outfit relative overflow-hidden">
+      <ThreeBackground />
+      <Navbar />
+
+      {/* Hero Section - Resume Focused */}
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 bg-gradient-to-br from-primary via-primary to-[#4338ca]">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-20 relative z-10">
+          <div className="grid lg:grid-cols-2 gap-12 items-center max-w-7xl mx-auto">
+            {/* Left Side - Content */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
+              className="text-left"
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="inline-flex items-center gap-2 bg-accent/20 backdrop-blur-sm border border-accent/30 px-4 py-2 rounded-full mb-6"
+              >
+                <Zap className="w-4 h-4 text-accent" />
+                <span className="text-accent font-semibold text-sm">AI-Powered Resume Analysis</span>
+              </motion.div>
+
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight text-white mb-6">
+                Build a Resume That Gets You{" "}
+                <span className="text-accent">Hired</span>
+              </h1>
+
+              <p className="text-xl text-white/90 mb-8 leading-relaxed">
+                Create, analyze, and perfect your resume with AI. Get instant feedback, professional templates, and land your dream job faster.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                <Link to="/resume-builder">
+                  <Button 
+                    size="lg"
+                    className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7 shadow-2xl hover:shadow-accent/50 transition-all duration-300 hover:scale-105"
+                  >
+                    Start Building Now
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
+              </div>
+
+              {/* Quick Stats */}
+              <div className="grid grid-cols-3 gap-6 pt-6 border-t border-white/20">
+                <div>
+                  <div className="text-3xl font-bold text-accent mb-1">92%</div>
+                  <div className="text-sm text-white/70">Success Rate</div>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-accent mb-1">15K+</div>
+                  <div className="text-sm text-white/70">Resumes Built</div>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-accent mb-1">500+</div>
+                  <div className="text-sm text-white/70">Companies</div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Right Side - Resume Preview with AI Analysis */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4, duration: 0.8 }}
+              className="relative"
+            >
+              {/* Main Resume Card */}
+              <div className="bg-white rounded-2xl shadow-2xl p-8 relative">
+                {/* Resume Header */}
+                <div className="border-b border-gray-200 pb-4 mb-4">
+                  <div className="h-3 bg-gray-300 rounded w-2/3 mb-3"></div>
+                  <div className="h-2 bg-gray-200 rounded w-1/2 mb-2"></div>
+                  <div className="h-2 bg-gray-200 rounded w-1/3"></div>
+                </div>
+
+                {/* Resume Sections */}
+                <div className="space-y-4">
+                  {/* Experience Section with AI Badge */}
+                  <div className="relative">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="h-2.5 bg-primary rounded w-24"></div>
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ delay: 0.8 }}
+                        className="absolute -right-2 -top-2"
+                      >
+                        <div className="bg-accent text-black text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-lg">
+                          <CheckCircle className="w-3 h-3" />
+                          Strong
+                        </div>
+                      </motion.div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-2 bg-gray-300 rounded w-full"></div>
+                      <div className="h-2 bg-gray-300 rounded w-5/6"></div>
+                      <div className="h-2 bg-gray-300 rounded w-4/6"></div>
+                    </div>
+                  </div>
+
+                  {/* Skills Section */}
+                  <div className="relative">
+                    <div className="h-2.5 bg-primary rounded w-20 mb-2"></div>
+                    <div className="flex gap-2 flex-wrap">
+                      <div className="h-6 bg-gray-200 rounded-full w-16"></div>
+                      <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+                      <div className="h-6 bg-gray-200 rounded-full w-16"></div>
+                      <div className="h-6 bg-gray-200 rounded-full w-24"></div>
+                    </div>
+                  </div>
+
+                  {/* Education Section */}
+                  <div>
+                    <div className="h-2.5 bg-primary rounded w-24 mb-2"></div>
+                    <div className="space-y-2">
+                      <div className="h-2 bg-gray-300 rounded w-4/6"></div>
+                      <div className="h-2 bg-gray-300 rounded w-3/6"></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI Score Badge - Top Right */}
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: 1, type: "spring" }}
+                  className="absolute -top-4 -right-4 bg-gradient-to-br from-accent to-accent/80 text-black rounded-2xl p-4 shadow-2xl"
+                >
+                  <div className="text-center">
+                    <div className="text-3xl font-bold">92</div>
+                    <div className="text-xs font-semibold">AI Score</div>
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* Floating Analysis Cards */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.2 }}
+                className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-xl p-4 border-2 border-accent/20"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
+                    <Target className="w-5 h-5 text-accent" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">47 Job Matches</p>
+                    <p className="text-xs text-muted-foreground">Based on your profile</p>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 1.4 }}
+                className="absolute -top-4 -left-6 bg-primary text-white rounded-xl shadow-xl p-3 hidden lg:block"
+              >
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  <span className="text-xs font-semibold">ATS Optimized</span>
+                </div>
+              </motion.div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section - White Background */}
+      <section id="features" className="py-24 bg-white">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-5xl md:text-6xl font-bold mb-6">
+              AI-Powered Resume Tools
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Everything you need to create the perfect resume and land your dream job
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.2, duration: 0.6 }}
+              >
+                <Card className="group hover:shadow-2xl transition-all duration-500 border-2 hover:border-primary/50 h-full bg-white">
+                  <CardContent className="p-8">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
+                      <feature.icon className="w-8 h-8 text-primary" />
+                    </div>
+                    <div className="inline-flex items-center gap-2 bg-accent/10 text-accent border border-accent/20 px-4 py-1.5 rounded-full text-sm font-bold mb-4">
+                      <Zap className="w-4 h-4" />
+                      {feature.badge}
+                    </div>
+                    <h3 className="text-2xl font-bold mb-3 group-hover:text-primary transition-colors">
+                      {feature.title}
+                    </h3>
+                    <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works Section - Black Background */}
+      <section id="how-it-works" className="py-24 bg-black text-white">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-5xl md:text-6xl font-bold mb-6">How It Works</h2>
+            <p className="text-xl text-white/70">Simple steps to your dream job</p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-4 gap-8 max-w-5xl mx-auto">
+            {[
+              { step: "01", title: "Upload Resume", desc: "Share your current resume with us" },
+              { step: "02", title: "AI Analysis", desc: "Get instant feedback and scoring" },
+              { step: "03", title: "Improve", desc: "Apply suggestions to enhance your resume" },
+              { step: "04", title: "Apply", desc: "Get matched with perfect job opportunities" },
+            ].map((item, index) => (
+              <motion.div
+                key={item.step}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className="text-center"
+              >
+                <div className="text-6xl font-bold text-accent/20 mb-4">{item.step}</div>
+                <h3 className="text-xl font-bold mb-2">{item.title}</h3>
+                <p className="text-white/70">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mt-16"
+          >
+            <Link to="/resume-builder">
+              <Button 
+                size="lg"
+                className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7"
+              >
+                Get Started Now
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </Link>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Benefits Section - White Background */}
+      <section id="about" className="py-24 bg-white">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <h2 className="text-5xl md:text-6xl font-bold mb-8">
+                Why Choose <span className="text-primary">ApplyX</span>?
+              </h2>
+              <p className="text-xl text-muted-foreground mb-10 leading-relaxed">
+                We combine cutting-edge AI technology with personalized career guidance to give you the competitive edge in today's job market.
+              </p>
+              <div className="space-y-4">
+                {benefits.map((benefit, index) => (
+                  <motion.div
+                    key={benefit}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1, duration: 0.4 }}
+                    className="flex items-start gap-4 p-4 rounded-xl hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle className="w-4 h-4 text-accent" />
+                    </div>
+                    <span className="text-lg">{benefit}</span>
+                  </motion.div>
+                ))}
+              </div>
+              <Link to="/resume-builder">
+                <Button 
+                  size="lg"
+                  className="mt-10 bg-primary hover:bg-primary/90 text-white text-lg px-8 py-6"
+                >
+                  Get Started Now
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Button>
+              </Link>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="relative"
+            >
+              <div className="bg-gradient-to-br from-primary to-primary/80 rounded-3xl p-12 shadow-2xl">
+                <div className="space-y-6">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
+                        <Award className="w-6 h-6 text-black" />
+                      </div>
+                      <div>
+                        <p className="text-white font-semibold text-lg">Resume Score</p>
+                        <p className="text-white/70 text-sm">AI Analysis Complete</p>
+                      </div>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <span className="text-6xl font-bold text-white">92</span>
+                      <span className="text-2xl text-white/70 mb-2">/100</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                    <p className="text-white font-semibold mb-3">Job Matches</p>
+                    <div className="flex gap-2">
+                      <div className="flex-1 bg-accent/20 rounded-lg p-3 text-center">
+                        <p className="text-3xl font-bold text-accent">47</p>
+                        <p className="text-xs text-white/70 mt-1">Active</p>
+                      </div>
+                      <div className="flex-1 bg-white/10 rounded-lg p-3 text-center">
+                        <p className="text-3xl font-bold text-white">12</p>
+                        <p className="text-xs text-white/70 mt-1">Applied</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* All Features Section - Gradient Background */}
+      <section className="py-24 bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
+        </div>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
+            <Badge variant="secondary" className="mb-6 text-base px-6 py-2 bg-accent text-black font-bold">
+              <Sparkles className="w-4 h-4 mr-2" />
+              All Features
+            </Badge>
+            <h2 className="text-5xl md:text-6xl font-bold mb-6">
+              Everything You Need to Succeed
+            </h2>
+            <p className="text-xl text-white/80 max-w-3xl mx-auto">
+              Comprehensive tools and resources to accelerate your career journey
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+            {comingSoonFeatures.map((feature, index) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1, duration: 0.5 }}
+              >
+                <Card className="group hover:shadow-xl transition-all duration-300 bg-white hover:bg-white border-gray-200 h-full">
+                  <CardContent className="p-6 space-y-4">
+                    {/* Header with icon and badge */}
+                    <div className="flex items-start justify-between">
+                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                        <feature.icon className="w-6 h-6 text-white" />
+                      </div>
+                      <Badge className="bg-lime-400 text-black font-semibold px-3 py-1 text-xs">
+                        {feature.badge}
+                      </Badge>
+                    </div>
+                    
+                    {/* Title and description */}
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-bold text-black group-hover:text-primary transition-colors">
+                        {feature.title}
+                      </h3>
+                      <p className="text-gray-600 text-sm leading-relaxed">
+                        {feature.description}
+                      </p>
+                    </div>
+                    
+                    {/* Action hint */}
+                    <div className="pt-2">
+                      <span className="text-sm text-primary font-medium group-hover:text-lime-500 transition-colors inline-flex items-center gap-1">
+                        Learn more 
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section - Black Background */}
+      <section className="py-24 bg-black text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-accent/20" />
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center max-w-4xl mx-auto"
+          >
+            <h2 className="text-5xl md:text-6xl font-bold mb-6">
+              Ready to Launch Your Career?
+            </h2>
+            <p className="text-xl text-white/80 mb-10 leading-relaxed">
+              Join thousands of successful students who have landed their dream jobs with ApplyX
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link to="/resume-builder">
+                <Button 
+                  size="lg"
+                  className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7 shadow-2xl hover:shadow-accent/50 transition-all duration-300 hover:scale-105"
+                >
+                  Start Building Your Resume
+                  <TrendingUp className="ml-2 w-5 h-5" />
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      <Footer />
+    </div>
+  );
+};
+
+export default Landing;

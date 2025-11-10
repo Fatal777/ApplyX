@@ -1,0 +1,133 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: applyx-api
+  namespace: applyx
+  labels:
+    app: applyx-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: applyx-api
+  template:
+    metadata:
+      labels:
+        app: applyx-api
+    spec:
+      containers:
+      - name: api
+        image: applyx-api:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: applyx-secrets
+              key: DATABASE_URL
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: applyx-secrets
+              key: SECRET_KEY
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: applyx-secrets
+              key: JWT_SECRET_KEY
+        - name: ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: applyx-secrets
+              key: ENCRYPTION_KEY
+        envFrom:
+        - configMapRef:
+            name: applyx-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: uploads
+          mountPath: /app/uploads
+        - name: logs
+          mountPath: /app/logs
+      volumes:
+      - name: uploads
+        persistentVolumeClaim:
+          claimName: applyx-uploads-pvc
+      - name: logs
+        persistentVolumeClaim:
+          claimName: applyx-logs-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: applyx-celery-worker
+  namespace: applyx
+  labels:
+    app: applyx-celery-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: applyx-celery-worker
+  template:
+    metadata:
+      labels:
+        app: applyx-celery-worker
+    spec:
+      containers:
+      - name: celery-worker
+        image: applyx-celery:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: applyx-secrets
+              key: DATABASE_URL
+        envFrom:
+        - configMapRef:
+            name: applyx-config
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: uploads
+          mountPath: /app/uploads
+        - name: logs
+          mountPath: /app/logs
+      volumes:
+      - name: uploads
+        persistentVolumeClaim:
+          claimName: applyx-uploads-pvc
+      - name: logs
+        persistentVolumeClaim:
+          claimName: applyx-logs-pvc

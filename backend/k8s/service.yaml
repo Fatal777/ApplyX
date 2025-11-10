@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: applyx-api-service
+  namespace: applyx
+  labels:
+    app: applyx-api
+spec:
+  type: LoadBalancer
+  selector:
+    app: applyx-api
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8000
+    name: http
+  sessionAffinity: ClientIP

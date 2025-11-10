@@ -1,0 +1,39 @@
+# Dockerfile for Celery worker
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libpq-dev \
+    libmagic1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Install spaCy English model via pip (more stable in Docker)
+RUN python -m spacy download en_core_web_sm --direct || \
+    pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1.tar.gz
+
+# Copy application code
+COPY . .
+
+# Create non-root user
+RUN useradd -m -u 1000 celeryuser && \
+    chown -R celeryuser:celeryuser /app && \
+    mkdir -p /app/logs && \
+    chown -R celeryuser:celeryuser /app/logs
+
+# Switch to non-root user
+USER celeryuser
+
+# Run Celery worker
+CMD ["celery", "-A", "app.tasks.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
