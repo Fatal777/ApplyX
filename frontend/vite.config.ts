@@ -9,9 +9,7 @@ export default defineConfig(({ mode }) => ({
     host: "0.0.0.0",
     port: 5000,
     strictPort: true,
-    hmr: {
-      clientPort: 5000,
-    },
+    hmr: false, // Disable HMR to prevent reload loops in Replit
     allowedHosts: [
       "88d619a8-d6c4-4eac-9c71-b37d242e37c0-00-21w6tfpinex63.sisko.replit.dev",
       ".replit.dev",

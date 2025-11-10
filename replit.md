@@ -29,6 +29,7 @@ ApplyX is a full-stack resume analysis application with AI-powered feedback and 
 - **URL**: https://88d619a8-d6c4-4eac-9c71-b37d242e37c0-00-21w6tfpinex63.sisko.replit.dev
 - **Dev Server**: Vite on port 5000
 - **Environment**: Development mode
+- **HMR**: Disabled (prevents reload loops in Replit environment)
 - **Status**: ✅ Running
 
 ### Backend (Port 8000)
@@ -144,6 +145,8 @@ python -c "from app.db.database import Base, engine; from app.models.user import
 8. ✅ Set up frontend workflow on port 5000
 9. ✅ Created environment configuration files
 10. ✅ Updated CORS to include Replit domains
+11. ✅ Fixed Vite host blocking issue for Replit domain
+12. ✅ Disabled HMR to prevent reload loops in Replit environment
 
 ## Next Steps
 
