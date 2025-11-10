@@ -60,6 +60,11 @@ security = HTTPBearer()
 
 def get_supabase_public_key() -> str:
     """Fetch Supabase JWT public key"""
+    if not settings.SUPABASE_PROJECT_REF:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Supabase is not configured"
+        )
     jwks_url = f"https://{settings.SUPABASE_PROJECT_REF}.supabase.co/auth/v1/.well-known/jwks.json"
     try:
         response = requests.get(jwks_url)
@@ -76,23 +81,32 @@ def decode_token(token: str) -> Dict[str, Any]:
     """Decode and validate JWT token from Supabase"""
     try:
         logger.debug(f"Decoding token with algorithm: {settings.JWT_ALGORITHM}")
-        logger.debug(f"Expected issuer: https://{settings.SUPABASE_PROJECT_REF}.supabase.co/auth/v1")
         
-        # Supabase JWT verification
-        payload = jwt.decode(
-            token,
-            settings.SUPABASE_JWT_SECRET,
-            algorithms=[settings.JWT_ALGORITHM],
-            audience="authenticated",
-            options={
-                "verify_aud": True,
-                "verify_iss": True,
-                "verify_iat": True,
-                "verify_exp": True,
-                "verify_nbf": False
-            },
-            issuer=f"https://{settings.SUPABASE_PROJECT_REF}.supabase.co/auth/v1"
-        )
+        # Check if Supabase is configured
+        if settings.SUPABASE_JWT_SECRET and settings.SUPABASE_PROJECT_REF:
+            logger.debug(f"Expected issuer: https://{settings.SUPABASE_PROJECT_REF}.supabase.co/auth/v1")
+            # Supabase JWT verification
+            payload = jwt.decode(
+                token,
+                settings.SUPABASE_JWT_SECRET,
+                algorithms=[settings.JWT_ALGORITHM],
+                audience="authenticated",
+                options={
+                    "verify_aud": True,
+                    "verify_iss": True,
+                    "verify_iat": True,
+                    "verify_exp": True,
+                    "verify_nbf": False
+                },
+                issuer=f"https://{settings.SUPABASE_PROJECT_REF}.supabase.co/auth/v1"
+            )
+        else:
+            # Fallback to basic JWT verification without Supabase
+            payload = jwt.decode(
+                token,
+                settings.JWT_SECRET_KEY,
+                algorithms=[settings.JWT_ALGORITHM]
+            )
         logger.debug(f"Token decoded successfully. User email: {payload.get('email')}")
         return payload
     except ExpiredSignatureError as e:
