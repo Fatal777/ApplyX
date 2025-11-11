@@ -7,9 +7,9 @@ import PDFPage from './PDFPage';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-// Configure PDF.js worker - Use CDN to ensure version matches
-// Using the same version as in package.json (5.4.296)
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.296/pdf.worker.min.js`;
+// Configure PDF.js worker - Use local file to avoid CDN issues
+// The worker file is served from the public directory
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 
 interface PDFViewerProps {
   className?: string;
