@@ -217,7 +217,12 @@ const PDFEditor = () => {
       setUploadedFileName('sample-resume.pdf');
       
       // Also load into document store
-      await documentStore.loadPDF(uint8Array);
+      // Convert Uint8Array to ArrayBuffer (fixing type mismatch)
+      const arrayBufferForStore = uint8Array.buffer.slice(
+        uint8Array.byteOffset,
+        uint8Array.byteOffset + uint8Array.byteLength
+      );
+      await documentStore.loadPDF(arrayBufferForStore);
       
       // Create mock resume data
       setResume({
