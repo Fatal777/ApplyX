@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { PDFDocument, PDFPage, PDFFont, StandardFonts } from 'pdf-lib';
 import * as pdfjs from 'pdfjs-dist';
 
+// Configure PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+
 // Types
 export interface TextRun {
   id: string;

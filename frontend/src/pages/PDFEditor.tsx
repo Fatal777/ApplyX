@@ -199,112 +199,14 @@ const PDFEditor = () => {
     setPdfError(null);
     
     try {
-      // Create a sample PDF with text
-      const pdfDoc = await PDFDocument.create();
-      const page = pdfDoc.addPage([595, 842]); // A4 size
+      // Load the sample PDF file
+      const response = await fetch('/sample.pdf');
+      if (!response.ok) {
+        throw new Error('Failed to load sample PDF');
+      }
       
-      // Add sample content
-      page.drawText('Sample Resume', {
-        x: 50,
-        y: 750,
-        size: 24,
-        color: rgb(0, 0, 0),
-      });
-      
-      page.drawText('John Doe', {
-        x: 50,
-        y: 700,
-        size: 20,
-        color: rgb(0, 0, 0),
-      });
-      
-      page.drawText('Software Engineer', {
-        x: 50,
-        y: 670,
-        size: 16,
-        color: rgb(0.3, 0.3, 0.3),
-      });
-      
-      page.drawText('Experience', {
-        x: 50,
-        y: 620,
-        size: 18,
-        color: rgb(0, 0, 0),
-      });
-      
-      page.drawText('• Senior Developer at Tech Corp (2020-2023)', {
-        x: 50,
-        y: 590,
-        size: 12,
-        color: rgb(0, 0, 0),
-      });
-      
-      page.drawText('  - Led development of microservices architecture', {
-        x: 50,
-        y: 570,
-        size: 11,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-      
-      page.drawText('  - Managed team of 5 developers', {
-        x: 50,
-        y: 550,
-        size: 11,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-      
-      page.drawText('• Developer at StartUp Inc (2018-2020)', {
-        x: 50,
-        y: 520,
-        size: 12,
-        color: rgb(0, 0, 0),
-      });
-      
-      page.drawText('Education', {
-        x: 50,
-        y: 470,
-        size: 18,
-        color: rgb(0, 0, 0),
-      });
-      
-      page.drawText('• BS Computer Science - University of Technology (2014-2018)', {
-        x: 50,
-        y: 440,
-        size: 12,
-        color: rgb(0, 0, 0),
-      });
-      
-      page.drawText('Skills', {
-        x: 50,
-        y: 390,
-        size: 18,
-        color: rgb(0, 0, 0),
-      });
-      
-      page.drawText('JavaScript, Python, React, Node.js, AWS, Docker, Kubernetes', {
-        x: 50,
-        y: 360,
-        size: 12,
-        color: rgb(0, 0, 0),
-      });
-      
-      page.drawText('This is a sample PDF for testing the editor.', {
-        x: 50,
-        y: 300,
-        size: 10,
-        color: rgb(0.5, 0.5, 0.5),
-      });
-      
-      page.drawText('Try clicking on any text to edit it!', {
-        x: 50,
-        y: 280,
-        size: 10,
-        color: rgb(0.5, 0.5, 0.5),
-      });
-
-      // Save the PDF
-      const pdfBytes = await pdfDoc.save();
-      const uint8Array = new Uint8Array(pdfBytes);
+      const arrayBuffer = await response.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
       
       // Create blob URL for display
       const pdfBlob = new Blob([uint8Array], { type: 'application/pdf' });
@@ -332,12 +234,12 @@ const PDFEditor = () => {
       
       setPdfLoading(false);
     } catch (error: any) {
-      console.error('Error creating sample PDF:', error);
+      console.error('Error loading sample PDF:', error);
       setPdfError(error.message);
       setPdfLoading(false);
       toast({
         title: "Error",
-        description: "Failed to create sample PDF",
+        description: "Failed to load sample PDF",
         variant: "destructive",
       });
     }

@@ -21,7 +21,7 @@ const TextOverlay: React.FC<TextOverlayProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
-  const textObjectMap = useRef<Map<string, fabric.Text>>(new Map());
+  const textObjectMap = useRef<Map<string, fabric.IText>>(new Map());
   const { updateTextRun, addEditOperation } = useDocumentStore();
 
   // Initialize Fabric.js canvas
@@ -32,7 +32,7 @@ const TextOverlay: React.FC<TextOverlayProps> = ({
       width: pageData.width * zoom,
       height: pageData.height * zoom,
       backgroundColor: 'transparent',
-      selection: false,
+      selection: true,
       renderOnAddRemove: true,
     });
 
@@ -60,7 +60,7 @@ const TextOverlay: React.FC<TextOverlayProps> = ({
         textRun.fontStyle
       );
 
-      const text = new fabric.Text(textRun.text, {
+      const text = new fabric.IText(textRun.text, {
         left: textRun.x * zoom,
         top: textRun.y * zoom,
         fontSize: textRun.fontSize * zoom,
@@ -69,7 +69,8 @@ const TextOverlay: React.FC<TextOverlayProps> = ({
         fontStyle: textRun.fontStyle,
         fill: textRun.isEdited ? '#0066cc' : textRun.color,
         selectable: true,
-        hasControls: false,
+        editable: true,
+        hasControls: true,
         hasBorders: true,
         borderColor: '#0066cc',
         borderOpacityWhenMoving: 0.5,
@@ -165,8 +166,8 @@ const TextOverlay: React.FC<TextOverlayProps> = ({
 
     const handleDoubleClick = (event: fabric.IEvent) => {
       const target = event.target;
-      if (target && target.type === 'text') {
-        const textObject = target as fabric.Text;
+      if (target && target.type === 'i-text') {
+        const textObject = target as fabric.IText;
         textObject.enterEditing();
         textObject.selectAll();
         canvas.renderAll();
@@ -187,9 +188,9 @@ const TextOverlay: React.FC<TextOverlayProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeObject = canvas.getActiveObject();
       
-      if (!activeObject || activeObject.type !== 'text') return;
+      if (!activeObject || activeObject.type !== 'i-text') return;
 
-      const textObject = activeObject as fabric.Text;
+      const textObject = activeObject as fabric.IText;
 
       // Delete text on Delete/Backspace (when not editing)
       if ((e.key === 'Delete' || e.key === 'Backspace') && !textObject.isEditing) {
