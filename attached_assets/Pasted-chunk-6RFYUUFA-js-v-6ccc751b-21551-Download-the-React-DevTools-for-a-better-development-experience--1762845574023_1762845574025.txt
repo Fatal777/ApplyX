@@ -1,0 +1,267 @@
+chunk-6RFYUUFA.js?v=6ccc751b:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+react-router-dom.js?v=6ccc751b:4393 ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+warnOnce @ react-router-dom.js?v=6ccc751b:4393
+logDeprecation @ react-router-dom.js?v=6ccc751b:4396
+logV6DeprecationWarnings @ react-router-dom.js?v=6ccc751b:4399
+(anonymous) @ react-router-dom.js?v=6ccc751b:5271
+commitHookEffectListMount @ chunk-6RFYUUFA.js?v=6ccc751b:16915
+commitPassiveMountOnFiber @ chunk-6RFYUUFA.js?v=6ccc751b:18161
+commitPassiveMountEffects_complete @ chunk-6RFYUUFA.js?v=6ccc751b:18129
+commitPassiveMountEffects_begin @ chunk-6RFYUUFA.js?v=6ccc751b:18119
+commitPassiveMountEffects @ chunk-6RFYUUFA.js?v=6ccc751b:18109
+flushPassiveEffectsImpl @ chunk-6RFYUUFA.js?v=6ccc751b:19490
+flushPassiveEffects @ chunk-6RFYUUFA.js?v=6ccc751b:19447
+performSyncWorkOnRoot @ chunk-6RFYUUFA.js?v=6ccc751b:18868
+flushSyncCallbacks @ chunk-6RFYUUFA.js?v=6ccc751b:9119
+commitRootImpl @ chunk-6RFYUUFA.js?v=6ccc751b:19432
+commitRoot @ chunk-6RFYUUFA.js?v=6ccc751b:19277
+finishConcurrentRender @ chunk-6RFYUUFA.js?v=6ccc751b:18805
+performConcurrentWorkOnRoot @ chunk-6RFYUUFA.js?v=6ccc751b:18718
+workLoop @ chunk-6RFYUUFA.js?v=6ccc751b:197
+flushWork @ chunk-6RFYUUFA.js?v=6ccc751b:176
+performWorkUntilDeadline @ chunk-6RFYUUFA.js?v=6ccc751b:384
+react-router-dom.js?v=6ccc751b:4393 ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+warnOnce @ react-router-dom.js?v=6ccc751b:4393
+logDeprecation @ react-router-dom.js?v=6ccc751b:4396
+logV6DeprecationWarnings @ react-router-dom.js?v=6ccc751b:4402
+(anonymous) @ react-router-dom.js?v=6ccc751b:5271
+commitHookEffectListMount @ chunk-6RFYUUFA.js?v=6ccc751b:16915
+commitPassiveMountOnFiber @ chunk-6RFYUUFA.js?v=6ccc751b:18161
+commitPassiveMountEffects_complete @ chunk-6RFYUUFA.js?v=6ccc751b:18129
+commitPassiveMountEffects_begin @ chunk-6RFYUUFA.js?v=6ccc751b:18119
+commitPassiveMountEffects @ chunk-6RFYUUFA.js?v=6ccc751b:18109
+flushPassiveEffectsImpl @ chunk-6RFYUUFA.js?v=6ccc751b:19490
+flushPassiveEffects @ chunk-6RFYUUFA.js?v=6ccc751b:19447
+performSyncWorkOnRoot @ chunk-6RFYUUFA.js?v=6ccc751b:18868
+flushSyncCallbacks @ chunk-6RFYUUFA.js?v=6ccc751b:9119
+commitRootImpl @ chunk-6RFYUUFA.js?v=6ccc751b:19432
+commitRoot @ chunk-6RFYUUFA.js?v=6ccc751b:19277
+finishConcurrentRender @ chunk-6RFYUUFA.js?v=6ccc751b:18805
+performConcurrentWorkOnRoot @ chunk-6RFYUUFA.js?v=6ccc751b:18718
+workLoop @ chunk-6RFYUUFA.js?v=6ccc751b:197
+flushWork @ chunk-6RFYUUFA.js?v=6ccc751b:176
+performWorkUntilDeadline @ chunk-6RFYUUFA.js?v=6ccc751b:384
+documentStore.ts:236 Error loading PDF: Error: Failed to parse PDF document (line:0 col:0 offset=0): No PDF header found
+    at MissingPDFHeaderError2.PDFParsingError2 [as constructor] (pdf-lib.js?v=6ccc751b:5601:22)
+    at new MissingPDFHeaderError2 (pdf-lib.js?v=6ccc751b:5692:22)
+    at PDFParser2.parseHeader (pdf-lib.js?v=6ccc751b:14187:13)
+    at PDFParser2.<anonymous> (pdf-lib.js?v=6ccc751b:14136:42)
+    at step (pdf-lib.js?v=6ccc751b:4328:17)
+    at Object.next (pdf-lib.js?v=6ccc751b:4280:14)
+    at pdf-lib.js?v=6ccc751b:4267:67
+    at new Promise (<anonymous>)
+    at __awaiter (pdf-lib.js?v=6ccc751b:4249:10)
+    at PDFParser2.parseDocument (pdf-lib.js?v=6ccc751b:14127:14)
+console.error @ chunk-GZTW3F2Q.js?v=6ccc751b:48734
+loadPDF @ documentStore.ts:236
+await in loadPDF
+handleFileUpload @ PDFEditor.tsx:147
+await in handleFileUpload
+onChange @ PDFEditor.tsx:762
+callCallback2 @ chunk-6RFYUUFA.js?v=6ccc751b:3674
+invokeGuardedCallbackDev @ chunk-6RFYUUFA.js?v=6ccc751b:3699
+invokeGuardedCallback @ chunk-6RFYUUFA.js?v=6ccc751b:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-6RFYUUFA.js?v=6ccc751b:3736
+executeDispatch @ chunk-6RFYUUFA.js?v=6ccc751b:7014
+processDispatchQueueItemsInOrder @ chunk-6RFYUUFA.js?v=6ccc751b:7034
+processDispatchQueue @ chunk-6RFYUUFA.js?v=6ccc751b:7043
+dispatchEventsForPlugins @ chunk-6RFYUUFA.js?v=6ccc751b:7051
+(anonymous) @ chunk-6RFYUUFA.js?v=6ccc751b:7174
+batchedUpdates$1 @ chunk-6RFYUUFA.js?v=6ccc751b:18913
+batchedUpdates @ chunk-6RFYUUFA.js?v=6ccc751b:3579
+dispatchEventForPluginEventSystem @ chunk-6RFYUUFA.js?v=6ccc751b:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-6RFYUUFA.js?v=6ccc751b:5478
+dispatchEvent @ chunk-6RFYUUFA.js?v=6ccc751b:5472
+dispatchDiscreteEvent @ chunk-6RFYUUFA.js?v=6ccc751b:5449
+PDFEditor.tsx:368 ✅ PDF Document loaded successfully: 1 pages
+PDFEditor.tsx:369 PDF.js version: 5.4.296
+PDFEditor.tsx:370 Worker URL: /pdf.worker.min.js
+pdf.worker.min.js:25 Warning: TT: undefined function: 3
+warn @ pdf.worker.min.js:25
+checkInvalidFunctions @ pdf.worker.min.js:28
+sanitizeTTPrograms @ pdf.worker.min.js:28
+checkAndRepair @ pdf.worker.min.js:28
+Font @ pdf.worker.min.js:28
+translateFont @ pdf.worker.min.js:28
+await in translateFont
+loadFont @ pdf.worker.min.js:28
+handleSetFont @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+getOperatorList @ pdf.worker.min.js:28
+buildFormXObject @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+getOperatorList @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+getOperatorList @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+(anonymous) @ pdf.worker.min.js:28
+#lt @ pdf.worker.min.js:28
+#ot @ pdf.worker.min.js:28
+pdf.worker.min.js:25 Warning: TT: undefined function: 3
+warn @ pdf.worker.min.js:25
+checkInvalidFunctions @ pdf.worker.min.js:28
+sanitizeTTPrograms @ pdf.worker.min.js:28
+checkAndRepair @ pdf.worker.min.js:28
+Font @ pdf.worker.min.js:28
+translateFont @ pdf.worker.min.js:28
+await in translateFont
+loadFont @ pdf.worker.min.js:28
+handleSetFont @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+getTextContent @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+next @ pdf.worker.min.js:28
+promiseBody @ pdf.worker.min.js:28
+getTextContent @ pdf.worker.min.js:28
+extractTextContent @ pdf.worker.min.js:28
+await in extractTextContent
+(anonymous) @ pdf.worker.min.js:28
+Promise.then
+(anonymous) @ pdf.worker.min.js:28
+#lt @ pdf.worker.min.js:28
+#ot @ pdf.worker.min.js:28
+PDFEditor.tsx:381 📝 Analyzed PDF text blocks: 145 Detected fonts: ['Arial']
+TypographyControls.tsx:57 🎨 Loading Google Fonts...
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+[Intervention] Slow network is detected. See <URL> for more details. Fallback font will be used while loading: <URL>
+TypographyControls.tsx:60 ✅ Google Fonts loaded successfully
