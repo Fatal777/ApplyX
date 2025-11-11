@@ -27,11 +27,9 @@ import { Annotation, ToolType } from "@/types/pdf";
 import { useDocumentStore } from "@/stores/documentStore";
 import TextOverlay from "@/components/pdf-editor/TextOverlay";
 
-// Set up PDF.js worker with local file (most reliable)
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
+// Set up PDF.js worker - Use CDN to ensure version matches
+// Using the same version as in package.json (5.4.296)
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.296/pdf.worker.min.js`;
 
 interface Resume {
   id: number;

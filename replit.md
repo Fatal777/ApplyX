@@ -133,7 +133,22 @@ python -c "from app.db.database import Base, engine; from app.models.user import
 - spaCy, NLTK, scikit-learn (NLP)
 - OpenAI API (AI analysis)
 
-## Recent Changes (Nov 10, 2025)
+## Recent Changes (Nov 11, 2025)
+
+1. ✅ Implemented Professional PDF Editor with Sejda-like Text Replacement:
+   - Built comprehensive PDF editor with text detection and replacement
+   - Integrated pdf.js for rendering, Fabric.js for text overlay, pdf-lib for export
+   - Added demo mode at `/demo/pdf-editor` (no authentication required)
+   - Features: click-to-edit text, font detection, drag-and-drop upload
+   - Fixed coordinate system alignment between PDF.js and Fabric.js
+   
+2. ✅ Fixed PDF.js version mismatch error:
+   - Aligned pdfjs-dist to exact version 5.4.296 in package.json
+   - Updated worker configuration to use CDN URL with matching version
+   - Modified PDFViewer.tsx and PDFEditor.tsx to use: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.296/pdf.worker.min.js`
+   - This resolves the error: "The API version '5.4.296' does not match the Worker version '5.4.394'"
+
+## Previous Changes (Nov 10, 2025)
 
 1. ✅ Installed Node.js 20 and Python 3.11
 2. ✅ Installed all frontend dependencies
