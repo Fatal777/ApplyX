@@ -148,6 +148,16 @@ python -c "from app.db.database import Base, engine; from app.models.user import
    - Modified PDFViewer.tsx and PDFEditor.tsx to use: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.296/pdf.worker.min.js`
    - This resolves the error: "The API version '5.4.296' does not match the Worker version '5.4.394'"
 
+3. ✅ Fixed PDF Text Overlay Issue (Text Replacement):
+   - **Problem**: Text tool was creating overlay instead of replacing original text
+   - **Root Cause**: exportPDF() was drawing new text on top of old text without removing it
+   - **Solution**: Modified documentStore.ts exportPDF() function to:
+     - Draw white rectangle over old text position before adding new text
+     - Parse hex color codes to RGB for proper text rendering
+     - Properly handle text replacement instead of overlay
+   - **Files Modified**: `frontend/src/stores/documentStore.ts`
+   - **Result**: Text editing now properly replaces original text in exported PDFs
+
 ## Previous Changes (Nov 10, 2025)
 
 1. ✅ Installed Node.js 20 and Python 3.11

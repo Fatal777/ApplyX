@@ -337,7 +337,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
         const page = pdfPages[operation.pageIndex];
         if (!page) continue;
 
-        const { height } = page.getSize();
+        const { height, width } = page.getSize();
 
         // Find the text run for positioning
         const textRun = pages[operation.pageIndex]?.textRuns.find(
@@ -349,11 +349,29 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
           // Since textRun.y is now in top-left coords, we need to convert back
           const pdfY = height - (operation.y ?? textRun.y) - textRun.height;
           
-          // Draw new text (simplified - in production, handle font embedding)
+          // Cover the old text with a white rectangle
+          page.drawRectangle({
+            x: operation.x ?? textRun.x,
+            y: pdfY,
+            width: textRun.width,
+            height: textRun.height,
+            color: { type: 'RGB', red: 1, green: 1, blue: 1 }, // White color
+            opacity: 1,
+            borderWidth: 0,
+          });
+          
+          // Draw the new text on top
+          // Parse color from hex to RGB
+          const hexColor = operation.color ?? textRun.color ?? '#000000';
+          const r = parseInt(hexColor.slice(1, 3), 16) / 255;
+          const g = parseInt(hexColor.slice(3, 5), 16) / 255;
+          const b = parseInt(hexColor.slice(5, 7), 16) / 255;
+          
           page.drawText(operation.newText, {
             x: operation.x ?? textRun.x,
             y: pdfY,
             size: operation.fontSize ?? textRun.fontSize,
+            color: { type: 'RGB', red: r, green: g, blue: b },
             // Note: Font handling would need more sophisticated approach for production
           });
         }
