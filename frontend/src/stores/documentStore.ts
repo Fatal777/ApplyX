@@ -158,12 +158,17 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
             const fontName = item.fontName || 'Helvetica';
             allFonts.add(fontName);
 
+            // Convert from PDF's bottom-left origin to top-left origin for Fabric.js
+            // PDF.js uses bottom-left coordinate system, but Fabric.js uses top-left
+            // So we need to invert the Y coordinate relative to the viewport height
+            const convertedY = viewport.height - y;
+
             textRuns.push({
               id: `page-${i}-text-${index}`,
               pageIndex: i - 1,
               text: item.str,
               x: x,
-              y: y,
+              y: convertedY,
               width: item.width || item.str.length * (item.height || 12) * 0.6,
               height: item.height || 12,
               fontSize: Math.abs(item.height || 12),
@@ -337,10 +342,14 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
         );
 
         if (textRun) {
+          // Convert back from top-left to bottom-left coordinate system for PDF
+          // Since textRun.y is now in top-left coords, we need to convert back
+          const pdfY = height - (operation.y ?? textRun.y) - textRun.height;
+          
           // Draw new text (simplified - in production, handle font embedding)
           page.drawText(operation.newText, {
             x: operation.x ?? textRun.x,
-            y: height - (operation.y ?? textRun.y) - (textRun.height || 12),
+            y: pdfY,
             size: operation.fontSize ?? textRun.fontSize,
             // Note: Font handling would need more sophisticated approach for production
           });

@@ -25,6 +25,7 @@ import { PDFTextAnalyzer, FontInfo, TextBlock } from "@/services/PDFTextAnalyzer
 import { TypographyControls } from "@/components/TypographyControls";
 import { Annotation, ToolType } from "@/types/pdf";
 import { useDocumentStore } from "@/stores/documentStore";
+import TextOverlay from "@/components/pdf-editor/TextOverlay";
 
 // Set up PDF.js worker with local file (most reliable)
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -1198,75 +1199,132 @@ const PDFEditor = () => {
                     </div>
                   </div>
                 ) : pdfData ? (
-                  <div 
-                    ref={(el) => setPdfContainerRef(el)}
-                    className="relative h-full overflow-auto bg-gray-100 p-4"
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onClick={handleTextClick}
-                  >
-                    <Document
-                      file={pdfData}
-                      onLoadSuccess={onDocumentLoadSuccess}
-                      onLoadError={onDocumentLoadError}
-                      className="flex flex-col items-center"
-                    >
-                      {Array.from({ length: numPages || 1 }, (_, i) => (
-                        <Page
-                          key={i + 1}
-                          pageNumber={i + 1}
-                          scale={zoom}
-                          className="mb-4 shadow-lg"
-                        />
-                      ))}
-                    </Document>
-
-                    {/* Render annotations */}
-                    {currentPageAnnotations.map((annotation) => (
-                      <div
-                        key={annotation.id}
-                        className={`absolute ${
-                          selectedAnnotation === annotation.id ? 'ring-2 ring-lime-500' : ''
-                        }`}
-                        style={{
-                          left: annotation.x * zoom,
-                          top: annotation.y * zoom,
-                          width: annotation.width ? annotation.width * zoom : 'auto',
-                          height: annotation.height ? annotation.height * zoom : 'auto',
-                          transform: `scale(${zoom})`,
-                          transformOrigin: 'top left'
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedAnnotation(annotation.id);
-                        }}
+                  <div className="relative h-full">
+                    {/* Use documentStore pages if available for text overlay */}
+                    {documentStore.pages.length > 0 ? (
+                      <div className="h-full overflow-auto bg-gray-100 p-4">
+                        <Document
+                          file={pdfData}
+                          onLoadSuccess={onDocumentLoadSuccess}
+                          onLoadError={onDocumentLoadError}
+                          className="flex flex-col items-center"
+                        >
+                          {Array.from({ length: numPages || 1 }, (_, i) => {
+                            const pageData = documentStore.pages[i];
+                            if (!pageData) {
+                              // Fallback to regular Page if no pageData
+                              return (
+                                <Page
+                                  key={i + 1}
+                                  pageNumber={i + 1}
+                                  scale={zoom}
+                                  className="mb-4 shadow-lg"
+                                />
+                              );
+                            }
+                            
+                            // Use our PDFPage with TextOverlay for text editing
+                            return (
+                              <div key={i + 1} className="relative mb-4">
+                                <Page
+                                  pageNumber={i + 1}
+                                  scale={zoom}
+                                  className="shadow-lg"
+                                  renderTextLayer={false}
+                                  renderAnnotationLayer={false}
+                                />
+                                {/* Text Overlay for editable text */}
+                                <TextOverlay
+                                  pageData={pageData}
+                                  zoom={zoom}
+                                  onTextClick={(textRunId: string) => {
+                                    console.log('Text clicked:', textRunId);
+                                    toast({
+                                      title: "Text Selected",
+                                      description: `Click text to edit: ${textRunId}`,
+                                    });
+                                  }}
+                                  selectedTextRun={selectedAnnotation}
+                                  className="absolute top-0 left-0 pointer-events-auto"
+                                />
+                              </div>
+                            );
+                          })}
+                        </Document>
+                      </div>
+                    ) : (
+                      // Fallback to original rendering if documentStore not loaded
+                      <div 
+                        ref={(el) => setPdfContainerRef(el)}
+                        className="relative h-full overflow-auto bg-gray-100 p-4"
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onClick={handleTextClick}
                       >
-                        {/* Render based on annotation type */}
-                        {annotation.type === 'text' && (
+                        <Document
+                          file={pdfData}
+                          onLoadSuccess={onDocumentLoadSuccess}
+                          onLoadError={onDocumentLoadError}
+                          className="flex flex-col items-center"
+                        >
+                          {Array.from({ length: numPages || 1 }, (_, i) => (
+                            <Page
+                              key={i + 1}
+                              pageNumber={i + 1}
+                              scale={zoom}
+                              className="mb-4 shadow-lg"
+                            />
+                          ))}
+                        </Document>
+
+                        {/* Render annotations */}
+                        {currentPageAnnotations.map((annotation) => (
                           <div
+                            key={annotation.id}
+                            className={`absolute ${
+                              selectedAnnotation === annotation.id ? 'ring-2 ring-lime-500' : ''
+                            }`}
                             style={{
-                              fontSize: `${annotation.fontSize}px`,
-                              fontFamily: annotation.fontFamily,
-                              color: annotation.color || '#000',
-                              fontWeight: annotation.fontWeight,
-                              fontStyle: annotation.fontStyle,
+                              left: annotation.x * zoom,
+                              top: annotation.y * zoom,
+                              width: annotation.width ? annotation.width * zoom : 'auto',
+                              height: annotation.height ? annotation.height * zoom : 'auto',
+                              transform: `scale(${zoom})`,
+                              transformOrigin: 'top left'
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedAnnotation(annotation.id);
                             }}
                           >
-                            {annotation.text}
+                            {/* Render based on annotation type */}
+                            {annotation.type === 'text' && (
+                              <div
+                                style={{
+                                  fontSize: `${annotation.fontSize}px`,
+                                  fontFamily: annotation.fontFamily,
+                                  color: annotation.color || '#000',
+                                  fontWeight: annotation.fontWeight,
+                                  fontStyle: annotation.fontStyle,
+                                }}
+                              >
+                                {annotation.text}
+                              </div>
+                            )}
+                            {annotation.type === 'highlight' && (
+                              <div
+                                style={{
+                                  backgroundColor: annotation.color || highlightColor,
+                                  opacity: 0.3,
+                                }}
+                              />
+                            )}
+                            {/* Add other annotation types as needed */}
                           </div>
-                        )}
-                        {annotation.type === 'highlight' && (
-                          <div
-                            style={{
-                              backgroundColor: annotation.color || highlightColor,
-                              opacity: 0.3,
-                            }}
-                          />
-                        )}
-                        {/* Add other annotation types as needed */}
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center justify-center h-full">
