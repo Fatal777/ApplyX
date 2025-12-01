@@ -24,14 +24,16 @@ class Settings(BaseSettings):
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     ENCRYPTION_KEY: str = secrets.token_urlsafe(32)
     
-    # Database - Optimized for 1000+ req/s
+    # Database - Optimized for sub-10ms latency
     DATABASE_URL: str
-    DB_POOL_SIZE: int = 50  # Increased for high concurrency
-    DB_MAX_OVERFLOW: int = 100  # Increased overflow capacity
+    DB_POOL_SIZE: int = 100         # High pool for concurrent requests
+    DB_MAX_OVERFLOW: int = 200      # Handle traffic spikes
+    DB_POOL_TIMEOUT: int = 10       # Connection timeout
+    DB_POOL_RECYCLE: int = 300      # Recycle every 5 min
     
-    # Redis - Optimized for caching and high throughput
+    # Redis - Optimized for sub-ms caching
     REDIS_URL: str = "redis://localhost:6379/0"
-    REDIS_MAX_CONNECTIONS: int = 50  # Increased for concurrent requests
+    REDIS_MAX_CONNECTIONS: int = 100  # High connection pool
     
     # Celery
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
