@@ -134,7 +134,7 @@ const Landing = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="inline-flex items-center gap-2 bg-accent/20 backdrop-blur-sm border border-accent/30 px-4 py-2 rounded-full mb-6"
+                className="inline-flex items-center gap-2 bg-accent/20 border border-accent/30 px-4 py-2 rounded-full mb-6"
               >
                 <Zap className="w-4 h-4 text-accent" />
                 <span className="text-accent font-semibold text-sm">AI-Powered Resume Analysis</span>
@@ -153,7 +153,7 @@ const Landing = () => {
                 <Link to="/resume-builder">
                   <Button 
                     size="lg"
-                    className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7 shadow-2xl hover:shadow-accent/50 transition-all duration-300 hover:scale-105"
+                    className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7 transition-colors duration-200"
                   >
                     Start Building Now
                     <ArrowRight className="ml-2 w-5 h-5" />
@@ -186,7 +186,7 @@ const Landing = () => {
               className="relative"
             >
               {/* Main Resume Card */}
-              <div className="bg-white rounded-2xl shadow-2xl p-8 relative">
+              <div className="bg-white rounded-2xl shadow-lg p-8 relative">
                 {/* Resume Header */}
                 <div className="border-b border-gray-200 pb-4 mb-4">
                   <div className="h-3 bg-gray-300 rounded w-2/3 mb-3"></div>
@@ -206,7 +206,7 @@ const Landing = () => {
                         transition={{ delay: 0.8 }}
                         className="absolute -right-2 -top-2"
                       >
-                        <div className="bg-accent text-black text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-lg">
+                        <div className="bg-accent text-black text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
                           <CheckCircle className="w-3 h-3" />
                           Strong
                         </div>
@@ -245,7 +245,7 @@ const Landing = () => {
                   initial={{ scale: 0, rotate: -180 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ delay: 1, type: "spring" }}
-                  className="absolute -top-4 -right-4 bg-gradient-to-br from-accent to-accent/80 text-black rounded-2xl p-4 shadow-2xl"
+                  className="absolute -top-4 -right-4 bg-gradient-to-br from-accent to-accent/80 text-black rounded-2xl p-4 shadow-lg"
                 >
                   <div className="text-center">
                     <div className="text-3xl font-bold">92</div>
@@ -259,7 +259,7 @@ const Landing = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1.2 }}
-                className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-xl p-4 border-2 border-accent/20"
+                className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-md p-4 border-2 border-accent/20"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
@@ -276,7 +276,7 @@ const Landing = () => {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 1.4 }}
-                className="absolute -top-4 -left-6 bg-primary text-white rounded-xl shadow-xl p-3 hidden lg:block"
+                className="absolute -top-4 -left-6 bg-primary text-white rounded-xl shadow-md p-3 hidden lg:block"
               >
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4" />
@@ -315,7 +315,7 @@ const Landing = () => {
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.2, duration: 0.6 }}
               >
-                <Card className="group hover:shadow-2xl transition-all duration-500 border-2 hover:border-primary/50 h-full bg-white">
+                <Card className="group hover:shadow-md transition-shadow duration-200 border-2 hover:border-primary/50 h-full bg-white">
                   <CardContent className="p-8">
                     <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
                       <feature.icon className="w-8 h-8 text-primary" />
@@ -441,9 +441,9 @@ const Landing = () => {
               transition={{ duration: 0.6 }}
               className="relative"
             >
-              <div className="bg-gradient-to-br from-primary to-primary/80 rounded-3xl p-12 shadow-2xl">
+              <div className="bg-gradient-to-br from-primary to-primary/80 rounded-3xl p-12 shadow-lg">
                 <div className="space-y-6">
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                  <div className="bg-white/10 rounded-2xl p-6 border border-white/20">
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
                         <Award className="w-6 h-6 text-black" />
@@ -459,7 +459,7 @@ const Landing = () => {
                     </div>
                   </div>
 
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                  <div className="bg-white/10 rounded-2xl p-6 border border-white/20">
                     <p className="text-white font-semibold mb-3">Job Matches</p>
                     <div className="flex gap-2">
                       <div className="flex-1 bg-accent/20 rounded-lg p-3 text-center">
@@ -513,11 +513,11 @@ const Landing = () => {
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1, duration: 0.5 }}
               >
-                <Card className="group hover:shadow-xl transition-all duration-300 bg-white hover:bg-white border-gray-200 h-full">
+                <Card className="group hover:shadow-md transition-shadow duration-200 bg-white hover:bg-white border-gray-200 h-full">
                   <CardContent className="p-6 space-y-4">
                     {/* Header with icon and badge */}
                     <div className="flex items-start justify-between">
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center`}>
                         <feature.icon className="w-6 h-6 text-white" />
                       </div>
                       <Badge className="bg-lime-400 text-black font-semibold px-3 py-1 text-xs">
@@ -571,7 +571,7 @@ const Landing = () => {
               <Link to="/resume-builder">
                 <Button 
                   size="lg"
-                  className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7 shadow-2xl hover:shadow-accent/50 transition-all duration-300 hover:scale-105"
+                  className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7 transition-colors duration-200"
                 >
                   Start Building Your Resume
                   <TrendingUp className="ml-2 w-5 h-5" />

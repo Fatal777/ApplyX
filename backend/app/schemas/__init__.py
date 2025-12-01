@@ -5,6 +5,8 @@ from app.schemas.user import (
     UserLogin,
     UserResponse,
     UserUpdate,
+    UserProfileUpdate,
+    UserProfileResponse,
     TokenResponse,
     TokenData
 )
@@ -16,12 +18,27 @@ from app.schemas.resume import (
     ResumeDetailResponse,
     ResumeListResponse
 )
+from app.schemas.interview import (
+    InterviewPersona,
+    StartInterviewRequest,
+    StartInterviewResponse,
+    TranscribeRequest,
+    TranscribeResponse,
+    RespondRequest,
+    RespondResponse,
+    AnalyzeRequest,
+    InterviewStatusResponse,
+    InterviewSessionResponse,
+    InterviewFeedbackResponse,
+)
 
 __all__ = [
     "UserCreate",
     "UserLogin",
     "UserResponse",
     "UserUpdate",
+    "UserProfileUpdate",
+    "UserProfileResponse",
     "TokenResponse",
     "TokenData",
     "ResumeUploadResponse",
@@ -29,5 +46,17 @@ __all__ = [
     "ResumeFeedback",
     "ResumeResponse",
     "ResumeDetailResponse",
-    "ResumeListResponse"
+    "ResumeListResponse",
+    # Interview schemas
+    "InterviewPersona",
+    "StartInterviewRequest",
+    "StartInterviewResponse",
+    "TranscribeRequest",
+    "TranscribeResponse",
+    "RespondRequest",
+    "RespondResponse",
+    "AnalyzeRequest",
+    "InterviewStatusResponse",
+    "InterviewSessionResponse",
+    "InterviewFeedbackResponse",
 ]

@@ -48,10 +48,10 @@ const Navbar = () => {
   };
 
   const navLinks = [
+    { name: "Jobs", path: "/job-search", section: null },
     { name: "Features", path: "/#features", section: "features" },
     { name: "How It Works", path: "/#how-it-works", section: "how-it-works" },
     { name: "Pricing", path: "/pricing", section: null },
-    { name: "FAQ", path: "/#faq", section: "faq" },
   ];
 
   const scrollToSection = (sectionId: string) => {

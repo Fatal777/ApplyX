@@ -1,6 +1,6 @@
 """User Pydantic schemas for request/response validation"""
 
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, validator, Field
 from typing import Optional
 from datetime import datetime
 import re
@@ -48,11 +48,16 @@ class UserLogin(BaseModel):
     password: str
 
 
-class UserResponse(UserBase):
+class UserResponse(BaseModel):
     """Schema for user response"""
     id: int
+    email: EmailStr
+    full_name: Optional[str] = None
+    phone_number: Optional[str] = None
     is_active: bool
     is_verified: bool
+    profile_completed: bool = False
+    contact_source: Optional[str] = None
     created_at: datetime
     last_login: Optional[datetime] = None
     
@@ -64,6 +69,43 @@ class UserUpdate(BaseModel):
     """Schema for updating user profile"""
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
+
+
+class UserProfileUpdate(BaseModel):
+    """Schema for updating user profile with contact info"""
+    full_name: Optional[str] = Field(None, min_length=2, max_length=100)
+    phone_number: Optional[str] = Field(None, max_length=20)
+    
+    @validator('phone_number')
+    def validate_phone(cls, v):
+        """Validate phone number format - flexible for international"""
+        if v is None or v == '':
+            return None
+        # Remove common formatting characters
+        cleaned = re.sub(r'[\s\-\(\)\.]', '', v)
+        # Must be digits with optional leading +
+        if not re.match(r'^\+?\d{10,15}$', cleaned):
+            raise ValueError('Please enter a valid phone number')
+        return v
+
+
+class UserProfileResponse(BaseModel):
+    """Schema for user profile response"""
+    id: int
+    email: EmailStr
+    full_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    profile_completed: bool = False
+    contact_source: Optional[str] = None
+    is_verified: bool = False
+    created_at: datetime
+    
+    # Computed field for completion percentage
+    completion_percentage: int = 0
+    missing_fields: list = []
+    
+    class Config:
+        from_attributes = True
 
 
 class TokenResponse(BaseModel):

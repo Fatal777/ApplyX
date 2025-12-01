@@ -8,7 +8,11 @@ celery_app = Celery(
     "applyx",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=['app.tasks.resume_tasks']
+    include=[
+        'app.tasks.resume_tasks',
+        'app.tasks.interview_tasks',
+        'app.tasks.job_tasks',
+    ]
 )
 
 # Configure Celery

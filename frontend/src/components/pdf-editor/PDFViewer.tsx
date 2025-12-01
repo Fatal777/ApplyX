@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
+import { Document, pdfjs } from 'react-pdf';
 import { useDocumentStore } from '@/stores/documentStore';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
@@ -7,20 +7,21 @@ import PDFPage from './PDFPage';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-// Configure PDF.js worker - Use local file to avoid CDN issues
-// The worker file is served from the public directory
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+// Configure PDF.js worker using jsDelivr CDN
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface PDFViewerProps {
   className?: string;
   onTextClick?: (pageIndex: number, textRunId: string) => void;
   selectedTextRun?: string | null;
+  editMode?: boolean;
 }
 
 const PDFViewer: React.FC<PDFViewerProps> = ({ 
   className = '', 
   onTextClick,
-  selectedTextRun 
+  selectedTextRun,
+  editMode = true,
 }) => {
   const {
     pdfBytes,
@@ -33,13 +34,16 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     setCurrentPage,
   } = useDocumentStore();
 
+  // Debug log removed after verification
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [visiblePages, setVisiblePages] = useState<Set<number>>(new Set([1]));
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   // Create object URL for PDF bytes
   useEffect(() => {
-    if (pdfBytes) {
+    if (pdfBytes && pdfBytes.length > 0) {
+      // @ts-ignore - TypeScript issue with ArrayBufferLike vs ArrayBuffer
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setPdfUrl(url);
@@ -47,6 +51,8 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
       return () => {
         URL.revokeObjectURL(url);
       };
+    } else {
+      setPdfUrl(null);
     }
   }, [pdfBytes]);
 
@@ -142,6 +148,12 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
       className={`relative overflow-auto bg-gray-100 ${className}`}
       style={{ height: '100%' }}
     >
+      {/* Bottom page counter */}
+      {pageCount > 0 && (
+        <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+          Page {currentPage} of {pageCount}
+        </div>
+      )}
       <Document
         file={pdfUrl}
         loading={
@@ -173,6 +185,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
                   zoom={zoom}
                   onTextClick={(textRunId) => onTextClick?.(index, textRunId)}
                   selectedTextRun={selectedTextRun}
+                  editMode={editMode}
                 />
               ) : (
                 <div

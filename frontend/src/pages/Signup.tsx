@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Mail, Lock, User, ArrowRight, Sparkles, Rocket } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
+import { useToast } from "@/components/ui/use-toast";
 
 const Signup = () => {
   const [fullName, setFullName] = useState("");
@@ -17,17 +17,26 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!agreedToTerms) {
-      toast.error("Please agree to the Terms of Service and Privacy Policy");
+      toast({
+        title: "Terms required",
+        description: "Please agree to the Terms of Service and Privacy Policy",
+        variant: "destructive"
+      });
       return;
     }
 
     if (password.length < 8) {
-      toast.error("Password must be at least 8 characters long");
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 8 characters long",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -35,10 +44,17 @@ const Signup = () => {
 
     try {
       await signUp(email, password, fullName);
-      toast.success("Account created! Please check your email to verify.");
+      toast({
+        title: "Account created!",
+        description: "Please check your email to verify your account"
+      });
       navigate("/login");
     } catch (error: any) {
-      toast.error(error.message || "Failed to create account");
+      toast({
+        title: "Sign up failed",
+        description: error.message || "Failed to create account",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }

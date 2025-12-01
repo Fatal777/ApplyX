@@ -13,7 +13,10 @@ import ResumeBuilder from "./pages/ResumeBuilder";
 import ResumeAnalysis from "./pages/ResumeAnalysis";
 import NotFound from "./pages/NotFound";
 import MockInterview from "./pages/MockInterview";
-import Jobs from "./pages/Jobs";
+import InterviewSetup from "./pages/InterviewSetup";
+import InterviewRoomPage from "./pages/InterviewRoomPage";
+import InterviewDashboard from "./pages/InterviewDashboard";
+import JobsPage from "./pages/JobsPage";
 import Certifications from "./pages/Certifications";
 import CollegeSolutions from "./pages/CollegeSolutions";
 import Assessments from "./pages/Assessments";
@@ -74,11 +77,33 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       
-      <Route path="/jobs" element={
+      <Route path="/interview/setup" element={
         <ProtectedRoute>
-          <Jobs />
+          <InterviewSetup />
         </ProtectedRoute>
       } />
+      
+      <Route path="/interview/room" element={
+        <ProtectedRoute>
+          <InterviewRoomPage />
+        </ProtectedRoute>
+      } />
+      
+      {/* Interview Dashboard - Full-screen premium experience */}
+      <Route path="/interview/dashboard" element={
+        <ProtectedRoute>
+          <InterviewDashboard />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/jobs" element={
+        <ProtectedRoute>
+          <JobsPage />
+        </ProtectedRoute>
+      } />
+      
+      {/* Public Job Search - accessible without login */}
+      <Route path="/job-search" element={<JobsPage />} />
       
       <Route path="/certifications" element={
         <ProtectedRoute>

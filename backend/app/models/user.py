@@ -1,6 +1,6 @@
 """User database model"""
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, func
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, func, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from typing import Optional
@@ -48,8 +48,19 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     full_name = Column(String, nullable=True)
+    
+    # Contact Information
+    phone_number = Column(String(20), nullable=True)
+    
+    # Profile metadata
+    profile_completed = Column(Boolean, default=False)
+    contact_source = Column(String(20), nullable=True)  # 'manual', 'resume', 'google'
+    
+    # Account status
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
+    
+    # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     last_login = Column(DateTime, nullable=True)
@@ -59,6 +70,11 @@ class User(Base):
     
     def __repr__(self):
         return f"<User {self.email}>"
+    
+    @property
+    def is_profile_complete(self) -> bool:
+        """Check if user has completed essential profile info"""
+        return bool(self.full_name and self.email and self.phone_number)
     
     @classmethod
     def from_supabase_auth(cls, db, user_data: dict):
@@ -71,18 +87,27 @@ class User(Base):
         user = db.query(cls).filter(cls.email == email).first()
         
         if not user:
-            # Create new user
+            # Create new user - extract name from Google metadata if available
+            metadata = user_data.get('user_metadata', {})
+            full_name = metadata.get('full_name') or metadata.get('name', '')
+            
             user = cls(
                 email=email,
-                full_name=user_data.get('user_metadata', {}).get('full_name', ''),
+                full_name=full_name,
                 is_verified=user_data.get('email_confirmed_at') is not None,
-                last_login=datetime.utcnow()
+                last_login=datetime.utcnow(),
+                contact_source='google' if metadata.get('provider') == 'google' else None
             )
             db.add(user)
         else:
             # Update existing user
             user.is_verified = user_data.get('email_confirmed_at') is not None
             user.last_login = datetime.utcnow()
+            
+            # Update name from Google if not already set
+            if not user.full_name:
+                metadata = user_data.get('user_metadata', {})
+                user.full_name = metadata.get('full_name') or metadata.get('name', '')
         
         db.commit()
         db.refresh(user)

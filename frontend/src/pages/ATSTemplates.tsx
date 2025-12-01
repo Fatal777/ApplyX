@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import jsPDF from "jspdf";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Template {
   id: string;
@@ -58,6 +59,7 @@ const ATSTemplates = () => {
     education: [{ degree: "", institution: "", year: "" }],
     skills: ""
   });
+  const { toast } = useToast();
 
   const templates: Template[] = [
     {
@@ -119,6 +121,10 @@ const ATSTemplates = () => {
   const handleTemplateSelect = (template: Template) => {
     setSelectedTemplate(template);
     setShowForm(true);
+    toast({
+      title: "Template selected",
+      description: `${template.name} template selected. Fill in your details below.`
+    });
   };
 
   const handleInputChange = (field: keyof FormData, value: any) => {
@@ -244,6 +250,11 @@ const ATSTemplates = () => {
 
     // Save PDF
     doc.save(`${formData.fullName.replace(/\s+/g, '_')}_Resume.pdf`);
+    
+    toast({
+      title: "Resume downloaded!",
+      description: `Your ${selectedTemplate?.name || 'ATS'} resume has been downloaded successfully`
+    });
   };
 
   return (

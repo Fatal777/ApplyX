@@ -6,9 +6,11 @@ from sqlalchemy.orm import Session
 from app.tasks.celery_app import celery_app
 from app.db.database import SessionLocal
 from app.models.resume import Resume
+from app.models.user import User
 from app.services.text_extraction import TextExtractionService
 from app.services.nlp_analysis import NLPAnalysisService
 from app.services.feedback import FeedbackService
+from app.services.contact_extractor import contact_extractor
 from app.core.security import encrypt_sensitive_data
 
 logger = logging.getLogger(__name__)
@@ -21,6 +23,42 @@ def get_db():
         return db
     finally:
         pass
+
+
+def update_user_profile_from_resume(db: Session, user_id: int, extracted_text: str):
+    """
+    Auto-populate user profile fields from resume if not already set.
+    Only fills in missing fields, never overwrites existing data.
+    """
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return
+        
+        # Extract contact info from resume
+        contact_info = contact_extractor.extract_all(extracted_text)
+        confidence = contact_extractor.get_extraction_confidence(contact_info)
+        
+        updated = False
+        
+        # Only update if user doesn't have the field and we have high confidence
+        if not user.full_name and contact_info.get('name') and confidence.get('name', 0) >= 0.7:
+            user.full_name = contact_info['name']
+            updated = True
+            logger.info(f"Auto-populated name for user {user_id} from resume")
+        
+        if not user.phone_number and contact_info.get('phone') and confidence.get('phone', 0) >= 0.7:
+            user.phone_number = contact_info['phone']
+            updated = True
+            logger.info(f"Auto-populated phone for user {user_id} from resume")
+        
+        if updated:
+            user.contact_source = 'resume'
+            user.profile_completed = user.is_profile_complete
+            db.commit()
+            
+    except Exception as e:
+        logger.warning(f"Could not auto-populate profile for user {user_id}: {str(e)}")
 
 
 @celery_app.task(bind=True, name='process_resume')
@@ -63,6 +101,12 @@ def process_resume_task(self, resume_id: int):
         # Encrypt and store extracted text
         encrypted_text = encrypt_sensitive_data(cleaned_text)
         resume.extracted_text = encrypted_text
+        
+        # Auto-populate user profile from resume (non-blocking, first resume only)
+        try:
+            update_user_profile_from_resume(db, resume.user_id, cleaned_text)
+        except Exception as e:
+            logger.warning(f"Profile auto-populate failed: {str(e)}")
         
         # Perform NLP analysis
         logger.info(f"Performing NLP analysis for resume {resume_id}")
@@ -114,6 +158,14 @@ def process_resume_task(self, resume_id: int):
         db.commit()
         
         logger.info(f"Resume processing completed for ID: {resume_id}")
+
+        # Trigger asynchronous job matching task (non-blocking)
+        try:
+            from app.tasks.job_tasks import match_jobs_to_resume
+            match_jobs_to_resume.delay(resume_id)
+            logger.info(f"Enqueued job matching task for resume {resume_id}")
+        except Exception as e:  # pragma: no cover
+            logger.warning(f"Could not enqueue job matching for resume {resume_id}: {e}")
         
         return {
             "status": "success",

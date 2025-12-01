@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { 
   FileText, Plus, Search, Filter, MoreVertical, Download, 
   Trash2, Eye, TrendingUp, Clock, CheckCircle, AlertCircle,
-  BarChart2, Target, Zap, ArrowRight, X
+  BarChart2, Target, Zap, ArrowRight, X, User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +20,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { apiClient } from "@/lib/api";
+
+interface ProfileStatus {
+  is_complete: boolean;
+  completion_percentage: number;
+  missing_fields: string[];
+  needs_attention: boolean;
+}
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -28,10 +36,24 @@ const Dashboard = () => {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterScore, setFilterScore] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    
+    // Check profile completion status
+    const checkProfile = async () => {
+      try {
+        const status = await apiClient.getProfileStatus() as ProfileStatus;
+        setProfileStatus(status);
+      } catch (error) {
+        console.error("Failed to check profile status:", error);
+      }
+    };
+    
+    checkProfile();
   }, []);
 
   const getStatusColor = (status: string) => {
@@ -101,6 +123,49 @@ const Dashboard = () => {
       <Navbar />
 
       <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 md:py-12 mt-24 md:mt-28">
+        {/* Profile Completion Banner - Subtle, dismissible */}
+        {profileStatus?.needs_attention && !bannerDismissed && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <div className="bg-gradient-to-r from-lime-50 to-emerald-50 border border-lime-200 rounded-xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-lime-100 rounded-full">
+                  <User className="w-4 h-4 text-lime-700" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    Complete your profile to unlock all features
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    Add your {profileStatus.missing_fields.join(" and ").toLowerCase()}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  className="text-lime-700 border-lime-300 hover:bg-lime-100"
+                  onClick={() => navigate('/settings')}
+                >
+                  Complete Now
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-gray-500 hover:text-gray-700"
+                  onClick={() => setBannerDismissed(true)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

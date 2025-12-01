@@ -1,19 +1,24 @@
-import { create } from 'zustand';
-import { PDFDocument, PDFPage, PDFFont, StandardFonts } from 'pdf-lib';
+import { create } from 'zustand/react';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import * as pdfjs from 'pdfjs-dist';
 
-// Configure PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+// Configure PDF.js worker using jsDelivr CDN (more reliable than cdnjs)
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 // Types
 export interface TextRun {
   id: string;
   pageIndex: number;
   text: string;
+  // UI coordinates (top-left origin, for React rendering)
   x: number;
   y: number;
   width: number;
   height: number;
+  // Original PDF coordinates (bottom-left origin, for pdf-lib export)
+  pdfX: number;
+  pdfBaselineY: number;
+  pdfFontName: string;  // Original font name from PDF
   fontSize: number;
   fontFamily: string;
   fontWeight?: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900';
@@ -71,7 +76,7 @@ export interface PDFDocumentState {
   isLoading: boolean;
   error: string | null;
   pdfBytes: Uint8Array | null;
-  pdfDocument: any | null; // pdfjs document
+  pdfDocument: pdfjs.PDFDocumentProxy | null; // pdfjs document
   modifiedPdfDocument: PDFDocument | null; // pdf-lib document for modifications
 }
 
@@ -85,6 +90,7 @@ interface DocumentStore extends PDFDocumentState {
   undoLastEdit: () => void;
   redoEdit: () => void;
   exportPDF: () => Promise<Blob>;
+  applyEditsViaAPI: () => Promise<Blob>;
   reset: () => void;
   detectFonts: () => void;
   replaceAllText: (searchText: string, replaceText: string) => void;
@@ -100,7 +106,7 @@ const initialState: PDFDocumentState = {
   fonts: [],
   editOperations: [],
   currentPage: 1,
-  zoom: 1.0,
+  zoom: 1,
   isLoading: false,
   error: null,
   pdfBytes: null,
@@ -130,17 +136,20 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
         const response = await fetch(input);
         arrayBuffer = await response.arrayBuffer();
       } else {
-        throw new Error('Invalid input type for PDF loading');
+        throw new TypeError('Invalid input type for PDF loading');
       }
 
       const pdfBytes = new Uint8Array(arrayBuffer);
 
-      // Load with pdfjs for text extraction
+      // Create a copy for pdf-lib BEFORE PDF.js detaches the ArrayBuffer
+      const pdfBytesCopy = new Uint8Array(pdfBytes).slice();
+      
+      // Load with pdfjs for text extraction (this will detach the ArrayBuffer)
       const loadingTask = pdfjs.getDocument({ data: pdfBytes });
       const pdfDocument = await loadingTask.promise;
-
-      // Load with pdf-lib for modifications
-      const modifiedPdfDocument = await PDFDocument.load(pdfBytes);
+      
+      // Load with pdf-lib for modifications using the copy we made earlier
+      const modifiedPdfDocument = await PDFDocument.load(pdfBytesCopy);
 
       const pages: Page[] = [];
       const allFonts = new Set<string>();
@@ -148,33 +157,43 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       // Process each page
       for (let i = 1; i <= pdfDocument.numPages; i++) {
         const page = await pdfDocument.getPage(i);
-        const viewport = page.getViewport({ scale: 1.0 });
+        const viewport = page.getViewport({ scale: 1 });
         const textContent = await page.getTextContent();
 
         const textRuns: TextRun[] = [];
 
-        textContent.items.forEach((item: any, index: number) => {
+        for (const [index, item] of textContent.items.entries()) {
           if ('str' in item && item.str.trim()) {
-            const [scaleX, , , scaleY, x, y] = item.transform;
+            // Extract transform matrix: [scaleX, skewX, skewY, scaleY, translateX, translateY]
+            // translateX, translateY are in PDF coordinate system (bottom-left origin)
+            // translateY is the text BASELINE position
+            const [, , , , x, baselineY] = item.transform;
             
             // Extract font information
             const fontName = item.fontName || 'Helvetica';
             allFonts.add(fontName);
 
-            // Convert from PDF's bottom-left origin to top-left origin for Fabric.js
-            // PDF.js uses bottom-left coordinate system, but Fabric.js uses top-left
-            // So we need to invert the Y coordinate relative to the viewport height
-            const convertedY = viewport.height - y;
+            const textHeight = item.height || 12;
+            const fontSize = Math.abs(textHeight);
+
+            // For UI rendering (top-left origin):
+            // Approximate top edge of text bounding box
+            const uiY = viewport.height - baselineY - (textHeight * 0.75);
 
             textRuns.push({
               id: `page-${i}-text-${index}`,
               pageIndex: i - 1,
               text: item.str,
+              // UI coordinates (top-left origin for React)
               x: x,
-              y: convertedY,
-              width: item.width || item.str.length * (item.height || 12) * 0.6,
-              height: item.height || 12,
-              fontSize: Math.abs(item.height || 12),
+              y: uiY,
+              width: item.width || item.str.length * textHeight * 0.6,
+              height: textHeight,
+              // Original PDF coordinates (bottom-left origin for export)
+              pdfX: x,
+              pdfBaselineY: baselineY,
+              pdfFontName: fontName,
+              fontSize: fontSize,
               fontFamily: fontName.replace(/[+-].*$/, ''), // Clean font name
               fontWeight: fontName.includes('Bold') ? 'bold' : 'normal',
               fontStyle: fontName.includes('Italic') || fontName.includes('Oblique') ? 'italic' : 'normal',
@@ -183,7 +202,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
               isEdited: false,
             });
           }
-        });
+        }
 
         pages.push({
           index: i - 1,
@@ -208,7 +227,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
         'Courier New', 'Trebuchet MS', 'Comic Sans MS', 'Impact', 'Tahoma'
       ];
       
-      standardWebFonts.forEach(font => {
+      for (const font of standardWebFonts) {
         if (!fonts.some(f => f.family === font)) {
           fonts.push({
             family: font,
@@ -216,16 +235,16 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
             isEmbedded: false,
           });
         }
-      });
+      }
 
       set({
         id: `pdf-${Date.now()}`,
         fileName,
-        fileSize: pdfBytes.length,
+        fileSize: pdfBytesCopy.length,
         pageCount: pdfDocument.numPages,
         pages,
         fonts,
-        pdfBytes,
+        pdfBytes: pdfBytesCopy,
         pdfDocument,
         modifiedPdfDocument,
         isLoading: false,
@@ -294,7 +313,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     const { editOperations, pages } = get();
     if (editOperations.length === 0) return;
 
-    const lastEdit = editOperations[editOperations.length - 1];
+    const lastEdit = editOperations.at(-1)!;
     const newPages = [...pages];
     const page = newPages[lastEdit.pageIndex];
 
@@ -321,6 +340,85 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
   },
 
   exportPDF: async () => {
+    // Use the new API-based method for better quality
+    return get().applyEditsViaAPI();
+  },
+
+  applyEditsViaAPI: async () => {
+    const { pdfBytes, editOperations, pages } = get();
+    
+    if (!pdfBytes || editOperations.length === 0) {
+      // No edits, return original
+      if (!pdfBytes) throw new Error('No PDF loaded');
+      return new Blob([Uint8Array.from(pdfBytes)], { type: 'application/pdf' });
+    }
+
+    try {
+      // Convert edits to API format
+      const edits = editOperations.map(op => {
+        const textRun = pages[op.pageIndex]?.textRuns.find(
+          tr => tr.id === op.textRunId
+        );
+        
+        if (!textRun) return null;
+        
+        return {
+          page_index: op.pageIndex,
+          original_text: op.originalText,
+          new_text: op.newText,
+          x: textRun.x,
+          y: textRun.y,
+          width: textRun.width,
+          height: textRun.height,
+          font_size: textRun.fontSize,
+          color: textRun.color?.startsWith('#') ? textRun.color.substring(1) : textRun.color || '000000',
+        };
+      }).filter(Boolean);
+
+      if (edits.length === 0) {
+        return new Blob([Uint8Array.from(pdfBytes)], { type: 'application/pdf' });
+      }
+
+      // Convert PDF to base64
+      const base64 = btoa(
+        new Uint8Array(pdfBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
+      );
+
+      // Call backend API
+      const response = await fetch('http://localhost:8000/api/v1/pdf/apply-edits', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          pdf_base64: base64,
+          edits,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to apply edits');
+      }
+
+      const result = await response.json();
+      
+      // Decode base64 response
+      const binaryString = atob(result.pdf_base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      return new Blob([bytes], { type: 'application/pdf' });
+      
+    } catch (error: any) {
+      console.error('Error applying edits via API:', error);
+      throw new Error('Failed to export PDF: ' + error.message);
+    }
+  },
+
+  oldExportPDF: async () => {
     const { modifiedPdfDocument, pages, editOperations } = get();
     
     if (!modifiedPdfDocument) {
@@ -332,12 +430,68 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       const pdfDoc = await PDFDocument.load(await modifiedPdfDocument.save());
       const pdfPages = pdfDoc.getPages();
 
+      // Font mapping: PDF font name -> pdf-lib StandardFont
+      const getFontMapping = (pdfFontName: string, fontWeight?: string, fontStyle?: string) => {
+        const isBold = pdfFontName.includes('Bold') || fontWeight === 'bold';
+        const isItalic = pdfFontName.includes('Italic') || pdfFontName.includes('Oblique') || fontStyle === 'italic';
+
+        // Times family
+        if (pdfFontName.includes('Times')) {
+          if (isBold && isItalic) return StandardFonts.TimesRomanBoldItalic;
+          if (isBold) return StandardFonts.TimesRomanBold;
+          if (isItalic) return StandardFonts.TimesRomanItalic;
+          return StandardFonts.TimesRoman;
+        }
+        
+        // Courier family
+        if (pdfFontName.includes('Courier')) {
+          if (isBold && isItalic) return StandardFonts.CourierBoldOblique;
+          if (isBold) return StandardFonts.CourierBold;
+          if (isItalic) return StandardFonts.CourierOblique;
+          return StandardFonts.Courier;
+        }
+
+        // Helvetica family (default for sans-serif)
+        if (isBold && isItalic) return StandardFonts.HelveticaBoldOblique;
+        if (isBold) return StandardFonts.HelveticaBold;
+        if (isItalic) return StandardFonts.HelveticaOblique;
+        return StandardFonts.Helvetica;
+      };
+
+      // Pre-embed all required fonts
+      const fontCache = new Map<string, any>();
+      const fontsToEmbed = new Set<string>();
+
+      // Collect unique fonts from edit operations
+      for (const operation of editOperations) {
+        const textRun = pages[operation.pageIndex]?.textRuns.find(
+          tr => tr.id === operation.textRunId
+        );
+        if (textRun) {
+          const fontKey = `${textRun.pdfFontName}-${textRun.fontWeight}-${textRun.fontStyle}`;
+          fontsToEmbed.add(fontKey);
+        }
+      }
+
+      // Embed fonts
+      for (const fontKey of fontsToEmbed) {
+        const [pdfFontName, fontWeight, fontStyle] = fontKey.split('-');
+        const standardFont = getFontMapping(pdfFontName, fontWeight, fontStyle);
+        const embeddedFont = await pdfDoc.embedFont(standardFont);
+        fontCache.set(fontKey, embeddedFont);
+      }
+
+      // Always embed Helvetica as fallback
+      if (!fontCache.has('Helvetica-normal-normal')) {
+        fontCache.set('Helvetica-normal-normal', await pdfDoc.embedFont(StandardFonts.Helvetica));
+      }
+
       // Apply all edit operations
       for (const operation of editOperations) {
         const page = pdfPages[operation.pageIndex];
         if (!page) continue;
 
-        const { height, width } = page.getSize();
+        const { height } = page.getSize();
 
         // Find the text run for positioning
         const textRun = pages[operation.pageIndex]?.textRuns.find(
@@ -345,40 +499,50 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
         );
 
         if (textRun) {
-          // Convert back from top-left to bottom-left coordinate system for PDF
-          // Since textRun.y is now in top-left coords, we need to convert back
-          const pdfY = height - (operation.y ?? textRun.y) - textRun.height;
-          
+          // Get embedded font
+          const fontKey = `${textRun.pdfFontName}-${textRun.fontWeight}-${textRun.fontStyle}`;
+          const font = fontCache.get(fontKey) || fontCache.get('Helvetica-normal-normal');
+
+          // Calculate rectangle position (bottom-left corner of bounding box)
+          const rectX = textRun.pdfX;
+          const rectY = textRun.pdfBaselineY - (textRun.height * 0.25);  // Bottom edge of text
+          const rectHeight = textRun.height;
+
+          // Measure new text width
+          const fontSize = operation.fontSize ?? textRun.fontSize;
+          const newTextWidth = font.widthOfTextAtSize(operation.newText, fontSize);
+          const rectWidth = Math.max(textRun.width, newTextWidth);
+
           // Cover the old text with a white rectangle
           page.drawRectangle({
-            x: operation.x ?? textRun.x,
-            y: pdfY,
-            width: textRun.width,
-            height: textRun.height,
-            color: { type: 'RGB', red: 1, green: 1, blue: 1 }, // White color
+            x: rectX,
+            y: rectY,
+            width: rectWidth,
+            height: rectHeight,
+            color: rgb(1, 1, 1), // White color
             opacity: 1,
             borderWidth: 0,
           });
           
-          // Draw the new text on top
-          // Parse color from hex to RGB
+          // Draw the new text at baseline position
           const hexColor = operation.color ?? textRun.color ?? '#000000';
-          const r = parseInt(hexColor.slice(1, 3), 16) / 255;
-          const g = parseInt(hexColor.slice(3, 5), 16) / 255;
-          const b = parseInt(hexColor.slice(5, 7), 16) / 255;
+          const r = Number.parseInt(hexColor.slice(1, 3), 16) / 255;
+          const g = Number.parseInt(hexColor.slice(3, 5), 16) / 255;
+          const b = Number.parseInt(hexColor.slice(5, 7), 16) / 255;
           
           page.drawText(operation.newText, {
-            x: operation.x ?? textRun.x,
-            y: pdfY,
-            size: operation.fontSize ?? textRun.fontSize,
-            color: { type: 'RGB', red: r, green: g, blue: b },
-            // Note: Font handling would need more sophisticated approach for production
+            x: textRun.pdfX,  // Use original PDF X coordinate
+            y: textRun.pdfBaselineY,  // Use original PDF baseline Y coordinate
+            size: fontSize,
+            font: font,  // Use embedded font
+            color: rgb(r, g, b),
           });
         }
       }
 
       const pdfBytes = await pdfDoc.save();
-      return new Blob([pdfBytes], { type: 'application/pdf' });
+      const arrayBuffer = pdfBytes.buffer as ArrayBuffer;
+      return new Blob([arrayBuffer], { type: 'application/pdf' });
       
     } catch (error: any) {
       console.error('Error exporting PDF:', error);
@@ -400,10 +564,10 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     const newPages = [...pages];
     const operations: EditOperation[] = [];
 
-    newPages.forEach((page, pageIndex) => {
-      page.textRuns.forEach(textRun => {
+    for (const [pageIndex, page] of newPages.entries()) {
+      for (const textRun of page.textRuns) {
         if (textRun.text.includes(searchText)) {
-          const newText = textRun.text.replace(new RegExp(searchText, 'g'), replaceText);
+          const newText = textRun.text.split(searchText).join(replaceText);
           
           if (!textRun.isEdited) {
             textRun.originalText = textRun.text;
@@ -421,8 +585,8 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
             timestamp: Date.now(),
           });
         }
-      });
-    });
+      }
+    }
 
     const { editOperations } = get();
     set({

@@ -10,11 +10,12 @@ from logging.handlers import RotatingFileHandler
 import os
 
 from app.core.config import settings
-from app.api.routes import auth, resumes
+from app.api.routes import auth, resumes, pdf_edit, jobs, interview, profile
 from app.middleware.security import (
     SecurityHeadersMiddleware,
     RequestLoggingMiddleware,
     RequestValidationMiddleware,
+    DDoSProtectionMiddleware,
     limiter,
     rate_limit_exceeded_handler
 )
@@ -69,10 +70,11 @@ app.add_middleware(
 )
 logger.info("CORS middleware configured with all methods including OPTIONS")
 
-# Security middleware
+# Security middleware (order matters - DDoS first, then validation, then logging, then headers)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(RequestValidationMiddleware)
+app.add_middleware(DDoSProtectionMiddleware)  # First line of defense
 
 # Exception handlers
 @app.exception_handler(RateLimitExceeded)
@@ -95,10 +97,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    # Never expose internal error details in production
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
-            "detail": "Internal server error" if not settings.DEBUG else str(exc)
+            "detail": "An internal error occurred. Please try again later."
         }
     )
 
@@ -127,6 +130,10 @@ async def root():
 # Include routers
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(resumes.router, prefix="/api/v1")
+app.include_router(pdf_edit.router, prefix="/api/v1")
+app.include_router(jobs.router, prefix="/api/v1")
+app.include_router(interview.router, prefix="/api/v1")
+app.include_router(profile.router, prefix="/api/v1")
 
 
 # Startup event

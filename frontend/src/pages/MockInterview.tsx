@@ -110,12 +110,12 @@ const MockInterview = () => {
               transition={{ delay: 0.6 }}
               className="flex flex-col sm:flex-row gap-4 justify-center"
             >
-              <Link to="/signup">
+              <Link to="/interview/setup">
                 <Button 
                   size="lg"
                   className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7"
                 >
-                  Join Waitlist
+                  Start Practice Interview
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
@@ -227,12 +227,12 @@ const MockInterview = () => {
             <p className="text-xl text-white/80 mb-10">
               Join our waitlist and get early access when we launch
             </p>
-            <Link to="/signup">
+            <Link to="/interview/setup">
               <Button 
                 size="lg"
                 className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7"
               >
-                Join Waitlist Now
+                Start Practice Interview
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
             </Link>

@@ -1,74 +1,54 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   Upload,
   Download,
   Save,
   FileText,
-  Settings,
-  Search,
-  Replace,
-  Loader2,
-  X,
-  Menu
+  ZoomIn,
+  ZoomOut,
+  Maximize,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Undo,
+  Redo,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
-import {
-  PDFViewer,
-  PDFControls,
-  TextEditor,
-} from '@/components/pdf-editor';
+import { PDFViewer } from '@/components/pdf-editor';
 import { useDocumentStore } from '@/stores/documentStore';
-import { FontManager } from '@/lib/font-manager';
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from '@/components/ui/resizable';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
+// Minimal UI: no resizable sidebars
+// No sheets/sidebars for minimal UI
 
 const PdfEditor: React.FC = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const viewerContainerRef = useRef<HTMLDivElement>(null);
   
   const {
     fileName,
+    currentPage,
     pageCount,
-    isLoading,
-    error,
+    zoom,
     editOperations,
+    setCurrentPage,
+    setZoom,
     loadPDF,
     exportPDF,
-    reset,
-    getTextAtPosition,
+    undoLastEdit,
   } = useDocumentStore();
 
-  const [selectedTextRunId, setSelectedTextRunId] = useState<string | null>(null);
-  const [selectedTextRun, setSelectedTextRun] = useState<any>(null);
-  const [showTextEditor, setShowTextEditor] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [editMode, setEditMode] = useState(true);
 
-  // Initialize font manager
-  React.useEffect(() => {
-    FontManager.initialize().catch(console.error);
-  }, []);
+  // Remove font manager initialization (handled internally)
 
   // Handle window resize for responsive layout
-  React.useEffect(() => {
+  useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
     };
@@ -77,7 +57,7 @@ const PdfEditor: React.FC = () => {
   }, []);
 
   // Load PDF from ID if provided
-  React.useEffect(() => {
+  useEffect(() => {
     if (id) {
       loadPDFFromId(id);
     }
@@ -110,8 +90,25 @@ const PdfEditor: React.FC = () => {
         throw new Error(`Failed to load PDF: ${response.statusText}`);
       }
       
-      const blob = await response.blob();
-      await loadPDF(blob);
+      const arrayBuffer = await response.arrayBuffer();
+      
+      // Verify arrayBuffer has content
+      if (arrayBuffer.byteLength === 0) {
+        throw new Error('Received empty PDF file from server');
+      }
+      
+      // Check if it starts with PDF header (create a NEW Uint8Array view without modifying the original)
+      const headerView = new Uint8Array(arrayBuffer, 0, 5);
+      const headerString = String.fromCodePoint(...headerView);
+      
+      if (!headerString.startsWith('%PDF')) {
+        const fullView = new Uint8Array(arrayBuffer, 0, Math.min(100, arrayBuffer.byteLength));
+        console.error('Invalid PDF header. First bytes:', fullView);
+        throw new Error('Received file is not a valid PDF');
+      }
+      
+      // Pass the ArrayBuffer directly to loadPDF - don't slice or modify it
+      await loadPDF(arrayBuffer);
       
       toast({
         title: 'PDF Loaded',
@@ -129,7 +126,7 @@ const PdfEditor: React.FC = () => {
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type === 'application/pdf') {
+    if (file?.type === 'application/pdf') {
       loadPDF(file).then(() => {
         toast({
           title: 'PDF Uploaded',
@@ -160,7 +157,7 @@ const PdfEditor: React.FC = () => {
       a.download = fileName.replace('.pdf', '_edited.pdf');
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      a.remove();
       URL.revokeObjectURL(url);
 
       toast({
@@ -176,12 +173,28 @@ const PdfEditor: React.FC = () => {
     }
   };
 
-  const handleTextClick = useCallback((pageIndex: number, textRunId: string) => {
-    const textRun = getTextAtPosition(pageIndex, 0, 0); // This would need to be enhanced
-    setSelectedTextRunId(textRunId);
-    setSelectedTextRun(textRun);
-    setShowTextEditor(true);
-  }, [getTextAtPosition]);
+  // Inline toolbar controls (compact)
+  const zoomLevels = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
+  const handleZoomIn = () => {
+    const idx = zoomLevels.findIndex((z) => z >= zoom);
+    if (idx < zoomLevels.length - 1) setZoom(zoomLevels[idx + 1]);
+  };
+  const handleZoomOut = () => {
+    const idx = zoomLevels.findIndex((z) => z >= zoom);
+    if (idx > 0) setZoom(zoomLevels[idx - 1]);
+  };
+  const handleFitToWidth = () => {
+    const containerWidth = viewerContainerRef.current?.clientWidth ?? (window.innerWidth - 64);
+    const newZoom = containerWidth / 595; // A4 width
+    setZoom(Math.max(0.25, Math.min(4, newZoom)));
+  };
+  const firstPage = () => setCurrentPage(1);
+  const lastPage = () => setCurrentPage(pageCount);
+  const prevPage = () => setCurrentPage(Math.max(1, currentPage - 1));
+  const nextPage = () => setCurrentPage(Math.min(pageCount, currentPage + 1));
+
+  // Minimal behavior: click tracking not needed for external editor
+  const handleTextClick = useCallback((_pageIndex: number, _textRunId: string) => {}, []);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -195,34 +208,38 @@ const PdfEditor: React.FC = () => {
         {/* Header */}
         <div className="bg-white border-b px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {isMobile && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowSidebar(!showSidebar)}
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
-              )}
-              <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
-                <div>
-                  <h1 className="text-lg font-semibold">PDF Text Editor</h1>
-                  {fileName && (
-                    <p className="text-sm text-gray-500">{fileName}</p>
-                  )}
-                </div>
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              <div>
+                <h1 className="text-lg font-semibold">PDF Text Editor</h1>
+                {fileName && (
+                  <p className="text-sm text-gray-500">{fileName}</p>
+                )}
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {editOperations.length > 0 && (
                 <span className="text-sm text-blue-600 flex items-center gap-1">
                   <Save className="h-4 w-4" />
-                  {editOperations.length} changes
+                  {editOperations.length} {editOperations.length === 1 ? 'change' : 'changes'}
                 </span>
               )}
+              
+              {/* Undo button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={undoLastEdit}
+                disabled={editOperations.length === 0}
+                title="Undo last edit (Ctrl+Z)"
+              >
+                <Undo className="h-4 w-4" />
+              </Button>
+              
+              <Button variant="outline" size="sm" onClick={() => setEditMode(!editMode)}>
+                {editMode ? 'Editing On' : 'Editing Off'}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -237,156 +254,59 @@ const PdfEditor: React.FC = () => {
                 disabled={!pageCount || editOperations.length === 0}
               >
                 <Download className="h-4 w-4 mr-2" />
-                Export
+                {editOperations.length > 0 ? 'Download Edited PDF' : 'Export'}
               </Button>
+
+              {/* Compact toolbar (desktop) */}
+              {!isMobile && (
+                <div className="hidden md:flex items-center gap-2 pl-3 ml-3 border-l">
+                  {/* Page nav */}
+                  <Button variant="ghost" size="icon" onClick={firstPage} disabled={currentPage === 1} title="First page">
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={prevPage} disabled={currentPage === 1} title="Previous page">
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-gray-600 min-w-[80px] text-center">{currentPage || 0} / {pageCount || 0}</span>
+                  <Button variant="ghost" size="icon" onClick={nextPage} disabled={!pageCount || currentPage === pageCount} title="Next page">
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={lastPage} disabled={!pageCount || currentPage === pageCount} title="Last page">
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+
+                  {/* Zoom */}
+                  <div className="w-px h-5 bg-gray-200 mx-1" />
+                  <Button variant="ghost" size="icon" onClick={handleZoomOut} disabled={zoom <= 0.25} title="Zoom out">
+                    <ZoomOut className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-gray-600 w-12 text-center">{Math.round((zoom || 1) * 100)}%</span>
+                  <Button variant="ghost" size="icon" onClick={handleZoomIn} disabled={zoom >= 4} title="Zoom in">
+                    <ZoomIn className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={handleFitToWidth} title="Fit width">
+                    <Maximize className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="relative h-[calc(100vh-8rem)]">
-          {isMobile ? (
-            // Mobile Layout with Sheet
-            <>
-              <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
-                <SheetContent side="left" className="w-80 p-0">
-                  <SheetHeader className="px-4 py-3 border-b">
-                    <SheetTitle>PDF Controls</SheetTitle>
-                  </SheetHeader>
-                  <div className="p-4 overflow-auto h-full">
-                    <PDFControls
-                      onUpload={handleUploadClick}
-                      onExport={handleExport}
-                    />
-                  </div>
-                </SheetContent>
-              </Sheet>
-
-              <div className="h-full">
-                <PDFViewer
-                  className="h-full"
-                  onTextClick={handleTextClick}
-                  selectedTextRun={selectedTextRunId}
-                />
-              </div>
-
-              {showTextEditor && selectedTextRun && (
-                <div className="absolute bottom-0 left-0 right-0 z-50">
-                  <TextEditor
-                    textRun={selectedTextRun}
-                    onClose={() => {
-                      setShowTextEditor(false);
-                      setSelectedTextRun(null);
-                      setSelectedTextRunId(null);
-                    }}
-                    className="rounded-t-lg"
-                  />
-                </div>
-              )}
-            </>
-          ) : (
-            // Desktop Layout with ResizablePanels
-            <ResizablePanelGroup direction="horizontal">
-              {/* Sidebar Controls */}
-              <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
-                <div className="h-full overflow-auto bg-white border-r p-4">
-                  <PDFControls
-                    onUpload={handleUploadClick}
-                    onExport={handleExport}
-                  />
-                </div>
-              </ResizablePanel>
-
-              <ResizableHandle />
-
-              {/* PDF Viewer */}
-              <ResizablePanel defaultSize={showTextEditor ? 50 : 80}>
-                <PDFViewer
-                  className="h-full"
-                  onTextClick={handleTextClick}
-                  selectedTextRun={selectedTextRunId}
-                />
-              </ResizablePanel>
-
-              {/* Text Editor Panel */}
-              {showTextEditor && selectedTextRun && (
-                <>
-                  <ResizableHandle />
-                  <ResizablePanel defaultSize={30} minSize={20} maxSize={40}>
-                    <div className="h-full overflow-auto bg-white border-l p-4">
-                      <TextEditor
-                        textRun={selectedTextRun}
-                        onClose={() => {
-                          setShowTextEditor(false);
-                          setSelectedTextRun(null);
-                          setSelectedTextRunId(null);
-                        }}
-                      />
-                    </div>
-                  </ResizablePanel>
-                </>
-              )}
-            </ResizablePanelGroup>
-          )}
+        {/* Main Content - centered viewer */}
+        <div ref={viewerContainerRef} className="relative h-[calc(100vh-8rem)] bg-gray-100">
+          <div className="h-full flex justify-center">
+            <PDFViewer
+              className="h-full max-w-full"
+              onTextClick={handleTextClick}
+              selectedTextRun={null}
+              editMode={editMode}
+            />
+          </div>
         </div>
 
         {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/pdf"
-          onChange={handleFileUpload}
-          className="hidden"
-        />
-
-        {/* Loading Overlay */}
-        {isLoading && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <Card className="p-6">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-primary" />
-              <p>Loading PDF document...</p>
-            </Card>
-          </div>
-        )}
-
-        {/* Error Message */}
-        {error && !isLoading && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <Card className="p-6 max-w-md">
-              <h2 className="text-lg font-semibold text-red-600 mb-2">Error</h2>
-              <p className="text-gray-600 mb-4">{error}</p>
-              <Button onClick={reset} className="w-full">
-                Try Again
-              </Button>
-            </Card>
-          </div>
-        )}
-
-        {/* Welcome Screen */}
-        {!pageCount && !isLoading && !error && (
-          <div className="flex items-center justify-center h-full">
-            <Card className="p-8 max-w-md text-center">
-              <FileText className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-              <h2 className="text-2xl font-bold mb-2">Welcome to PDF Text Editor</h2>
-              <p className="text-gray-600 mb-6">
-                Upload a PDF document to start editing text content with advanced capabilities.
-              </p>
-              <Button onClick={handleUploadClick} className="w-full">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload PDF Document
-              </Button>
-              <div className="mt-4 text-sm text-gray-500">
-                <p>Features:</p>
-                <ul className="mt-2 space-y-1">
-                  <li>✓ Click on any text to edit</li>
-                  <li>✓ Change fonts, sizes, and colors</li>
-                  <li>✓ Find and replace text</li>
-                  <li>✓ Export modified PDF</li>
-                </ul>
-              </div>
-            </Card>
-          </div>
-        )}
+        <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={handleFileUpload} />
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 """Resume upload and management routes"""
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -21,13 +21,16 @@ from app.core.config import settings
 from app.core.security import validate_file_type, sanitize_filename, generate_secure_filename
 from app.services.storage import get_storage_service
 from app.tasks.resume_tasks import process_resume_task
+from app.middleware.security import limiter
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/resumes", tags=["Resumes"])
 
 
 @router.post("/upload", response_model=ResumeUploadResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")  # Rate limit file uploads
 async def upload_resume(
+    request: Request,
     file: UploadFile = File(...),
     job_description: Optional[str] = Form(None),
     current_user: User = Depends(get_current_active_user),
@@ -249,7 +252,9 @@ async def get_resume_status(
 
 
 @router.post("/{resume_id}/generate-suggestions")
+@limiter.limit("5/minute")  # Rate limit AI-intensive operations
 async def generate_ai_suggestions(
+    request: Request,
     resume_id: int,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)

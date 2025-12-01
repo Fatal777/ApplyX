@@ -1,6 +1,6 @@
 """Authentication routes for user registration and login"""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from app.db.database import get_db
@@ -11,9 +11,12 @@ from app.core.security import (
     verify_password,
     create_access_token,
     create_refresh_token,
-    decode_token
+    decode_token,
+    validate_password_strength
 )
 from app.core.config import settings
+from app.middleware.security import check_brute_force, record_failed_login, clear_login_attempts, limiter
+from slowapi.util import get_remote_address
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,8 +24,17 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")  # Strict rate limit for registration
+async def register(request: Request, user_data: UserCreate, db: Session = Depends(get_db)):
     """Register a new user"""
+    
+    # Validate password strength
+    is_valid, error_msg = validate_password_strength(user_data.password)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_msg
+        )
     
     # Check if user already exists
     existing_user = db.query(User).filter(
@@ -62,16 +74,32 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(credentials: UserLogin, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")  # Rate limit for login attempts
+async def login(request: Request, credentials: UserLogin, db: Session = Depends(get_db)):
     """Authenticate user and return JWT tokens"""
+    
+    # Get client IP for brute force protection
+    client_ip = get_remote_address(request)
+    
+    # Check if IP is locked out
+    if not check_brute_force(client_ip):
+        logger.warning(f"Login attempt from locked IP: {client_ip}")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed login attempts. Please try again later.",
+            headers={"Retry-After": "900"}  # 15 minutes
+        )
     
     # Find user by email
     user = db.query(User).filter(User.email == credentials.email).first()
     
     if not user or not verify_password(credentials.password, user.hashed_password):
+        # Record failed attempt
+        record_failed_login(client_ip)
+        # Use generic error message to prevent user enumeration
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Invalid credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -80,6 +108,9 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
         )
+    
+    # Clear failed attempts on successful login
+    clear_login_attempts(client_ip)
     
     # Update last login
     user.last_login = datetime.utcnow()

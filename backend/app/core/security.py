@@ -22,6 +22,44 @@ logger = logging.getLogger(__name__)
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Password validation rules
+MIN_PASSWORD_LENGTH = 8
+MAX_PASSWORD_LENGTH = 128
+
+
+def validate_password_strength(password: str) -> tuple[bool, str]:
+    """
+    Validate password meets security requirements.
+    Returns: (is_valid, error_message)
+    """
+    if len(password) < MIN_PASSWORD_LENGTH:
+        return False, f"Password must be at least {MIN_PASSWORD_LENGTH} characters long"
+    
+    if len(password) > MAX_PASSWORD_LENGTH:
+        return False, f"Password must be less than {MAX_PASSWORD_LENGTH} characters"
+    
+    if not any(c.isupper() for c in password):
+        return False, "Password must contain at least one uppercase letter"
+    
+    if not any(c.islower() for c in password):
+        return False, "Password must contain at least one lowercase letter"
+    
+    if not any(c.isdigit() for c in password):
+        return False, "Password must contain at least one number"
+    
+    special_chars = set("!@#$%^&*()_+-=[]{}|;:,.<>?")
+    if not any(c in special_chars for c in password):
+        return False, "Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)"
+    
+    # Check for common weak patterns
+    weak_patterns = ['password', '123456', 'qwerty', 'letmein', 'admin', 'welcome']
+    password_lower = password.lower()
+    for pattern in weak_patterns:
+        if pattern in password_lower:
+            return False, "Password contains a common weak pattern"
+    
+    return True, ""
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash"""
@@ -228,6 +266,32 @@ def sanitize_filename(filename: str) -> str:
         filename = name[:250] + ext
     
     return filename
+
+
+def sanitize_string_input(value: str, max_length: int = 10000) -> str:
+    """
+    Sanitize string input to prevent XSS and injection attacks.
+    Use for user-provided text that will be stored/displayed.
+    """
+    import re
+    import html
+    
+    if not value:
+        return value
+    
+    # Truncate to max length
+    value = value[:max_length]
+    
+    # HTML encode to prevent XSS
+    value = html.escape(value)
+    
+    # Remove null bytes
+    value = value.replace('\x00', '')
+    
+    # Remove other control characters except newlines and tabs
+    value = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', value)
+    
+    return value.strip()
 
 
 def generate_secure_filename(original_filename: str) -> str:

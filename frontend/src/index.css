@@ -117,40 +117,45 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground font-outfit;
-    scroll-behavior: smooth;
   }
 
   html {
     scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Smooth transitions for all elements */
-  button, a, .card, .hover\:scale-105, .group, [class*="transition"] {
-    transition: var(--transition-smooth);
+  /* Force GPU acceleration for smooth scrolling */
+  html, body {
+    -webkit-overflow-scrolling: touch;
   }
 
-  /* Remove universal transition to avoid conflicts */
-  body * {
-    transition-property: none;
+  /* Optimized transitions - only color and opacity changes, not transforms */
+  button, a {
+    transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
   }
 
-  /* Apply smooth transitions only to interactive elements */
-  button, a, input, textarea, select,
-  [role="button"], [class*="hover:"] {
-    transition: var(--transition-smooth);
+  /* Disable animations for users who prefer reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 
-  /* Optimized animations */
+  /* Optimized animations - use transform3d for GPU acceleration */
   @keyframes float {
     0%, 100% {
-      transform: translateY(0px);
+      transform: translate3d(0, 0, 0);
     }
     50% {
-      transform: translateY(-20px);
+      transform: translate3d(0, -20px, 0);
     }
   }
 
   .animate-float {
     animation: float 3s ease-in-out infinite;
+    will-change: transform;
   }
 }

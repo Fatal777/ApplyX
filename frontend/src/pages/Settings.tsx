@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, Mail, Lock, CreditCard, Bell, Shield, LogOut, Upload, Check } from "lucide-react";
+import { User, Mail, Lock, CreditCard, Bell, Shield, LogOut, Upload, Check, Phone, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,18 +10,75 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { useToast } from "@/components/ui/use-toast";
+import { apiClient } from "@/lib/api";
+
+interface ProfileData {
+  id: number;
+  email: string;
+  full_name: string | null;
+  phone_number: string | null;
+  profile_completed: boolean;
+  contact_source: string | null;
+  is_verified: boolean;
+  completion_percentage: number;
+  missing_fields: string[];
+}
 
 const Settings = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [profileImage, setProfileImage] = useState<string>("");
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  // User profile state
+  const [profile, setProfile] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    bio: "",
+  });
+
+  // Fetch profile data on mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        const data = await apiClient.getProfile() as ProfileData;
+        setProfileData(data);
+        setProfile({
+          fullName: data.full_name || "",
+          email: data.email || "",
+          phone: data.phone_number || "",
+          bio: "",
+        });
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
+        // Fallback to user metadata if API fails
+        setProfile({
+          fullName: user?.user_metadata?.full_name || "",
+          email: user?.email || "",
+          phone: "",
+          bio: "",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
 
   useEffect(() => {
     // Load Gmail profile picture or stored custom picture
@@ -29,14 +86,6 @@ const Settings = () => {
     setProfileImage(gmailPicture || "");
     window.scrollTo(0, 0);
   }, [user]);
-
-  // User profile state
-  const [profile, setProfile] = useState({
-    fullName: user?.user_metadata?.full_name || "",
-    email: user?.email || "",
-    phone: "",
-    bio: "",
-  });
 
   // Notification preferences
   const [notifications, setNotifications] = useState({
@@ -52,13 +101,21 @@ const Settings = () => {
 
     // Check file size (2MB max)
     if (file.size > 2 * 1024 * 1024) {
-      toast.error("Image size must be less than 2MB");
+      toast({
+        title: "File too large",
+        description: "Image size must be less than 2MB",
+        variant: "destructive"
+      });
       return;
     }
 
     // Check file type
     if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file");
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image file",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -78,9 +135,16 @@ const Settings = () => {
       // TODO: Call API to upload profile image
       // await apiClient.uploadProfileImage(formData);
       
-      toast.success("Profile picture updated successfully!");
+      toast({
+        title: "Profile picture updated",
+        description: "Your profile picture has been updated successfully"
+      });
     } catch (error) {
-      toast.error("Failed to upload image");
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive"
+      });
       console.error(error);
     } finally {
       setLoading(false);
@@ -88,14 +152,42 @@ const Settings = () => {
   };
 
   const handleProfileUpdate = async () => {
-    setLoading(true);
+    setSaving(true);
     try {
-      // Update profile logic here
-      toast.success("Profile updated successfully!");
-    } catch (error) {
-      toast.error("Failed to update profile");
+      const updateData: { full_name?: string; phone_number?: string } = {};
+      
+      if (profile.fullName && profile.fullName !== profileData?.full_name) {
+        updateData.full_name = profile.fullName;
+      }
+      if (profile.phone && profile.phone !== profileData?.phone_number) {
+        updateData.phone_number = profile.phone;
+      }
+      
+      if (Object.keys(updateData).length === 0) {
+        toast({
+          title: "No changes",
+          description: "No changes to save"
+        });
+        setSaving(false);
+        return;
+      }
+      
+      const updated = await apiClient.updateProfile(updateData) as ProfileData;
+      setProfileData(updated);
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully"
+      });
+    } catch (error: any) {
+      console.error("Profile update error:", error);
+      const message = error.response?.data?.detail || "Failed to update profile";
+      toast({
+        title: "Update failed",
+        description: message,
+        variant: "destructive"
+      });
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -191,13 +283,51 @@ const Settings = () => {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
+                className="space-y-6"
               >
+                {/* Profile Completion Card - Only show if incomplete */}
+                {profileData && profileData.completion_percentage < 100 && (
+                  <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800">
+                    <CardContent className="pt-6">
+                      <div className="flex items-start gap-4">
+                        <div className="p-2 bg-amber-100 dark:bg-amber-900 rounded-full">
+                          <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div className="flex-1 space-y-3">
+                          <div>
+                            <h4 className="font-medium text-amber-900 dark:text-amber-100">Complete your profile</h4>
+                            <p className="text-sm text-amber-700 dark:text-amber-300">
+                              Add your {profileData.missing_fields.join(" and ").toLowerCase()} to unlock all features
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-amber-700 dark:text-amber-300">Profile completion</span>
+                              <span className="font-medium text-amber-900 dark:text-amber-100">{profileData.completion_percentage}%</span>
+                            </div>
+                            <Progress value={profileData.completion_percentage} className="h-2 bg-amber-200 dark:bg-amber-800" />
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 <Card>
                   <CardHeader>
-                    <CardTitle>Profile Information</CardTitle>
-                    <CardDescription>
-                      Update your personal information and profile picture
-                    </CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Profile Information</CardTitle>
+                        <CardDescription>
+                          Update your personal information and profile picture
+                        </CardDescription>
+                      </div>
+                      {profileData?.profile_completed && (
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          <Check className="w-3 h-3 mr-1" /> Complete
+                        </Badge>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {/* Avatar */}
@@ -236,35 +366,52 @@ const Settings = () => {
                     {/* Form Fields */}
                     <div className="grid gap-4">
                       <div className="grid gap-2">
-                        <Label htmlFor="fullName">Full Name</Label>
+                        <Label htmlFor="fullName" className="flex items-center gap-2">
+                          <User className="w-4 h-4 text-muted-foreground" />
+                          Full Name
+                          {!profile.fullName && <span className="text-xs text-amber-600">*Required</span>}
+                        </Label>
                         <Input
                           id="fullName"
                           value={profile.fullName}
                           onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
                           placeholder="John Doe"
+                          className={!profile.fullName ? "border-amber-300 focus:border-amber-500" : ""}
                         />
                       </div>
 
                       <div className="grid gap-2">
-                        <Label htmlFor="email">Email</Label>
+                        <Label htmlFor="email" className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-muted-foreground" />
+                          Email
+                        </Label>
                         <Input
                           id="email"
                           type="email"
                           value={profile.email}
-                          onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                          placeholder="john@example.com"
+                          disabled
+                          className="bg-muted"
                         />
+                        <p className="text-xs text-muted-foreground">Email cannot be changed</p>
                       </div>
 
                       <div className="grid gap-2">
-                        <Label htmlFor="phone">Phone Number</Label>
+                        <Label htmlFor="phone" className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-muted-foreground" />
+                          Phone Number
+                          {!profile.phone && <span className="text-xs text-amber-600">*Required</span>}
+                        </Label>
                         <Input
                           id="phone"
                           type="tel"
                           value={profile.phone}
                           onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                          placeholder="+1 (555) 000-0000"
+                          placeholder="+91 98765 43210"
+                          className={!profile.phone ? "border-amber-300 focus:border-amber-500" : ""}
                         />
+                        {profileData?.contact_source === 'resume' && profile.phone && (
+                          <p className="text-xs text-muted-foreground">Auto-filled from your resume</p>
+                        )}
                       </div>
 
                       <div className="grid gap-2">
@@ -279,8 +426,8 @@ const Settings = () => {
                       </div>
                     </div>
 
-                    <Button onClick={handleProfileUpdate} disabled={loading} className="w-full sm:w-auto">
-                      {loading ? "Saving..." : "Save Changes"}
+                    <Button onClick={handleProfileUpdate} disabled={saving} className="w-full sm:w-auto bg-lime-500 hover:bg-lime-600 text-black">
+                      {saving ? "Saving..." : "Save Changes"}
                     </Button>
                   </CardContent>
                 </Card>

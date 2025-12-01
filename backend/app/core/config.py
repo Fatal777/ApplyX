@@ -86,9 +86,37 @@ class Settings(BaseSettings):
     # AgentRouter Configuration (supports both env variable names)
     AGENTROUTER_API_KEY: Optional[str] = None
     AGENT_ROUTER_TOKEN: Optional[str] = None  # Alternative name from AgentRouter docs
+    AGENTROUTER_BASE_URL: Optional[str] = None  # AgentRouter base URL
+    AGENTROUTER_MODEL: Optional[str] = None  # AgentRouter model name
     
     # Primary AI provider (openai or agentrouter)
     AI_PROVIDER: str = "openai"  # "openai" or "agentrouter"
+    
+    # ElevenLabs TTS for Interview Platform
+    ELEVENLABS_API_KEY: Optional[str] = None
+    ELEVENLABS_VOICE_ID: str = "21m00Tcm4TlvDq8ikWAM"  # Rachel - professional voice
+
+    # Job Portal API Keys / Config
+    # Adzuna API (free tier: 250 calls/month, supports India)
+    ADZUNA_APP_ID: Optional[str] = None
+    ADZUNA_APP_KEY: Optional[str] = None
+    
+    # JSearch RapidAPI (free tier: 200 requests/month, aggregates LinkedIn/Indeed/Glassdoor)
+    JSEARCH_RAPIDAPI_KEY: Optional[str] = None
+    
+    # Remotive API (free, no auth needed)
+    # No API key required
+    
+    # Legacy keys (kept for backward compatibility)
+    INDEED_API_KEY: Optional[str] = None
+    LINKEDIN_RAPIDAPI_KEY: Optional[str] = None
+    INTERNSHALA_API_KEY: Optional[str] = None
+    
+    # Job portal settings
+    JOB_PORTAL_DEFAULT_LOCATION: str = "India"
+    JOB_PORTAL_RATE_LIMIT_BUFFER: int = 2  # Additional buffer below hard limit per portal
+    JOB_CACHE_TTL_HOURS: int = 4  # How long to cache job listings
+    JOB_RECOMMENDATIONS_TTL_HOURS: int = 24  # How long to cache recommendations
     
     @property
     def AGENTROUTER_KEY(self) -> Optional[str]:

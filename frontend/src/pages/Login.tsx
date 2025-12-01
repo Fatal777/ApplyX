@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Mail, Lock, ArrowRight, Loader2, Sparkles, Target, Zap } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
+import { useToast } from "@/components/ui/use-toast";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -17,6 +17,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || "/resume-builder";
+  const { toast } = useToast();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -29,7 +30,11 @@ const Login = () => {
     e.preventDefault();
     
     if (!email || !password) {
-      toast.error("Please enter both email and password");
+      toast({
+        title: "Missing credentials",
+        description: "Please enter both email and password",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -37,11 +42,18 @@ const Login = () => {
 
     try {
       await signIn(email, password);
-      toast.success("Welcome back!");
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully signed in"
+      });
       // Navigation will be handled by the useEffect above when user state updates
     } catch (error: any) {
       console.error("Login error:", error);
-      toast.error(error.message || "Failed to sign in. Please check your credentials.");
+      toast({
+        title: "Sign in failed",
+        description: error.message || "Failed to sign in. Please check your credentials.",
+        variant: "destructive"
+      });
       setIsLoading(false);
     }
   };

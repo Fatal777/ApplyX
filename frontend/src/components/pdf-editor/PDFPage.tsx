@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Page } from 'react-pdf';
 import { Page as PageData } from '@/stores/documentStore';
 import TextOverlay from './TextOverlay';
@@ -10,6 +10,7 @@ interface PDFPageProps {
   onTextClick?: (textRunId: string) => void;
   selectedTextRun?: string | null;
   className?: string;
+  editMode?: boolean;
 }
 
 const PDFPage: React.FC<PDFPageProps> = ({
@@ -19,6 +20,7 @@ const PDFPage: React.FC<PDFPageProps> = ({
   onTextClick,
   selectedTextRun,
   className = '',
+  editMode = true,
 }) => {
   const pageRef = useRef<HTMLDivElement>(null);
   const [pageReady, setPageReady] = useState(false);
@@ -54,13 +56,12 @@ const PDFPage: React.FC<PDFPageProps> = ({
         }
       />
 
-      {/* Text Overlay with Fabric.js */}
-      {pageReady && (
+      {/* Text Overlay - React-controlled editable text divs positioned over PDF */}
+      {pageReady && editMode && (
         <TextOverlay
           pageData={pageData}
           zoom={zoom}
-          onTextClick={onTextClick}
-          selectedTextRun={selectedTextRun}
+          editMode={editMode}
         />
       )}
     </div>
