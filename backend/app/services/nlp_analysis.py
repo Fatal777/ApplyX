@@ -3,18 +3,37 @@
 import logging
 from typing import Dict, List, Any, Tuple
 import re
-import spacy
-from sklearn.feature_extraction.text import TfidfVectorizer
-import nltk
 from collections import Counter
 
 logger = logging.getLogger(__name__)
 
-# Download required NLTK data
+# Try to import optional dependencies with graceful fallback
+SPACY_AVAILABLE = False
+SKLEARN_AVAILABLE = False
+NLTK_AVAILABLE = False
+
 try:
+    import spacy
+    SPACY_AVAILABLE = True
+except ImportError:
+    logger.warning("spaCy not available - using fallback NLP methods")
+except Exception as e:
+    logger.warning(f"spaCy import error (likely Python 3.14 compatibility): {e}")
+
+try:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    logger.warning("sklearn not available - using basic keyword extraction")
+
+try:
+    import nltk
     nltk.download('punkt', quiet=True)
     nltk.download('stopwords', quiet=True)
-except:
+    NLTK_AVAILABLE = True
+except ImportError:
+    logger.warning("NLTK not available - using basic text processing")
+except Exception:
     pass
 
 
@@ -22,39 +41,79 @@ class NLPAnalysisService:
     """Service for NLP-based resume analysis"""
     
     def __init__(self):
-        try:
-            # Load spaCy model (use small model for free tier)
-            self.nlp = spacy.load("en_core_web_sm")
-        except OSError:
-            logger.warning("spaCy model not found. Install with: python -m spacy download en_core_web_sm")
-            self.nlp = None
+        self.nlp = None
+        if SPACY_AVAILABLE:
+            try:
+                # Load spaCy model (use small model for free tier)
+                self.nlp = spacy.load("en_core_web_sm")
+            except OSError:
+                logger.warning("spaCy model not found. Install with: python -m spacy download en_core_web_sm")
+            except Exception as e:
+                logger.warning(f"spaCy model load error: {e}")
     
     def extract_keywords(self, text: str, top_n: int = None) -> List[str]:
-        """Extract all important keywords using TF-IDF (no limit by default)"""
+        """Extract all important keywords using TF-IDF or fallback"""
         try:
-            # Use TF-IDF to extract important terms
-            vectorizer = TfidfVectorizer(
-                max_features=top_n if top_n else None,  # No limit if top_n is None
-                stop_words='english',
-                ngram_range=(1, 2),
-                min_df=1  # Include all terms
-            )
+            if SKLEARN_AVAILABLE:
+                # Use TF-IDF to extract important terms
+                from sklearn.feature_extraction.text import TfidfVectorizer
+                vectorizer = TfidfVectorizer(
+                    max_features=top_n if top_n else None,  # No limit if top_n is None
+                    stop_words='english',
+                    ngram_range=(1, 2),
+                    min_df=1  # Include all terms
+                )
+                
+                tfidf_matrix = vectorizer.fit_transform([text])
+                feature_names = vectorizer.get_feature_names_out()
+                
+                # Get scores
+                scores = tfidf_matrix.toarray()[0]
+                keyword_scores = list(zip(feature_names, scores))
+                keyword_scores.sort(key=lambda x: x[1], reverse=True)
+                
+                keywords = [kw for kw, score in keyword_scores if score > 0]
+            else:
+                # Fallback: simple word frequency analysis
+                keywords = self._extract_keywords_simple(text, top_n)
             
-            tfidf_matrix = vectorizer.fit_transform([text])
-            feature_names = vectorizer.get_feature_names_out()
-            
-            # Get scores
-            scores = tfidf_matrix.toarray()[0]
-            keyword_scores = list(zip(feature_names, scores))
-            keyword_scores.sort(key=lambda x: x[1], reverse=True)
-            
-            keywords = [kw for kw, score in keyword_scores if score > 0]
             logger.info(f"Extracted {len(keywords)} keywords")
             return keywords
             
         except Exception as e:
             logger.error(f"Keyword extraction error: {str(e)}")
-            return []
+            return self._extract_keywords_simple(text, top_n)
+    
+    def _extract_keywords_simple(self, text: str, top_n: int = None) -> List[str]:
+        """Simple keyword extraction without ML dependencies"""
+        # Common English stop words
+        stop_words = {
+            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+            'of', 'with', 'by', 'from', 'up', 'about', 'into', 'through', 'during',
+            'before', 'after', 'above', 'below', 'between', 'under', 'again',
+            'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why',
+            'how', 'all', 'each', 'few', 'more', 'most', 'other', 'some', 'such',
+            'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
+            'can', 'will', 'just', 'should', 'now', 'i', 'you', 'he', 'she', 'it',
+            'we', 'they', 'what', 'which', 'who', 'this', 'that', 'these', 'those',
+            'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has',
+            'had', 'having', 'do', 'does', 'did', 'doing', 'would', 'could', 'might',
+        }
+        
+        # Extract words
+        words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
+        
+        # Filter and count
+        filtered_words = [w for w in words if w not in stop_words]
+        word_counts = Counter(filtered_words)
+        
+        # Get most common
+        if top_n:
+            keywords = [word for word, _ in word_counts.most_common(top_n)]
+        else:
+            keywords = [word for word, count in word_counts.items() if count >= 1]
+        
+        return keywords
     
     def identify_sections(self, text: str) -> Dict[str, str]:
         """Identify resume sections (Education, Experience, Skills, etc.)"""

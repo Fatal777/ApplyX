@@ -11,7 +11,7 @@ $env:PYTHONDONTWRITEBYTECODE = "1"
 $env:PYTHONUNBUFFERED = "1"
 
 # Start with optimized settings
-# Note: uvloop is not available on Windows, using default loop
+# Note: uvloop is not available on Windows, using default asyncio loop
 uvicorn app.main_optimized:app `
     --host 0.0.0.0 `
     --port 8000 `

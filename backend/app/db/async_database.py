@@ -5,10 +5,11 @@ Optimized for single-digit millisecond latency
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.pool import NullPool, AsyncAdaptedQueuePool
+from sqlalchemy.pool import AsyncAdaptedQueuePool
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 import logging
+import sys
 
 from app.core.config import settings
 
@@ -16,12 +17,14 @@ logger = logging.getLogger(__name__)
 
 # Convert sync URL to async URL
 def get_async_database_url() -> str:
-    """Convert postgresql:// to postgresql+asyncpg://"""
+    """Convert postgresql:// to async driver URL"""
     url = settings.DATABASE_URL
+    
+    # Use psycopg3 async driver (better Windows support than asyncpg)
     if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
     elif url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql+asyncpg://", 1)
+        return url.replace("postgres://", "postgresql+psycopg://", 1)
     return url
 
 # Create async engine with optimized settings
@@ -34,14 +37,6 @@ async_engine = create_async_engine(
     pool_recycle=300,           # Recycle connections every 5 min
     pool_timeout=10,            # Connection timeout
     echo=False,                 # Disable SQL logging in production
-    # Performance optimizations
-    connect_args={
-        "server_settings": {
-            "jit": "off",                    # Disable JIT for faster short queries
-            "statement_timeout": "5000",      # 5s statement timeout
-        },
-        "prepared_statement_cache_size": 500,  # Cache prepared statements
-    }
 )
 
 # Create async session factory

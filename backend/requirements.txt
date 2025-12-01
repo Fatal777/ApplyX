@@ -1,29 +1,30 @@
 # Core Framework
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-python-multipart==0.0.6
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
 
 # High-Performance Add-ons
-uvloop==0.19.0          # Faster event loop (Linux/macOS)
-httptools==0.6.1        # Faster HTTP parsing
-orjson==3.9.10          # Fast JSON serialization
-asyncpg==0.29.0         # Async PostgreSQL driver
+uvloop>=0.19.0; sys_platform != "win32"   # Faster event loop (Linux/macOS only)
+httptools>=0.5.0        # Faster HTTP parsing
+orjson>=3.9.0           # Fast JSON serialization
+asyncpg>=0.29.0         # Async PostgreSQL driver
 
 # Authentication & Security
-pyjwt==2.8.0
-passlib[bcrypt]==1.7.4
-python-jose[cryptography]==3.3.0
-cryptography==41.0.7
-pycryptodome==3.19.0
+pyjwt>=2.8.0
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
+cryptography>=41.0.0
+pycryptodome>=3.19.0
 
 # Database - Async
-sqlalchemy[asyncio]==2.0.23
-psycopg2-binary==2.9.9
-alembic==1.13.0
+sqlalchemy[asyncio]>=2.0.23
+psycopg>=3.1.0          # Use psycopg3 (pure Python, no build needed)
+psycopg-binary>=3.1.0   # Binary driver for psycopg3
+alembic>=1.13.0
 
 # Redis & Caching - Async
-redis[hiredis]==5.0.1
-hiredis==2.2.3
+redis[hiredis]>=5.0.0
+hiredis>=2.2.0
 
 # Celery for async tasks
 celery==5.3.4

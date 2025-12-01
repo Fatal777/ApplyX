@@ -3,6 +3,17 @@ Production-Optimized FastAPI Application
 Target: Single-digit millisecond latency for API responses
 """
 
+import sys
+import asyncio
+
+# Windows-specific event loop fix for psycopg3
+if sys.platform == "win32":
+    import selectors
+    # Use SelectorEventLoop instead of ProactorEventLoop for psycopg3 compatibility
+    selector = selectors.SelectSelector()
+    loop = asyncio.SelectorEventLoop(selector)
+    asyncio.set_event_loop(loop)
+
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -174,13 +185,17 @@ app.include_router(profile.router, prefix="/api/v1")
 
 if __name__ == "__main__":
     import uvicorn
+    import sys
+    
+    # uvloop only available on Linux/macOS
+    loop_type = "uvloop" if sys.platform != "win32" else "auto"
     
     uvicorn.run(
         "app.main_optimized:app",
         host="0.0.0.0",
         port=8000,
         workers=4,  # Multiple workers for production
-        loop="uvloop",  # Faster event loop
+        loop=loop_type,  # uvloop on Linux, default on Windows
         http="httptools",  # Faster HTTP parser
         log_level="warning",  # Reduce log overhead
         access_log=False,  # Disable access log for speed
