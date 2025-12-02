@@ -3,7 +3,7 @@
  * Handles all job-related API calls including search, recommendations, and fetching
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/v1';
 
 export interface Job {
   title: string;
