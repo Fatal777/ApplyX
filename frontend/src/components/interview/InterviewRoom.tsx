@@ -8,7 +8,8 @@ import {
   PhoneOff,
   Loader2,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  LogIn
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -22,6 +23,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 import WebcamDisplay from './WebcamDisplay';
 import VoiceAgent from './VoiceAgent';
@@ -34,7 +36,7 @@ import interviewService, {
   type InterviewType
 } from '@/services/interviewService';
 
-type InterviewPhase = 'setup' | 'in-progress' | 'analyzing' | 'feedback' | 'error';
+type InterviewPhase = 'setup' | 'in-progress' | 'analyzing' | 'feedback' | 'error' | 'auth-required';
 
 interface InterviewConfig {
   interviewType: InterviewType;
@@ -54,6 +56,7 @@ export function InterviewRoom() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const { user, isLoading: authLoading } = useAuth();
   
   // Interview state
   const [phase, setPhase] = useState<InterviewPhase>('setup');
@@ -87,10 +90,18 @@ export function InterviewRoom() {
     jobDescription: searchParams.get('jobDesc') || undefined,
   }));
 
-  // Start interview on mount
+  // Check auth and start interview on mount
   useEffect(() => {
+    if (authLoading) return;
+    
+    if (!user) {
+      setPhase('auth-required');
+      setError('Please sign in to start an interview');
+      return;
+    }
+    
     startInterview();
-  }, []);
+  }, [user, authLoading]);
 
   const startInterview = async () => {
     try {
@@ -372,6 +383,35 @@ export function InterviewRoom() {
               <Loader2 className="w-12 h-12 animate-spin text-indigo-600 mb-4" />
               <h2 className="text-xl font-semibold mb-2">Analyzing your interview...</h2>
               <p className="text-gray-600">Generating comprehensive feedback</p>
+            </motion.div>
+          )}
+
+          {/* Auth Required Phase */}
+          {phase === 'auth-required' && (
+            <motion.div
+              key="auth-required"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center min-h-[60vh]"
+            >
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                <LogIn className="w-10 h-10 text-primary" />
+              </div>
+              <h2 className="text-2xl font-semibold mb-2">Sign In Required</h2>
+              <p className="text-gray-600 mb-6 text-center max-w-md">
+                Please sign in to your account to start a mock interview session. 
+                Your progress and feedback will be saved to your profile.
+              </p>
+              <div className="flex gap-4">
+                <Button onClick={() => navigate('/auth')} className="gap-2">
+                  <LogIn className="w-4 h-4" />
+                  Sign In
+                </Button>
+                <Button variant="outline" onClick={() => navigate('/')}>
+                  Back to Home
+                </Button>
+              </div>
             </motion.div>
           )}
 

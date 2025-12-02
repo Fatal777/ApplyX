@@ -321,10 +321,10 @@ const QuickStartPanel = ({ onStartInterview, fullWidth = false }: QuickStartPane
               <div className="space-y-2">
                 <Label className="text-gray-300">Use Resume (Optional)</Label>
                 <Select
-                  value={config.resumeId?.toString() || ''}
+                  value={config.resumeId?.toString() || 'none'}
                   onValueChange={(val) => setConfig(prev => ({ 
                     ...prev, 
-                    resumeId: val ? parseInt(val) : undefined 
+                    resumeId: val === 'none' ? undefined : parseInt(val) 
                   }))}
                 >
                   <SelectTrigger className="bg-white/[0.05] border-white/[0.1] text-white">
@@ -332,7 +332,7 @@ const QuickStartPanel = ({ onStartInterview, fullWidth = false }: QuickStartPane
                     <SelectValue placeholder="Select a resume" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No resume</SelectItem>
+                    <SelectItem value="none">No resume</SelectItem>
                     {resumes.map((resume: any) => (
                       <SelectItem key={resume.id} value={resume.id.toString()}>
                         {resume.original_filename}
