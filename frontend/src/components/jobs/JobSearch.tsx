@@ -406,9 +406,14 @@ const JobSearch = ({
               </SelectTrigger>
               <SelectContent className="rounded-xl">
                 <SelectItem value="all">All Sources</SelectItem>
-                <SelectItem value="adzuna">Adzuna</SelectItem>
-                <SelectItem value="jsearch">JSearch</SelectItem>
-                <SelectItem value="remotive">Remotive</SelectItem>
+                <SelectItem value="adzuna">🌍 Adzuna</SelectItem>
+                <SelectItem value="jsearch">💼 JSearch</SelectItem>
+                <SelectItem value="remotive">🏠 Remotive</SelectItem>
+                <SelectItem value="greenhouse">🌱 Greenhouse</SelectItem>
+                <SelectItem value="lever">⚡ Lever</SelectItem>
+                <SelectItem value="workday">💎 Workday</SelectItem>
+                <SelectItem value="smartrecruiters">🎯 SmartRecruiters</SelectItem>
+                <SelectItem value="ashby">🚀 Ashby</SelectItem>
               </SelectContent>
             </Select>
             
@@ -603,14 +608,19 @@ const JobSearch = ({
                   value={filters.portal}
                   onValueChange={(value) => setFilters({ portal: value as Portal })}
                 >
-                  <SelectTrigger className="w-[140px] h-10 rounded-xl">
+                  <SelectTrigger className="w-[160px] h-10 rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Sources</SelectItem>
-                    <SelectItem value="adzuna">Adzuna</SelectItem>
-                    <SelectItem value="jsearch">JSearch</SelectItem>
-                    <SelectItem value="remotive">Remotive</SelectItem>
+                    <SelectItem value="adzuna">🌍 Adzuna</SelectItem>
+                    <SelectItem value="jsearch">💼 JSearch</SelectItem>
+                    <SelectItem value="remotive">🏠 Remotive</SelectItem>
+                    <SelectItem value="greenhouse">🌱 Greenhouse</SelectItem>
+                    <SelectItem value="lever">⚡ Lever</SelectItem>
+                    <SelectItem value="workday">💎 Workday</SelectItem>
+                    <SelectItem value="smartrecruiters">🎯 SmartRecruiters</SelectItem>
+                    <SelectItem value="ashby">🚀 Ashby</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -8,7 +8,7 @@ import { persist } from 'zustand/middleware';
 import { jobService, Job, JobSearchParams, JobSearchResponse, RecommendationsResponse } from '@/services/jobService';
 
 export type ExperienceLevel = 'all' | 'fresher' | 'mid' | 'senior';
-export type Portal = 'all' | 'adzuna' | 'jsearch' | 'remotive';
+export type Portal = 'all' | 'adzuna' | 'jsearch' | 'remotive' | 'greenhouse' | 'lever' | 'workday' | 'smartrecruiters' | 'ashby';
 
 interface JobFilters {
   experienceLevel: ExperienceLevel;
@@ -17,6 +17,7 @@ interface JobFilters {
   remoteOnly: boolean;
   salaryMin: number;
   salaryMax: number;
+  useFastSearch: boolean;  // Enable millisecond search
 }
 
 interface JobState {
@@ -84,6 +85,7 @@ const defaultFilters: JobFilters = {
   remoteOnly: false,
   salaryMin: 0,
   salaryMax: 5000000, // 50 LPA
+  useFastSearch: true,  // Enable fast search by default
 };
 
 export const useJobStore = create<JobState>()(
@@ -127,17 +129,21 @@ export const useJobStore = create<JobState>()(
             keywords: params?.keywords || searchQuery,
             location: params?.location || filters.location,
             limit: params?.limit || 20,
+            useFastSearch: filters.useFastSearch,  // Use fast search when enabled
           };
           
           // Apply filters
           if (filters.portal !== 'all') {
-            searchParams.portal = filters.portal as 'adzuna' | 'jsearch' | 'remotive';
+            searchParams.portal = filters.portal as any;
           }
           if (filters.experienceLevel !== 'all') {
             searchParams.experience_level = filters.experienceLevel as 'fresher' | 'mid' | 'senior';
           }
           
-          const response = await jobService.searchJobs(searchParams);
+          // Use instant search for better UX (debounced)
+          const response = filters.useFastSearch 
+            ? await jobService.instantSearch(searchParams)
+            : await jobService.searchJobs(searchParams);
           
           let jobs = response.jobs;
           
@@ -158,6 +164,10 @@ export const useJobStore = create<JobState>()(
           addRecentSearch(searchQuery || params?.keywords || '');
           
         } catch (error) {
+          // Ignore cancelled search errors
+          if ((error as Error).message === 'Search cancelled') {
+            return;
+          }
           set({ 
             searchError: error instanceof Error ? error.message : 'Search failed',
             isSearching: false,

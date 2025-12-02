@@ -1,6 +1,12 @@
 /**
  * Job Service API Client
- * Handles all job-related API calls including search, recommendations, and fetching
+ * 
+ * High-performance job API client with:
+ * - Request debouncing for instant search
+ * - In-memory caching (LRU)
+ * - Request deduplication
+ * - AbortController for cancellation
+ * - Retry logic with exponential backoff
  */
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/v1';
@@ -30,9 +36,10 @@ export interface Job {
 export interface JobSearchParams {
   keywords: string;
   location?: string;
-  portal?: 'adzuna' | 'jsearch' | 'remotive';
+  portal?: 'adzuna' | 'jsearch' | 'remotive' | 'greenhouse' | 'lever' | 'workday' | 'smartrecruiters' | 'ashby';
   experience_level?: 'fresher' | 'mid' | 'senior';
   limit?: number;
+  useFastSearch?: boolean;  // Use high-performance search endpoint
 }
 
 export interface JobSearchResponse {
@@ -41,6 +48,11 @@ export interface JobSearchResponse {
   keywords: string[];
   location: string;
   jobs: Job[];
+  _meta?: {
+    source: string;
+    latency_ms: number;
+    cached: boolean;
+  };
 }
 
 export interface RecommendationsResponse {
@@ -51,26 +63,219 @@ export interface RecommendationsResponse {
   message?: string;
 }
 
+// LRU Cache for search results
+class LRUCache<K, V> {
+  private capacity: number;
+  private cache: Map<K, { value: V; timestamp: number }>;
+  private ttl: number; // Time to live in milliseconds
+
+  constructor(capacity: number = 100, ttlMs: number = 60000) {
+    this.capacity = capacity;
+    this.cache = new Map();
+    this.ttl = ttlMs;
+  }
+
+  get(key: K): V | undefined {
+    const entry = this.cache.get(key);
+    if (!entry) return undefined;
+    
+    // Check TTL
+    if (Date.now() - entry.timestamp > this.ttl) {
+      this.cache.delete(key);
+      return undefined;
+    }
+    
+    // Move to end (most recently used)
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+    return entry.value;
+  }
+
+  set(key: K, value: V): void {
+    // Delete if exists (to move to end)
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    }
+    
+    // Evict oldest if at capacity
+    if (this.cache.size >= this.capacity) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+    
+    this.cache.set(key, { value, timestamp: Date.now() });
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+
+  size(): number {
+    return this.cache.size;
+  }
+}
+
+// Request deduplication
+class RequestDeduplicator {
+  private pending: Map<string, Promise<any>> = new Map();
+
+  async dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
+    // If there's already a pending request with same key, return it
+    if (this.pending.has(key)) {
+      return this.pending.get(key)!;
+    }
+
+    // Execute and store promise
+    const promise = fn().finally(() => {
+      this.pending.delete(key);
+    });
+
+    this.pending.set(key, promise);
+    return promise;
+  }
+}
+
+// Debounce utility
+function debounce<T extends (...args: any[]) => any>(
+  fn: T,
+  delay: number
+): (...args: Parameters<T>) => Promise<ReturnType<T>> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let pendingPromise: { resolve: (value: any) => void; reject: (error: any) => void } | null = null;
+
+  return (...args: Parameters<T>): Promise<ReturnType<T>> => {
+    return new Promise((resolve, reject) => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
+      pendingPromise = { resolve, reject };
+
+      timeoutId = setTimeout(async () => {
+        try {
+          const result = await fn(...args);
+          pendingPromise?.resolve(result);
+        } catch (error) {
+          pendingPromise?.reject(error);
+        }
+      }, delay);
+    });
+  };
+}
+
 class JobService {
   private baseUrl: string;
+  private cache: LRUCache<string, JobSearchResponse>;
+  private deduplicator: RequestDeduplicator;
+  private abortController: AbortController | null = null;
 
   constructor() {
     this.baseUrl = API_BASE_URL;
+    this.cache = new LRUCache(100, 5 * 60 * 1000); // 100 entries, 5 min TTL
+    this.deduplicator = new RequestDeduplicator();
   }
 
   /**
-   * Search for jobs directly without resume matching
+   * Generate cache key from search params
+   */
+  private getCacheKey(params: JobSearchParams): string {
+    return JSON.stringify({
+      keywords: params.keywords.toLowerCase().trim(),
+      location: (params.location || 'India').toLowerCase(),
+      portal: params.portal || 'all',
+      experience_level: params.experience_level || 'all',
+      limit: params.limit || 20,
+      useFastSearch: params.useFastSearch || false,
+    });
+  }
+
+  /**
+   * Search for jobs with caching and deduplication
    */
   async searchJobs(params: JobSearchParams): Promise<JobSearchResponse> {
-    const queryParams = new URLSearchParams();
-    queryParams.append('keywords', params.keywords);
+    const cacheKey = this.getCacheKey(params);
     
-    if (params.location) queryParams.append('location', params.location);
-    if (params.portal) queryParams.append('portal', params.portal);
-    if (params.experience_level) queryParams.append('experience_level', params.experience_level);
-    if (params.limit) queryParams.append('limit', params.limit.toString());
+    // Check cache first
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      return { ...cached, _meta: { ...cached._meta, source: 'client_cache', cached: true } as any };
+    }
 
-    const response = await fetch(`${this.baseUrl}/jobs/search?${queryParams}`, {
+    // Use deduplication to prevent duplicate concurrent requests
+    return this.deduplicator.dedupe(cacheKey, async () => {
+      // Cancel any previous request
+      if (this.abortController) {
+        this.abortController.abort();
+      }
+      this.abortController = new AbortController();
+
+      const queryParams = new URLSearchParams();
+      queryParams.append('keywords', params.keywords);
+      
+      if (params.location) queryParams.append('location', params.location);
+      if (params.portal) queryParams.append('portal', params.portal);
+      if (params.experience_level) queryParams.append('experience_level', params.experience_level);
+      if (params.limit) queryParams.append('limit', params.limit.toString());
+
+      // Use fast-search endpoint if enabled
+      const endpoint = params.useFastSearch ? 'jobs/fast-search' : 'jobs/search';
+
+      try {
+        const response = await fetch(`${this.baseUrl}/${endpoint}?${queryParams}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          signal: this.abortController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Job search failed: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        
+        // Cache the result
+        this.cache.set(cacheKey, result);
+        
+        return result;
+      } catch (error) {
+        if ((error as Error).name === 'AbortError') {
+          throw new Error('Search cancelled');
+        }
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * Instant search with debouncing (300ms)
+   * Use this for search-as-you-type
+   */
+  instantSearch = debounce(async (params: JobSearchParams): Promise<JobSearchResponse> => {
+    return this.searchJobs({ ...params, useFastSearch: true });
+  }, 300);
+
+  /**
+   * Search from enhanced sources (Greenhouse, Lever, etc.)
+   */
+  async searchEnhancedSources(
+    keywords: string,
+    location = 'India',
+    sources?: string[],
+    limit = 50
+  ): Promise<JobSearchResponse> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('keywords', keywords);
+    queryParams.append('location', location);
+    queryParams.append('limit', limit.toString());
+    
+    if (sources && sources.length > 0) {
+      queryParams.append('sources', sources.join(','));
+    }
+
+    const response = await fetch(`${this.baseUrl}/jobs/enhanced-search?${queryParams}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -79,10 +284,59 @@ class JobService {
     });
 
     if (!response.ok) {
-      throw new Error(`Job search failed: ${response.statusText}`);
+      throw new Error(`Enhanced search failed: ${response.statusText}`);
     }
 
     return response.json();
+  }
+
+  /**
+   * Get available job sources
+   */
+  async getJobSources(): Promise<{
+    classic_sources: Array<{ name: string; type: string; status: string }>;
+    enhanced_sources: Array<{ name: string; type: string; companies: number; status: string }>;
+  }> {
+    const response = await fetch(`${this.baseUrl}/jobs/sources`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get sources: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Cancel any pending search request
+   */
+  cancelSearch(): void {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
+  }
+
+  /**
+   * Clear the search cache
+   */
+  clearCache(): void {
+    this.cache.clear();
+  }
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStats(): { size: number; maxSize: number } {
+    return {
+      size: this.cache.size(),
+      maxSize: 100,
+    };
   }
 
   /**
@@ -207,6 +461,12 @@ class JobService {
       adzuna: { name: 'Adzuna', color: 'bg-green-500', icon: '🌍' },
       jsearch: { name: 'LinkedIn/Indeed', color: 'bg-blue-500', icon: '💼' },
       remotive: { name: 'Remotive', color: 'bg-purple-500', icon: '🏠' },
+      // Enhanced sources
+      greenhouse: { name: 'Greenhouse', color: 'bg-emerald-500', icon: '🌱' },
+      lever: { name: 'Lever', color: 'bg-orange-500', icon: '⚡' },
+      workday: { name: 'Workday', color: 'bg-cyan-500', icon: '💎' },
+      smartrecruiters: { name: 'SmartRecruiters', color: 'bg-indigo-500', icon: '🎯' },
+      ashby: { name: 'Ashby', color: 'bg-pink-500', icon: '🚀' },
     };
     return portals[portal] || { name: portal, color: 'bg-gray-500', icon: '📋' };
   }

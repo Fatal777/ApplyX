@@ -47,6 +47,9 @@ openai==1.3.9
 requests==2.31.0
 httpx==0.25.2
 
+# Async HTTP Client (for high-performance job fetching)
+aiohttp>=3.9.0
+
 # Speech Processing (Interview Platform)
 # Note: Uses OpenAI Whisper API (cloud) - no local whisper installation needed
 # ElevenLabs TTS is accessed via REST API

@@ -5,21 +5,34 @@ GET /api/v1/jobs/recommendations/{resume_id}      -> Initiate / retrieve recomme
 GET /api/v1/jobs/recommendations/{resume_id}/status -> Poll for recommendation readiness
 POST /api/v1/jobs/recommendations/{resume_id}/refresh -> Force refresh recommendations
 GET /api/v1/jobs/search -> Search available jobs directly (bypasses resume matching)
+GET /api/v1/jobs/fast-search -> Millisecond search using inverted index
+GET /api/v1/jobs/sources -> List available job sources
 
 Notes:
 - Uses Redis cache for recommendations (24h TTL)
 - Triggers Celery matching task if not cached
 - Authentication dependency is optional fallback if not present in minimal env
+- New fast-search endpoint uses inverted index for sub-100ms responses
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+import asyncio
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, BackgroundTasks
 from typing import Optional, List
 from pydantic import BaseModel
 
 from app.services.job_cache_service import JobCacheService
 from app.services.job_scraper_service import JobScraperService
 from app.services.job_matching_service import JobMatchingService
+from app.services.high_perf_search import (
+    SearchQuery,
+    get_search_service,
+    HighPerfSearchService,
+)
+from app.services.enhanced_job_scraper import (
+    get_enhanced_job_scraper,
+    EnhancedJobScraperService,
+)
 from app.tasks.job_tasks import match_jobs_to_resume, fetch_jobs_from_portals
 from app.middleware.security import limiter
 
@@ -136,12 +149,12 @@ async def refresh_job_recommendations(
 
 
 @router.get("/search")
-@limiter.limit("20/minute")  # Rate limit job searches
+@limiter.limit("30/minute")  # Increased rate limit for optimized search
 async def search_jobs(
     request: Request,
     keywords: str = Query(..., description="Comma-separated keywords to search"),
     location: str = Query("India", description="Location to search in"),
-    portal: Optional[str] = Query(None, description="Specific portal: adzuna, jsearch, remotive"),
+    portal: Optional[str] = Query(None, description="Specific portal: adzuna, jsearch, remotive, greenhouse, lever, workday, smartrecruiters, ashby"),
     experience_level: Optional[str] = Query(None, description="Filter by level: fresher, mid, senior"),
     limit: int = Query(20, ge=1, le=50, description="Max results to return"),
 ):
@@ -187,6 +200,154 @@ async def search_jobs(
         "location": location,
         "jobs": all_jobs[:limit],
     }
+
+
+@router.get("/fast-search")
+@limiter.limit("100/minute")  # High rate limit for cached responses
+async def fast_search_jobs(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    keywords: str = Query(..., description="Comma-separated keywords to search"),
+    location: str = Query("India", description="Location to search in"),
+    portal: Optional[str] = Query(None, description="Specific portal filter"),
+    experience_level: Optional[str] = Query(None, description="Filter by level: fresher, mid, senior"),
+    limit: int = Query(20, ge=1, le=100, description="Max results to return"),
+):
+    """
+    High-performance job search with millisecond response times.
+    
+    Uses multi-level caching:
+    - L1: In-memory cache (sub-ms)
+    - L2: Redis cache (1-2ms)
+    - L3: Inverted index (2-5ms)
+    - L4: Live fetch (fallback, 100ms+)
+    
+    Optimized for 1000+ concurrent users.
+    """
+    # Create normalized search query
+    query = SearchQuery.from_raw(
+        keywords=keywords,
+        location=location,
+        experience_level=experience_level,
+        portal=portal,
+        limit=limit,
+    )
+    
+    if not query.keywords:
+        raise HTTPException(status_code=400, detail="At least one keyword required")
+    
+    # Get search service
+    search_service = get_search_service()
+    
+    # Execute search
+    result = await search_service.search(query)
+    
+    # Trigger background cache warming for related queries
+    if result.get("_meta", {}).get("source") == "live":
+        # Warm cache for similar queries in background
+        background_tasks.add_task(
+            _warm_related_queries,
+            list(query.keywords),
+            query.location,
+        )
+    
+    return result
+
+
+@router.get("/enhanced-search")
+@limiter.limit("50/minute")
+async def enhanced_search_jobs(
+    request: Request,
+    keywords: str = Query(..., description="Comma-separated keywords to search"),
+    location: str = Query("India", description="Location to search in"),
+    sources: Optional[str] = Query(None, description="Comma-separated sources: greenhouse, lever, workday, smartrecruiters, ashby"),
+    limit: int = Query(50, ge=1, le=100, description="Max results to return"),
+):
+    """
+    Search across new job sources (Greenhouse, Lever, Workday, etc.).
+    
+    Aggregates from multiple ATS platforms used by top tech companies.
+    """
+    keyword_list = [k.strip() for k in keywords.split(",") if k.strip()]
+    
+    if not keyword_list:
+        raise HTTPException(status_code=400, detail="At least one keyword required")
+    
+    source_list = None
+    if sources:
+        source_list = [s.strip().lower() for s in sources.split(",") if s.strip()]
+    
+    scraper = get_enhanced_job_scraper()
+    jobs, stats = await scraper.fetch_jobs(
+        keywords=keyword_list,
+        location=location,
+        sources=source_list,
+        limit=limit,
+    )
+    
+    return {
+        "status": "ok",
+        "count": len(jobs),
+        "keywords": keyword_list,
+        "location": location,
+        "jobs": jobs,
+        "_meta": {
+            "sources_queried": stats.sources_queried,
+            "sources_succeeded": stats.sources_succeeded,
+            "latency_ms": round(stats.latency_ms, 2),
+            "cache_hit": stats.cache_hit,
+            "duplicates_removed": stats.deduped_count,
+        },
+    }
+
+
+@router.get("/sources")
+async def list_job_sources():
+    """
+    List available job sources and their status.
+    """
+    # Classic sources
+    classic_sources = [
+        {"name": "adzuna", "type": "aggregator", "status": "active"},
+        {"name": "jsearch", "type": "aggregator", "status": "active"},
+        {"name": "remotive", "type": "remote_jobs", "status": "active"},
+    ]
+    
+    # Enhanced sources
+    enhanced_sources = [
+        {"name": "greenhouse", "type": "ats", "companies": 30, "status": "active"},
+        {"name": "lever", "type": "ats", "companies": 30, "status": "active"},
+        {"name": "workday", "type": "ats", "companies": 20, "status": "active"},
+        {"name": "smartrecruiters", "type": "ats", "companies": 20, "status": "active"},
+        {"name": "ashby", "type": "ats", "companies": 20, "status": "active"},
+    ]
+    
+    try:
+        scraper = get_enhanced_job_scraper()
+        stats = await scraper.get_source_stats()
+    except Exception:
+        stats = {"sources": [], "total_active": 0}
+    
+    return {
+        "classic_sources": classic_sources,
+        "enhanced_sources": enhanced_sources,
+        "stats": stats,
+    }
+
+
+async def _warm_related_queries(keywords: List[str], location: str):
+    """Background task to warm cache for related queries."""
+    try:
+        search_service = get_search_service()
+        
+        # Warm cache for top locations
+        top_locations = ["Bangalore", "Mumbai", "Delhi", "Remote"]
+        for loc in top_locations:
+            if loc != location:
+                query = SearchQuery.from_raw(",".join(keywords), loc)
+                await search_service.search(query)
+    except Exception:
+        pass  # Silently fail background tasks
 
 
 @router.post("/fetch")
