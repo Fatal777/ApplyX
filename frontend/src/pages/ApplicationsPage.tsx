@@ -76,6 +76,7 @@ const STATUS_CONFIG: Record<ApplicationStatus, {
   applied: { label: 'Applied', color: 'text-purple-600', bgColor: 'bg-purple-100', icon: Send },
   screening: { label: 'Screening', color: 'text-yellow-600', bgColor: 'bg-yellow-100', icon: Users },
   interview: { label: 'Interview', color: 'text-orange-600', bgColor: 'bg-orange-100', icon: Users },
+  interviewing: { label: 'Interviewing', color: 'text-orange-600', bgColor: 'bg-orange-100', icon: Users },
   offer: { label: 'Offer', color: 'text-green-600', bgColor: 'bg-green-100', icon: CheckCircle2 },
   rejected: { label: 'Rejected', color: 'text-red-600', bgColor: 'bg-red-100', icon: XCircle },
   withdrawn: { label: 'Withdrawn', color: 'text-gray-600', bgColor: 'bg-gray-100', icon: XCircle },
@@ -386,7 +387,9 @@ const ApplicationsPage = () => {
         creditsService.getCredits(),
       ]);
       
-      setApplications(appsResponse.applications);
+      // Handle both array and paginated response
+      const apps = Array.isArray(appsResponse) ? appsResponse : appsResponse;
+      setApplications(apps);
       setStats(statsResponse);
       setCredits(creditsResponse);
     } catch (error) {

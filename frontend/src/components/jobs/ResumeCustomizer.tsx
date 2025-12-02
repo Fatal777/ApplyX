@@ -311,9 +311,8 @@ const ResumeCustomizer = ({
       setLoading(true);
       try {
         // Use a credit
-        await creditsService.useCredit({
+        await creditsService.useCredit('resume_customization', {
           application_id: applicationId,
-          action: 'resume_customization',
           description: `Customization for ${jobTitle} at ${company}`,
         });
 

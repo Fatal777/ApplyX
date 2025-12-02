@@ -5,3 +5,4 @@ export { default as JobList } from './JobList';
 export { default as JobFilters } from './JobFilters';
 export { default as QuickApplyModal } from './QuickApplyModal';
 export { default as JobComparison } from './JobComparison';
+export { default as ResumeCustomizer } from './ResumeCustomizer';

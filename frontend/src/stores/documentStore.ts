@@ -5,6 +5,63 @@ import * as pdfjs from 'pdfjs-dist';
 // Configure PDF.js worker using jsDelivr CDN (more reliable than cdnjs)
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
+// ============================================================================
+// RACE CONDITION PREVENTION
+// ============================================================================
+// Global version counter for edit ordering
+let globalEditVersion = 0;
+
+// Get next edit version (atomic increment)
+export const getNextEditVersion = () => ++globalEditVersion;
+
+// Pending edits map for optimistic updates
+// Maps editId -> { version, rollback }
+const pendingEdits = new Map<string, {
+  version: number;
+  rollback: () => void;
+  timestamp: number;
+}>();
+
+// Debounce helper with cleanup
+export function debounce<T extends (...args: any[]) => any>(
+  fn: T,
+  delay: number
+): T & { cancel: () => void } {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  
+  const debounced = ((...args: Parameters<T>) => {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      timeoutId = null;
+      fn(...args);
+    }, delay);
+  }) as T & { cancel: () => void };
+  
+  debounced.cancel = () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  };
+  
+  return debounced;
+}
+
+// Cleanup old pending edits (older than 30 seconds)
+const cleanupPendingEdits = () => {
+  const now = Date.now();
+  for (const [id, edit] of pendingEdits.entries()) {
+    if (now - edit.timestamp > 30000) {
+      pendingEdits.delete(id);
+    }
+  }
+};
+
+// Run cleanup periodically
+if (typeof window !== 'undefined') {
+  setInterval(cleanupPendingEdits, 10000);
+}
+
 // Types
 export interface TextRun {
   id: string;
@@ -63,6 +120,40 @@ export interface EditOperation {
   y?: number;
 }
 
+// Resume Section Types (for section-based editing)
+export interface SectionItem {
+  id: string;
+  text: string;
+  textRunIds: string[];
+  indent: number;
+  isBullet: boolean;
+  isEdited: boolean;
+  originalText?: string;
+}
+
+export interface ResumeSection {
+  id: string;
+  type: string;
+  title: string;
+  items: SectionItem[];
+  visible: boolean;
+  order: number;
+  collapsed: boolean;
+  bounds: {
+    pageIndex: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  titleStyle: {
+    fontSize: number;
+    fontFamily: string;
+    fontWeight?: string;
+    color: string;
+  };
+}
+
 export interface PDFDocumentState {
   id: string;
   fileName: string;
@@ -71,6 +162,8 @@ export interface PDFDocumentState {
   pages: Page[];
   fonts: Font[];
   editOperations: EditOperation[];
+  sections: ResumeSection[];
+  selectedTemplate: 'classic' | 'modern' | null;
   currentPage: number;
   zoom: number;
   isLoading: boolean;
@@ -95,6 +188,18 @@ interface DocumentStore extends PDFDocumentState {
   detectFonts: () => void;
   replaceAllText: (searchText: string, replaceText: string) => void;
   getTextAtPosition: (pageIndex: number, x: number, y: number) => TextRun | null;
+  // Section management
+  setSections: (sections: ResumeSection[]) => void;
+  reorderSections: (newOrder: ResumeSection[]) => void;
+  toggleSectionVisibility: (sectionId: string) => void;
+  toggleSectionCollapsed: (sectionId: string) => void;
+  updateSectionItem: (sectionId: string, itemId: string, newText: string) => void;
+  addSectionItem: (sectionId: string, text: string, afterItemId?: string) => void;
+  removeSectionItem: (sectionId: string, itemId: string) => void;
+  removeSection: (sectionId: string) => void;
+  setSelectedTemplate: (template: 'classic' | 'modern' | null) => void;
+  applySectionEdits: () => Promise<Blob>;
+  compressToOnePage: (jobDescription?: string) => Promise<{ blob: Blob; removedItems: string[]; suggestions: string[] }>;
 }
 
 const initialState: PDFDocumentState = {
@@ -105,6 +210,8 @@ const initialState: PDFDocumentState = {
   pages: [],
   fonts: [],
   editOperations: [],
+  sections: [],
+  selectedTemplate: null,
   currentPage: 1,
   zoom: 1,
   isLoading: false,
@@ -118,7 +225,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
   ...initialState,
 
   loadPDF: async (input: File | Blob | ArrayBuffer | string) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, sections: [] });
 
     try {
       let arrayBuffer: ArrayBuffer;
@@ -616,5 +723,269 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     }
 
     return null;
+  },
+
+  // Section Management Methods
+  setSections: (sections: ResumeSection[]) => {
+    set({ sections });
+  },
+
+  reorderSections: (newOrder: ResumeSection[]) => {
+    const updatedSections = newOrder.map((section, index) => ({
+      ...section,
+      order: index,
+    }));
+    set({ sections: updatedSections });
+  },
+
+  toggleSectionVisibility: (sectionId: string) => {
+    const { sections } = get();
+    set({
+      sections: sections.map(section =>
+        section.id === sectionId
+          ? { ...section, visible: !section.visible }
+          : section
+      ),
+    });
+  },
+
+  toggleSectionCollapsed: (sectionId: string) => {
+    const { sections } = get();
+    set({
+      sections: sections.map(section =>
+        section.id === sectionId
+          ? { ...section, collapsed: !section.collapsed }
+          : section
+      ),
+    });
+  },
+
+  updateSectionItem: (sectionId: string, itemId: string, newText: string) => {
+    const { sections, pages, editOperations } = get();
+    
+    // Find the section and item
+    const section = sections.find(s => s.id === sectionId);
+    const item = section?.items.find(i => i.id === itemId);
+    
+    if (!section || !item) return;
+    
+    // Update section items
+    const updatedSections = sections.map(s => {
+      if (s.id !== sectionId) return s;
+      return {
+        ...s,
+        items: s.items.map(i => {
+          if (i.id !== itemId) return i;
+          return {
+            ...i,
+            text: newText,
+            isEdited: true,
+            originalText: i.originalText || i.text,
+          };
+        }),
+      };
+    });
+    
+    // Also update corresponding TextRuns if they exist
+    const newPages = [...pages];
+    const newOperations: EditOperation[] = [];
+    
+    for (const textRunId of item.textRunIds) {
+      for (const page of newPages) {
+        const textRun = page.textRuns.find(tr => tr.id === textRunId);
+        if (textRun) {
+          const originalText = textRun.originalText || textRun.text;
+          textRun.text = newText;
+          textRun.isEdited = true;
+          textRun.originalText = originalText;
+          
+          newOperations.push({
+            id: `edit-${Date.now()}-${Math.random()}`,
+            pageIndex: page.index,
+            textRunId: textRun.id,
+            originalText,
+            newText,
+            timestamp: Date.now(),
+          });
+        }
+      }
+    }
+    
+    set({
+      sections: updatedSections,
+      pages: newPages,
+      editOperations: [...editOperations, ...newOperations],
+    });
+  },
+
+  addSectionItem: (sectionId: string, text: string, afterItemId?: string) => {
+    const { sections } = get();
+    
+    const newItem: SectionItem = {
+      id: `item-new-${Date.now()}`,
+      text,
+      textRunIds: [],
+      indent: 2,
+      isBullet: true,
+      isEdited: true,
+      originalText: '',
+    };
+    
+    const updatedSections = sections.map(section => {
+      if (section.id !== sectionId) return section;
+      
+      if (afterItemId) {
+        const idx = section.items.findIndex(item => item.id === afterItemId);
+        const items = [...section.items];
+        items.splice(idx + 1, 0, newItem);
+        return { ...section, items };
+      }
+      
+      return { ...section, items: [...section.items, newItem] };
+    });
+    
+    set({ sections: updatedSections });
+  },
+
+  removeSectionItem: (sectionId: string, itemId: string) => {
+    const { sections } = get();
+    
+    set({
+      sections: sections.map(section => {
+        if (section.id !== sectionId) return section;
+        return {
+          ...section,
+          items: section.items.filter(item => item.id !== itemId),
+        };
+      }),
+    });
+  },
+
+  removeSection: (sectionId: string) => {
+    const { sections } = get();
+    set({
+      sections: sections.filter(section => section.id !== sectionId),
+    });
+  },
+
+  setSelectedTemplate: (template: 'classic' | 'modern' | null) => {
+    set({ selectedTemplate: template });
+  },
+
+  applySectionEdits: async () => {
+    const { pdfBytes, sections, selectedTemplate } = get();
+    
+    if (!pdfBytes) {
+      throw new Error('No PDF loaded');
+    }
+    
+    // Convert sections to API format
+    const apiSections = sections
+      .filter(s => s.visible)
+      .sort((a, b) => a.order - b.order)
+      .map(s => ({
+        id: s.id,
+        type: s.type,
+        title: s.title,
+        items: s.items.map(item => ({
+          id: item.id,
+          text: item.text,
+          indent: item.indent,
+          is_bullet: item.isBullet,
+        })),
+        visible: s.visible,
+        order: s.order,
+      }));
+    
+    // Convert PDF to base64
+    const base64 = btoa(
+      new Uint8Array(pdfBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+    
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/pdf/apply-section-edits`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        pdf_base64: base64,
+        sections: apiSections,
+        template: selectedTemplate || 'classic',
+      }),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to apply section edits');
+    }
+    
+    const result = await response.json();
+    
+    // Decode base64 response
+    const binaryString = atob(result.pdf_base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Update state with new PDF
+    set({
+      pdfBytes: bytes,
+      pageCount: result.page_count,
+    });
+    
+    return new Blob([bytes], { type: 'application/pdf' });
+  },
+
+  compressToOnePage: async (jobDescription?: string) => {
+    const { pdfBytes } = get();
+    
+    if (!pdfBytes) {
+      throw new Error('No PDF loaded');
+    }
+    
+    // Convert PDF to base64
+    const base64 = btoa(
+      new Uint8Array(pdfBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+    
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/pdf/compress-to-one-page`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        pdf_base64: base64,
+        target_pages: 1,
+        aggressive: false,
+        job_description: jobDescription,
+      }),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to compress PDF');
+    }
+    
+    const result = await response.json();
+    
+    // Decode base64 response
+    const binaryString = atob(result.pdf_base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Update state with compressed PDF
+    set({
+      pdfBytes: bytes,
+      pageCount: result.page_count,
+    });
+    
+    return {
+      blob: new Blob([bytes], { type: 'application/pdf' }),
+      removedItems: result.removed_items || [],
+      suggestions: result.suggestions || [],
+    };
   },
 }));

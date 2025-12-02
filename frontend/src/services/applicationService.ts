@@ -14,7 +14,8 @@ export type ApplicationStatus =
   | 'saved' 
   | 'applied' 
   | 'screening' 
-  | 'interview' 
+  | 'interview'
+  | 'interviewing'
   | 'offer' 
   | 'rejected' 
   | 'withdrawn';
@@ -29,6 +30,7 @@ export interface JobApplication {
   job_url: string;
   job_portal: string;
   job_type?: string;
+  job_description?: string;
   salary_min?: number;
   salary_max?: number;
   is_remote: boolean;
@@ -38,6 +40,7 @@ export interface JobApplication {
   missing_skills: string[];
   status: ApplicationStatus;
   applied_at?: string;
+  saved_at?: string;
   notes?: string;
   is_favorite: boolean;
   created_at: string;
@@ -71,6 +74,10 @@ export interface MatchScoreResult {
   };
   suggestions: string[];
   priority_improvements: string[];
+  improvement_suggestions: string[];
+  // Aliases for component compatibility
+  keyword_match: number;
+  skills_match: number;
 }
 
 export interface UserCredits {
@@ -83,6 +90,9 @@ export interface UserCredits {
   can_customize: boolean;
   total_used: number;
   resets_at: string;
+  // Aliases for component compatibility
+  remaining: number;
+  daily_limit: number;
 }
 
 export interface ApplicationStats {
@@ -188,18 +198,21 @@ export const applicationsService = {
     sort_order?: 'asc' | 'desc';
     page?: number;
     limit?: number;
-  } = {}): Promise<{
-    applications: JobApplication[];
-    total: number;
-    page: number;
-    limit: number;
-    has_more: boolean;
-  }> {
-    const response = await axios.get(`${BASE_URL}/list`, {
-      params,
-      headers: getAuthHeaders(),
-    });
-    return response.data;
+  } = {}): Promise<JobApplication[]> {
+    try {
+      const response = await axios.get(`${BASE_URL}/list`, {
+        params,
+        headers: getAuthHeaders(),
+      });
+      // Handle both paginated and simple array responses
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      return response.data.applications || [];
+    } catch (error) {
+      console.error('Failed to fetch applications:', error);
+      return [];
+    }
   },
 
   /**
@@ -275,26 +288,29 @@ export const creditsService = {
       `${BASE_URL}/credits/status`,
       { headers: getAuthHeaders() }
     );
-    return response.data;
+    const data = response.data;
+    // Add aliases for component compatibility
+    return {
+      ...data,
+      remaining: data.daily_remaining ?? data.remaining ?? 0,
+      daily_limit: data.daily_max ?? data.daily_limit ?? 3,
+    };
   },
 
   /**
    * Use a credit for an action
    */
-  async useCredit(params: {
+  async useCredit(action: string, params: {
     application_id?: number;
-    action?: string;
     description?: string;
   } = {}): Promise<{
-    success: boolean;
-    credits_used: number;
     daily_remaining: number;
     bonus_credits: number;
     total_available: number;
   }> {
     const response = await axios.post(
       `${BASE_URL}/credits/use`,
-      params,
+      { action, ...params },
       { headers: getAuthHeaders() }
     );
     return response.data;

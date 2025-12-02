@@ -18,6 +18,7 @@ import InterviewRoomPage from "./pages/InterviewRoomPage";
 import InterviewDashboard from "./pages/InterviewDashboard";
 import JobsPage from "./pages/JobsPage";
 import ApplicationsPage from "./pages/ApplicationsPage";
+import JobApplicationBoard from "./pages/JobApplicationBoard";
 import Certifications from "./pages/Certifications";
 import CollegeSolutions from "./pages/CollegeSolutions";
 import Assessments from "./pages/Assessments";
@@ -25,7 +26,7 @@ import Employers from "./pages/Employers";
 import Settings from "./pages/Settings";
 import ATSTemplates from "./pages/ATSTemplates";
 import Dashboard from "./pages/Dashboard";
-import PDFEditor from "./pages/PDFEditor";
+import LivePdfEditor from "./pages/LivePdfEditor";
 import Pricing from "./pages/Pricing";
 import ScrollToTop from "./components/ScrollToTop";
 
@@ -113,6 +114,13 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       
+      {/* Job Application Board - Kanban-style job tracking */}
+      <Route path="/job-board" element={
+        <ProtectedRoute>
+          <JobApplicationBoard />
+        </ProtectedRoute>
+      } />
+      
       <Route path="/certifications" element={
         <ProtectedRoute>
           <Certifications />
@@ -155,14 +163,28 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       
+      {/* PDF Editor - Redirect to Live Editor (deprecated) */}
       <Route path="/pdf-editor/:id" element={
         <ProtectedRoute>
-          <PDFEditor />
+          <LivePdfEditor />
         </ProtectedRoute>
       } />
       
-      {/* Demo PDF Editor - No authentication required */}
-      <Route path="/demo/pdf-editor" element={<PDFEditor />} />
+      {/* Live PDF Editor - WYSIWYG resume editing */}
+      <Route path="/live-editor" element={
+        <ProtectedRoute>
+          <LivePdfEditor />
+        </ProtectedRoute>
+      } />
+      <Route path="/live-editor/:id" element={
+        <ProtectedRoute>
+          <LivePdfEditor />
+        </ProtectedRoute>
+      } />
+      
+      {/* Demo Editor - No authentication required */}
+      <Route path="/demo/pdf-editor" element={<LivePdfEditor />} />
+      <Route path="/demo/live-editor" element={<LivePdfEditor />} />
       
       <Route path="/pricing" element={<Pricing />} />
       

@@ -295,7 +295,7 @@ const ResumeAnalysis = () => {
                     <div 
                       key={idx} 
                       className="group bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-4 md:p-5 transition-all cursor-pointer"
-                      onClick={() => navigate(`/pdf-editor/${id}`)}
+                      onClick={() => navigate(`/live-editor/${id}`)}
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3 md:gap-4 flex-1">
