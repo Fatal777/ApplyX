@@ -11,6 +11,13 @@ from app.models.interview import (
     InterviewStatus,
     DifficultyLevel,
 )
+from app.models.application import (
+    ApplicationStatus,
+    JobApplication,
+    CustomizedResume,
+    UserCredits,
+    CreditUsage,
+)
 
 __all__ = [
     "User",
@@ -22,4 +29,9 @@ __all__ = [
     "InterviewType",
     "InterviewStatus",
     "DifficultyLevel",
+    "ApplicationStatus",
+    "JobApplication",
+    "CustomizedResume",
+    "UserCredits",
+    "CreditUsage",
 ]

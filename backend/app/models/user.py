@@ -67,6 +67,9 @@ class User(Base):
     
     # Relationships
     resumes = relationship("Resume", back_populates="user", cascade="all, delete-orphan")
+    applications = relationship("JobApplication", back_populates="user", cascade="all, delete-orphan")
+    credits = relationship("UserCredits", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    customized_resumes = relationship("CustomizedResume", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User {self.email}>"

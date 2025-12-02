@@ -47,6 +47,8 @@ class Resume(Base):
     
     # Relationships
     user = relationship("User", back_populates="resumes")
+    applications = relationship("JobApplication", back_populates="resume")
+    customized_versions = relationship("CustomizedResume", back_populates="base_resume")
     
     def __repr__(self):
         return f"<Resume {self.original_filename}>"

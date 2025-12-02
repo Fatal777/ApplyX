@@ -17,6 +17,7 @@ import InterviewSetup from "./pages/InterviewSetup";
 import InterviewRoomPage from "./pages/InterviewRoomPage";
 import InterviewDashboard from "./pages/InterviewDashboard";
 import JobsPage from "./pages/JobsPage";
+import ApplicationsPage from "./pages/ApplicationsPage";
 import Certifications from "./pages/Certifications";
 import CollegeSolutions from "./pages/CollegeSolutions";
 import Assessments from "./pages/Assessments";
@@ -104,6 +105,13 @@ const AppRoutes = () => {
       
       {/* Public Job Search - accessible without login */}
       <Route path="/job-search" element={<JobsPage />} />
+      
+      {/* Applications Dashboard - Track saved/applied jobs */}
+      <Route path="/applications" element={
+        <ProtectedRoute>
+          <ApplicationsPage />
+        </ProtectedRoute>
+      } />
       
       <Route path="/certifications" element={
         <ProtectedRoute>

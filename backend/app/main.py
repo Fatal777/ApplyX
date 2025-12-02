@@ -10,7 +10,7 @@ from logging.handlers import RotatingFileHandler
 import os
 
 from app.core.config import settings
-from app.api.routes import auth, resumes, pdf_edit, jobs, interview, profile
+from app.api.routes import auth, resumes, pdf_edit, jobs, interview, profile, applications
 from app.middleware.security import (
     SecurityHeadersMiddleware,
     RequestLoggingMiddleware,
@@ -134,6 +134,7 @@ app.include_router(pdf_edit.router, prefix="/api/v1")
 app.include_router(jobs.router, prefix="/api/v1")
 app.include_router(interview.router, prefix="/api/v1")
 app.include_router(profile.router, prefix="/api/v1")
+app.include_router(applications.router, prefix="/api/v1/applications", tags=["Applications"])
 
 
 # Startup event

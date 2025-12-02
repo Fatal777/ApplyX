@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Job } from '@/services/jobService';
 import { jobService } from '@/services/jobService';
+import { applicationsService } from '@/services/applicationService';
 import { useJobStore } from '@/stores/jobStore';
 import QuickApplyModal from './QuickApplyModal';
 import { cn } from '@/lib/utils';
@@ -71,10 +72,36 @@ const JobCard = ({ job, index = 0, variant = 'default', onSelect, isSelected }: 
     window.open(job.redirect_url, '_blank', 'noopener,noreferrer');
   };
 
-  const handleBookmark = (e: React.MouseEvent) => {
+  const handleBookmark = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const wasBookmarked = isBookmarked;
     toggleSaveJob(job);
+    
+    // Also save to backend for logged-in users
+    try {
+      if (!wasBookmarked) {
+        await applicationsService.saveJob({
+          job_external_id: job.job_id || `${job.title}-${job.company}`,
+          job_title: job.title,
+          company: job.company,
+          company_logo: job.employer_logo || job.company_logo,
+          location: job.location,
+          job_url: job.redirect_url,
+          job_portal: job.portal || 'unknown',
+          job_type: job.job_type,
+          salary_min: job.salary_min,
+          salary_max: job.salary_max,
+          is_remote: job.is_remote || job.location?.toLowerCase().includes('remote'),
+          job_description: job.description,
+          match_score: job.match_score,
+          matched_skills: job.skill_matches,
+        });
+      }
+    } catch (error) {
+      // Silently fail for non-authenticated users or API errors
+      console.debug('Failed to save job to backend:', error);
+    }
+    
     toast({
       title: wasBookmarked ? "Job removed from saved" : "Job saved!",
       description: wasBookmarked 
