@@ -281,7 +281,172 @@ celery_app.conf.beat_schedule.update({
         'schedule': 2 * 60 * 60,  # 2 hours
         'args': (['software engineer', 'python', 'developer'], 'India'),
     },
+    'batch-fetch-rapidapi-hourly': {
+        'task': 'batch_fetch_rapidapi_jobs',
+        'schedule': 60 * 60,  # Every hour
+    },
+    'reset-daily-credits-midnight': {
+        'task': 'reset_daily_credits',
+        'schedule': {
+            'hour': 0,
+            'minute': 0,
+        },  # Midnight UTC
+    },
 })
+
+
+@celery_app.task(name="batch_fetch_rapidapi_jobs", bind=True, max_retries=2, default_retry_delay=300)
+def batch_fetch_rapidapi_jobs(self) -> Dict[str, Any]:
+    """
+    Hourly batch fetch from RapidAPI sources (Indeed, Glassdoor, SimplyHired).
+    
+    Cost Optimization Strategy:
+    - Runs every hour instead of per-request
+    - Processes queued requests from all users
+    - One API call serves 10,000+ users
+    - Results cached for 1 hour
+    
+    RapidAPI Budget:
+    - Free: 500 req/month = ~16/day
+    - Pro: 10,000 req/month = ~333/day
+    - Hourly: 24 requests/day per query type
+    """
+    try:
+        from app.services.enhanced_job_scraper import get_enhanced_job_scraper
+        from app.services.rapidapi_manager import get_rapidapi_manager, POPULAR_QUERIES
+    except ImportError as e:
+        logger.warning(f"RapidAPI modules not available: {e}")
+        return {"status": "error", "detail": "import_error"}
+    
+    manager = get_rapidapi_manager()
+    
+    # Get pending requests count
+    pending = manager.get_pending_requests()
+    
+    if not pending:
+        # No pending requests, warm cache with popular queries instead
+        logger.info("No pending requests, warming cache with popular queries")
+        
+        # Queue popular queries for next batch
+        for query in POPULAR_QUERIES[:10]:  # Limit to save API calls
+            for source in ["indeed", "glassdoor", "simplyhired"]:
+                loop = asyncio.new_event_loop()
+                try:
+                    loop.run_until_complete(
+                        manager.queue_request(
+                            query["keywords"],
+                            query["location"],
+                            source,
+                            priority=0,
+                        )
+                    )
+                finally:
+                    loop.close()
+        
+        return {"status": "ok", "action": "queued_popular_queries"}
+    
+    # Execute batch fetch
+    scraper = get_enhanced_job_scraper()
+    
+    async def fetch_callback(keywords, location, source):
+        return await scraper.fetch_from_rapidapi_source(source, keywords, location)
+    
+    loop = asyncio.new_event_loop()
+    try:
+        results = loop.run_until_complete(
+            manager.execute_batch_fetch(fetch_callback, max_requests=50)
+        )
+    finally:
+        loop.close()
+    
+    logger.info(
+        "Batch fetch completed: processed=%d, success=%d, jobs=%d",
+        results.get("processed", 0),
+        results.get("success", 0),
+        results.get("total_jobs", 0),
+    )
+    
+    return {
+        "status": "ok",
+        **results,
+    }
+
+
+@celery_app.task(name="reset_daily_credits", bind=True, max_retries=3, default_retry_delay=60)
+def reset_daily_credits(self) -> Dict[str, Any]:
+    """
+    Reset daily credits for all users at midnight UTC.
+    
+    Credit Tiers:
+    - Free: 3 credits/day
+    - Premium: 20 credits/day
+    - Enterprise: Unlimited
+    
+    This task should run at 00:00 UTC via Celery Beat.
+    """
+    if SessionLocal is None:
+        logger.error("Database not available for credit reset")
+        return {"status": "error", "detail": "db_unavailable"}
+    
+    try:
+        from app.services.credits_service import CreditsService
+    except ImportError as e:
+        logger.warning(f"Credits service not available: {e}")
+        return {"status": "error", "detail": "import_error"}
+    
+    db = SessionLocal()
+    try:
+        credits_service = CreditsService(db)
+        result = credits_service.reset_all_daily_credits()
+        
+        logger.info("Daily credits reset: %d users", result.get("users_reset", 0))
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error resetting credits: {e}")
+        return {"status": "error", "detail": str(e)}
+    finally:
+        db.close()
+
+
+@celery_app.task(name="warm_rapidapi_cache", bind=True, max_retries=1)
+def warm_rapidapi_cache(self) -> Dict[str, Any]:
+    """
+    Pre-warm RapidAPI cache with popular job queries.
+    
+    Called during off-peak hours to ensure cache is fresh
+    when traffic increases.
+    """
+    try:
+        from app.services.enhanced_job_scraper import get_enhanced_job_scraper
+        from app.services.rapidapi_manager import get_rapidapi_manager, POPULAR_QUERIES
+    except ImportError as e:
+        logger.warning(f"RapidAPI modules not available: {e}")
+        return {"status": "error", "detail": "import_error"}
+    
+    manager = get_rapidapi_manager()
+    scraper = get_enhanced_job_scraper()
+    
+    async def fetch_callback(keywords, location, source):
+        return await scraper.fetch_from_rapidapi_source(source, keywords, location)
+    
+    loop = asyncio.new_event_loop()
+    try:
+        result = loop.run_until_complete(
+            manager.warm_cache(POPULAR_QUERIES, fetch_callback)
+        )
+    finally:
+        loop.close()
+    
+    logger.info(
+        "RapidAPI cache warm: warmed=%d, skipped=%d, failed=%d",
+        result.get("warmed", 0),
+        result.get("skipped", 0),
+        result.get("failed", 0),
+    )
+    
+    return {"status": "ok", **result}
+
 
 # To run Celery Beat: celery -A app.tasks.celery_app beat --loglevel=info
 
@@ -291,4 +456,7 @@ __all__ = [
     "warm_search_cache",
     "fetch_enhanced_jobs",
     "index_jobs_for_fast_search",
+    "batch_fetch_rapidapi_jobs",
+    "reset_daily_credits",
+    "warm_rapidapi_cache",
 ]

@@ -134,13 +134,23 @@ class CustomizedResume(Base):
     __tablename__ = "customized_resumes"
     
     id = Column(Integer, primary_key=True, index=True)
-    application_id = Column(Integer, ForeignKey("job_applications.id", ondelete="CASCADE"), nullable=False, unique=True)
+    resume_id = Column(Integer, ForeignKey("resumes.id", ondelete="SET NULL"), nullable=True)
+    application_id = Column(Integer, ForeignKey("job_applications.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    base_resume_id = Column(Integer, ForeignKey("resumes.id", ondelete="SET NULL"), nullable=True)
     
-    # Resume content
-    original_content = Column(Text, nullable=True)  # Original resume text
-    customized_content = Column(Text, nullable=True)  # AI-improved text
+    # Version tracking
+    version_number = Column(Integer, default=1, nullable=False)
+    
+    # Resume content (JSON format)
+    original_content = Column(JSON, nullable=True)  # Original resume parsed data
+    customized_content = Column(JSON, nullable=True)  # AI-improved content
+    
+    # Changes made during customization
+    changes_made = Column(JSON, nullable=True)  # List of changes applied
+    
+    # Target job info
+    target_job_title = Column(String(500), nullable=True)
+    target_company = Column(String(255), nullable=True)
     
     # Section ordering (user can reorder)
     section_order = Column(JSON, nullable=True)  # ["summary", "skills", "experience", ...]
@@ -149,8 +159,7 @@ class CustomizedResume(Base):
     original_score = Column(Float, nullable=True)
     improved_score = Column(Float, nullable=True)
     
-    # Changes made
-    changes_summary = Column(JSON, nullable=True)  # List of changes
+    # Detailed changes
     skills_added = Column(JSON, nullable=True)
     keywords_added = Column(JSON, nullable=True)
     
@@ -165,16 +174,25 @@ class CustomizedResume(Base):
     # Relationships
     application = relationship("JobApplication", back_populates="customized_resume")
     user = relationship("User", back_populates="customized_resumes")
-    base_resume = relationship("Resume", back_populates="customized_versions")
+    resume = relationship("Resume", back_populates="customized_versions")
+    
+    # Index for fast version lookups
+    __table_args__ = (
+        Index("ix_customized_resumes_user_resume", "user_id", "resume_id"),
+    )
     
     def to_dict(self) -> dict:
         return {
             "id": self.id,
+            "resume_id": self.resume_id,
             "application_id": self.application_id,
+            "version_number": self.version_number,
+            "target_job_title": self.target_job_title,
+            "target_company": self.target_company,
             "original_score": self.original_score,
             "improved_score": self.improved_score,
             "section_order": self.section_order,
-            "changes_summary": self.changes_summary,
+            "changes_made": self.changes_made or [],
             "skills_added": self.skills_added or [],
             "keywords_added": self.keywords_added or [],
             "has_pdf": bool(self.pdf_path),

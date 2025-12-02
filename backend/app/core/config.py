@@ -106,6 +106,11 @@ class Settings(BaseSettings):
     # JSearch RapidAPI (free tier: 200 requests/month, aggregates LinkedIn/Indeed/Glassdoor)
     JSEARCH_RAPIDAPI_KEY: Optional[str] = None
     
+    # Unified RapidAPI Key (shared across all RapidAPI sources)
+    # Used for: Indeed, Glassdoor, SimplyHired, JSearch
+    # Free: 500 req/month, Pro: 10,000 req/month
+    RAPIDAPI_KEY: Optional[str] = None
+    
     # Remotive API (free, no auth needed)
     # No API key required
     

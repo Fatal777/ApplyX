@@ -23,6 +23,7 @@ from app.models.application import JobApplication, ApplicationStatus, Customized
 from app.models.resume import Resume
 from app.services.credits_service import get_credits_service
 from app.services.job_match_scorer import get_job_match_scorer
+from app.services.resume_customization_service import get_resume_customization_service
 
 
 router = APIRouter()
@@ -757,4 +758,313 @@ async def batch_score_applications(
         "failed_count": len(failed),
         "scored": scored,
         "failed": failed
+    }
+
+
+# ============================================================================
+# Resume Customization Endpoints
+# ============================================================================
+
+class CustomizeResumeRequest(BaseModel):
+    """Request for resume customization."""
+    resume_id: Optional[int] = Field(None, description="Resume ID (uses latest if not provided)")
+    job_description: Optional[str] = Field(None, description="Job description (uses stored if not provided)")
+    use_ai: bool = Field(True, description="Use AI optimization (costs 1 credit)")
+
+
+@router.post("/{application_id}/customize", response_model=dict)
+async def customize_resume_for_application(
+    application_id: int,
+    request: CustomizeResumeRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Create AI-customized resume for a specific job application.
+    
+    This creates a new resume version optimized for the job, including:
+    - Skills alignment with job requirements
+    - Keyword optimization
+    - Content restructuring
+    
+    Costs 1 credit if use_ai=true.
+    """
+    # Get application
+    application = db.query(JobApplication).filter(
+        and_(
+            JobApplication.id == application_id,
+            JobApplication.user_id == current_user.id
+        )
+    ).first()
+    
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    # Get resume
+    if request.resume_id:
+        resume = db.query(Resume).filter(
+            and_(
+                Resume.id == request.resume_id,
+                Resume.user_id == current_user.id
+            )
+        ).first()
+    else:
+        resume = db.query(Resume).filter(
+            Resume.user_id == current_user.id
+        ).order_by(desc(Resume.created_at)).first()
+    
+    if not resume:
+        raise HTTPException(
+            status_code=404, 
+            detail="No resume found. Please upload a resume first."
+        )
+    
+    # Get job description
+    job_description = request.job_description or application.job_description
+    if not job_description:
+        raise HTTPException(
+            status_code=400,
+            detail="Job description required. Please provide it or save it with the application."
+        )
+    
+    # Customize resume
+    service = get_resume_customization_service(db)
+    result = await service.customize_resume_for_job(
+        user_id=current_user.id,
+        application_id=application_id,
+        resume_id=resume.id,
+        job_description=job_description,
+        job_title=application.job_title,
+        company_name=application.company,
+        use_ai=request.use_ai,
+    )
+    
+    if not result["success"]:
+        if "credits" in result:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": result["error"],
+                    "credits": result["credits"],
+                    "upgrade_message": result.get("upgrade_message"),
+                }
+            )
+        raise HTTPException(status_code=400, detail=result["error"])
+    
+    return result
+
+
+@router.get("/{application_id}/customized-versions", response_model=dict)
+async def get_customized_versions(
+    application_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get all customized resume versions for an application."""
+    application = db.query(JobApplication).filter(
+        and_(
+            JobApplication.id == application_id,
+            JobApplication.user_id == current_user.id
+        )
+    ).first()
+    
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    versions = db.query(CustomizedResume).filter(
+        and_(
+            CustomizedResume.application_id == application_id,
+            CustomizedResume.user_id == current_user.id
+        )
+    ).order_by(desc(CustomizedResume.created_at)).all()
+    
+    return {
+        "application_id": application_id,
+        "job_title": application.job_title,
+        "company": application.company,
+        "versions": [
+            {
+                "id": v.id,
+                "version_number": v.version_number,
+                "target_job_title": v.target_job_title,
+                "target_company": v.target_company,
+                "changes_count": len(v.changes_made) if v.changes_made else 0,
+                "created_at": v.created_at.isoformat() if v.created_at else None,
+            }
+            for v in versions
+        ],
+        "total": len(versions)
+    }
+
+
+@router.get("/download/{customized_resume_id}/{format}", response_model=None)
+async def download_customized_resume(
+    customized_resume_id: int,
+    format: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Download customized resume as PDF or DOCX.
+    
+    Supported formats: pdf, docx
+    """
+    from fastapi.responses import Response
+    
+    if format not in ["pdf", "docx"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid format. Use 'pdf' or 'docx'"
+        )
+    
+    service = get_resume_customization_service(db)
+    
+    if format == "pdf":
+        file_bytes, error = service.generate_pdf(customized_resume_id, current_user.id)
+        content_type = "application/pdf"
+        extension = "pdf"
+    else:
+        file_bytes, error = service.generate_docx(customized_resume_id, current_user.id)
+        content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        extension = "docx"
+    
+    if error:
+        raise HTTPException(status_code=400, detail=error)
+    
+    if not file_bytes:
+        raise HTTPException(status_code=500, detail="Failed to generate file")
+    
+    # Get resume info for filename
+    customized = db.query(CustomizedResume).filter(
+        CustomizedResume.id == customized_resume_id
+    ).first()
+    
+    filename = f"resume_v{customized.version_number}_{customized.target_company or 'customized'}.{extension}"
+    
+    return Response(
+        content=file_bytes,
+        media_type=content_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
+
+
+# ============================================================================
+# Job Click/Redirect Tracking
+# ============================================================================
+
+class TrackClickRequest(BaseModel):
+    """Request for tracking job click/redirect."""
+    source_page: Optional[str] = Field(None, description="Page where click originated")
+    user_agent: Optional[str] = Field(None, description="Browser user agent")
+
+
+@router.post("/{application_id}/track-click", response_model=dict)
+async def track_job_click(
+    application_id: int,
+    request: TrackClickRequest = Body(default=TrackClickRequest()),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Track when user clicks to apply on external job site.
+    
+    This endpoint:
+    1. Logs the click for analytics
+    2. Updates application status to APPLIED
+    3. Returns the redirect URL
+    
+    Frontend should call this BEFORE redirecting user.
+    """
+    application = db.query(JobApplication).filter(
+        and_(
+            JobApplication.id == application_id,
+            JobApplication.user_id == current_user.id
+        )
+    ).first()
+    
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    # Track click metadata
+    click_data = {
+        "clicked_at": datetime.utcnow().isoformat(),
+        "source_page": request.source_page,
+        "previous_status": application.status.value,
+    }
+    
+    # Update application
+    if application.status == ApplicationStatus.SAVED:
+        application.status = ApplicationStatus.APPLIED
+        application.applied_at = datetime.utcnow()
+    
+    # Increment click count (stored in notes as JSON for now)
+    # In production, you'd want a separate analytics table
+    import json
+    analytics = {}
+    if application.notes:
+        try:
+            analytics = json.loads(application.notes)
+        except:
+            analytics = {"original_notes": application.notes}
+    
+    if "clicks" not in analytics:
+        analytics["clicks"] = []
+    
+    analytics["clicks"].append(click_data)
+    analytics["total_clicks"] = len(analytics["clicks"])
+    analytics["last_click"] = click_data["clicked_at"]
+    
+    application.notes = json.dumps(analytics)
+    
+    db.commit()
+    db.refresh(application)
+    
+    return {
+        "success": True,
+        "redirect_url": application.job_url,
+        "application_status": application.status.value,
+        "total_clicks": analytics["total_clicks"],
+        "job_title": application.job_title,
+        "company": application.company,
+    }
+
+
+@router.get("/{application_id}/analytics", response_model=dict)
+async def get_application_analytics(
+    application_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get analytics for a specific application."""
+    application = db.query(JobApplication).filter(
+        and_(
+            JobApplication.id == application_id,
+            JobApplication.user_id == current_user.id
+        )
+    ).first()
+    
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    import json
+    analytics = {}
+    if application.notes:
+        try:
+            analytics = json.loads(application.notes)
+        except:
+            analytics = {}
+    
+    return {
+        "application_id": application_id,
+        "job_title": application.job_title,
+        "company": application.company,
+        "status": application.status.value,
+        "saved_at": application.created_at.isoformat() if application.created_at else None,
+        "applied_at": application.applied_at.isoformat() if application.applied_at else None,
+        "total_clicks": analytics.get("total_clicks", 0),
+        "last_click": analytics.get("last_click"),
+        "clicks": analytics.get("clicks", []),
+        "match_score": application.match_score,
     }

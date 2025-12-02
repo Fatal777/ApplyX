@@ -10,10 +10,13 @@ Features:
 - Automatic retry with exponential backoff
 - Request deduplication
 - Smart caching with pre-warming
+- Hourly batch fetching for RapidAPI cost optimization
+- Single shared API key for 10K+ concurrent users
 
 Supports:
+- Free ATS sources: Greenhouse, Lever, Workday, SmartRecruiters, Ashby
+- RapidAPI sources: Indeed, Glassdoor, SimplyHired/LinkedIn (JSearch)
 - Existing sources: Adzuna, JSearch, Remotive
-- New sources: Greenhouse, Lever, Workday, SmartRecruiters, Ashby
 """
 
 from __future__ import annotations
@@ -38,6 +41,7 @@ except Exception:
         ADZUNA_APP_ID = ""
         ADZUNA_APP_KEY = ""
         JSEARCH_API_KEY = ""
+        RAPIDAPI_KEY = ""
         DEBUG = True
     settings = _Settings()
 
@@ -47,6 +51,11 @@ from .job_sources.lever import LeverSource
 from .job_sources.workday import WorkdaySource
 from .job_sources.smartrecruiters import SmartRecruitersSource
 from .job_sources.ashby import AshbySource
+# RapidAPI sources - cost-optimized with shared API key
+from .job_sources.indeed import IndeedJobSource
+from .job_sources.glassdoor import GlassdoorJobSource
+from .job_sources.simplyhired import SimplyHiredJobSource
+from .rapidapi_manager import get_rapidapi_manager, RapidAPIManager
 
 logger = logging.getLogger(__name__)
 
@@ -71,12 +80,21 @@ class EnhancedJobScraperService:
     - Sub-100ms response time (cached)
     - Zero race conditions
     - Minimal external API calls
+    
+    Architecture:
+    - Free ATS sources: Fetched in real-time (no API limits)
+    - RapidAPI sources: Hourly batch fetch (cost optimization)
+    - Multi-level cache: L1 in-memory → L2 Redis → L3 Batch
     """
     
     # Configuration
     CACHE_TTL = 300  # 5 minutes for aggregated results
     MAX_CONCURRENT_SOURCES = 10
     REQUEST_TIMEOUT = 15
+    
+    # Source categorization
+    FREE_SOURCES = ["greenhouse", "lever", "workday", "smartrecruiters", "ashby"]
+    RAPIDAPI_SOURCES = ["indeed", "glassdoor", "simplyhired"]
     
     def __init__(self):
         self._redis = redis.from_url(
@@ -85,8 +103,11 @@ class EnhancedJobScraperService:
             max_connections=100,
         )
         
-        # Initialize all sources
-        self._sources = [
+        # Get shared RapidAPI key
+        rapidapi_key = getattr(settings, "RAPIDAPI_KEY", "")
+        
+        # Initialize free ATS sources (no API key needed)
+        self._free_sources = [
             GreenhouseSource(self._redis),
             LeverSource(self._redis),
             WorkdaySource(self._redis),
@@ -94,7 +115,20 @@ class EnhancedJobScraperService:
             AshbySource(self._redis),
         ]
         
-        self._aggregator = AggregatedJobSource(self._sources)
+        # Initialize RapidAPI sources with SHARED API key
+        self._rapidapi_sources = [
+            IndeedJobSource(api_key=rapidapi_key),
+            GlassdoorJobSource(api_key=rapidapi_key),
+            SimplyHiredJobSource(api_key=rapidapi_key),
+        ]
+        
+        # All sources combined
+        self._sources = self._free_sources + self._rapidapi_sources
+        
+        self._aggregator = AggregatedJobSource(self._free_sources)
+        
+        # RapidAPI manager for cost optimization
+        self._rapidapi_manager = get_rapidapi_manager()
         
         # In-flight request deduplication
         self._pending_requests: Dict[str, asyncio.Event] = {}
@@ -243,12 +277,24 @@ class EnhancedJobScraperService:
         location: str,
         sources: Optional[List[str]],
     ) -> tuple[List[Dict[str, Any]], int]:
-        """Fetch from all sources in parallel."""
-        active_sources = self._sources
+        """
+        Fetch from all sources in parallel.
         
+        Strategy:
+        - Free sources: Fetch in real-time (no rate limits)
+        - RapidAPI sources: Check cache first, queue if miss
+        """
+        # Determine which sources to query
         if sources:
             source_names = set(sources)
-            active_sources = [s for s in self._sources if s.name in source_names]
+            active_free = [s for s in self._free_sources if s.name in source_names]
+            active_rapidapi = [s for s in self._rapidapi_sources if s.name in source_names]
+        else:
+            active_free = self._free_sources
+            active_rapidapi = self._rapidapi_sources
+        
+        all_jobs = []
+        succeeded = 0
         
         # Create tasks with semaphore to limit concurrency
         semaphore = asyncio.Semaphore(self.MAX_CONCURRENT_SOURCES)
@@ -264,11 +310,9 @@ class EnhancedJobScraperService:
                     logger.warning(f"Source {source.name} failed: {e}")
                     return [], False
         
-        tasks = [fetch_with_limit(source) for source in active_sources]
+        # Fetch from free sources in real-time
+        tasks = [fetch_with_limit(source) for source in active_free]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        all_jobs = []
-        succeeded = 0
         
         for result in results:
             if isinstance(result, Exception):
@@ -277,6 +321,39 @@ class EnhancedJobScraperService:
             all_jobs.extend(jobs)
             if success:
                 succeeded += 1
+        
+        # For RapidAPI sources: Check cache first, then try live fetch
+        for source in active_rapidapi:
+            try:
+                # First check if we have cached results
+                cached = await self._rapidapi_manager.get_cached_results(
+                    keywords, location, source.name
+                )
+                
+                if cached:
+                    all_jobs.extend(cached)
+                    succeeded += 1
+                    logger.debug(f"Using cached results for {source.name}")
+                else:
+                    # Queue for hourly batch if not cached
+                    await self._rapidapi_manager.queue_request(
+                        keywords, location, source.name, priority=1
+                    )
+                    
+                    # Try live fetch as fallback (if within rate limit)
+                    try:
+                        async with semaphore:
+                            live_results = await source.search(keywords, location, 1, 20)
+                            if live_results:
+                                jobs = [r.to_dict() for r in live_results]
+                                all_jobs.extend(jobs)
+                                succeeded += 1
+                                logger.debug(f"Live fetch from {source.name}: {len(jobs)} jobs")
+                    except Exception as e:
+                        logger.debug(f"Live fetch failed for {source.name}, queued for batch: {e}")
+                        
+            except Exception as e:
+                logger.warning(f"RapidAPI source {source.name} failed: {e}")
         
         return all_jobs, succeeded
     
@@ -338,16 +415,75 @@ class EnhancedJobScraperService:
         stats = {
             "sources": [],
             "total_active": len(self._sources),
+            "free_sources": len(self._free_sources),
+            "rapidapi_sources": len(self._rapidapi_sources),
+            "rapidapi_stats": self._rapidapi_manager.get_stats(),
+            "cache_health": self._rapidapi_manager.get_cache_health(),
         }
         
-        for source in self._sources:
+        for source in self._free_sources:
             stats["sources"].append({
                 "name": source.name,
+                "type": "free",
                 "rate_limit": source.rate_limit,
-                "rate_limit_remaining": source._rate_limiter.get_remaining(),
+                "rate_limit_remaining": source._rate_limiter.get_remaining() if hasattr(source, '_rate_limiter') else None,
+            })
+        
+        for source in self._rapidapi_sources:
+            stats["sources"].append({
+                "name": source.name,
+                "type": "rapidapi",
+                "rate_limit": source.rate_limit,
+                "note": "Hourly batch fetch for cost optimization",
             })
         
         return stats
+    
+    async def batch_fetch_rapidapi_sources(
+        self,
+        keywords: List[str],
+        location: str = "India",
+    ) -> Dict[str, Any]:
+        """
+        Batch fetch from all RapidAPI sources.
+        
+        Called by Celery hourly task.
+        """
+        async def fetch_callback(keywords, location, source):
+            source_obj = next(
+                (s for s in self._rapidapi_sources if s.name == source),
+                None
+            )
+            if not source_obj:
+                return []
+            
+            results = await source_obj.search(keywords, location, 1, 30)
+            return [r.to_dict() for r in results]
+        
+        return await self._rapidapi_manager.execute_batch_fetch(fetch_callback)
+    
+    async def fetch_from_rapidapi_source(
+        self,
+        source_name: str,
+        keywords: List[str],
+        location: str = "India",
+        limit: int = 30,
+    ) -> List[Dict[str, Any]]:
+        """Fetch from a specific RapidAPI source."""
+        source = next(
+            (s for s in self._rapidapi_sources if s.name == source_name),
+            None
+        )
+        
+        if not source:
+            return []
+        
+        try:
+            results = await source.search(keywords, location, 1, limit)
+            return [r.to_dict() for r in results]
+        except Exception as e:
+            logger.warning(f"Failed to fetch from {source_name}: {e}")
+            return []
     
     async def warm_cache(self, keywords: List[str], locations: List[str]) -> int:
         """Pre-warm cache with popular queries."""

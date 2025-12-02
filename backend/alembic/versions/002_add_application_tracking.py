@@ -66,15 +66,18 @@ def upgrade():
     op.create_table(
         'customized_resumes',
         sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('resume_id', sa.Integer(), nullable=True),
         sa.Column('application_id', sa.Integer(), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
-        sa.Column('base_resume_id', sa.Integer(), nullable=True),
-        sa.Column('original_content', sa.Text(), nullable=True),
-        sa.Column('customized_content', sa.Text(), nullable=True),
+        sa.Column('version_number', sa.Integer(), default=1, nullable=False),
+        sa.Column('original_content', sa.JSON(), nullable=True),
+        sa.Column('customized_content', sa.JSON(), nullable=True),
+        sa.Column('changes_made', sa.JSON(), nullable=True),
+        sa.Column('target_job_title', sa.String(500), nullable=True),
+        sa.Column('target_company', sa.String(255), nullable=True),
         sa.Column('section_order', sa.JSON(), nullable=True),
         sa.Column('original_score', sa.Float(), nullable=True),
         sa.Column('improved_score', sa.Float(), nullable=True),
-        sa.Column('changes_summary', sa.JSON(), nullable=True),
         sa.Column('skills_added', sa.JSON(), nullable=True),
         sa.Column('keywords_added', sa.JSON(), nullable=True),
         sa.Column('pdf_path', sa.String(500), nullable=True),
@@ -82,12 +85,12 @@ def upgrade():
         sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()')),
         sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), onupdate=sa.text('now()')),
         sa.PrimaryKeyConstraint('id'),
+        sa.ForeignKeyConstraint(['resume_id'], ['resumes.id'], ondelete='SET NULL'),
         sa.ForeignKeyConstraint(['application_id'], ['job_applications.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['base_resume_id'], ['resumes.id'], ondelete='SET NULL'),
-        sa.UniqueConstraint('application_id'),
     )
     op.create_index('ix_customized_resumes_id', 'customized_resumes', ['id'])
+    op.create_index('ix_customized_resumes_user_resume', 'customized_resumes', ['user_id', 'resume_id'])
     
     # Create user_credits table
     op.create_table(
@@ -133,6 +136,7 @@ def downgrade():
     op.drop_index('ix_user_credits_id', table_name='user_credits')
     op.drop_table('user_credits')
     
+    op.drop_index('ix_customized_resumes_user_resume', table_name='customized_resumes')
     op.drop_index('ix_customized_resumes_id', table_name='customized_resumes')
     op.drop_table('customized_resumes')
     
