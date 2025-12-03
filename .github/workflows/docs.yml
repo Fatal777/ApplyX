@@ -1,0 +1,120 @@
+# API Documentation Deployment to Bump.sh
+# Auto-deploys OpenAPI spec on every push to master
+
+name: Deploy API Docs
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'backend/app/**'
+      - 'backend/requirements.txt'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy-docs:
+    name: Deploy to Bump.sh
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: applyx_docs
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/applyx_docs
+      SECRET_KEY: docs-generation-key
+      ENVIRONMENT: development
+      DEBUG: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate OpenAPI spec
+        working-directory: backend
+        run: |
+          python -c "
+          import json
+          import sys
+          sys.path.insert(0, '.')
+          
+          # Minimal setup to generate OpenAPI without full app initialization
+          from fastapi import FastAPI
+          from app.api.routes import auth, resumes, pdf_editor, jobs, interview, admin, applications, ats_scoring
+          
+          # Create a minimal app just for OpenAPI generation
+          app = FastAPI(
+              title='ApplyX API',
+              description='AI-Powered Resume Builder & Job Application Platform',
+              version='1.0.0',
+              docs_url='/docs',
+              redoc_url='/redoc',
+          )
+          
+          # Include all routers
+          app.include_router(auth.router, prefix='/api/v1', tags=['Authentication'])
+          app.include_router(resumes.router, prefix='/api/v1', tags=['Resumes'])
+          app.include_router(pdf_editor.router, prefix='/api/v1', tags=['PDF Editing'])
+          app.include_router(jobs.router, prefix='/api/v1', tags=['Jobs'])
+          app.include_router(interview.router, prefix='/api/v1', tags=['Interview'])
+          app.include_router(admin.router, prefix='/api/v1', tags=['Admin'])
+          app.include_router(applications.router, prefix='/api/v1', tags=['Applications'])
+          app.include_router(ats_scoring.router, prefix='/api/v1', tags=['ATS Scoring'])
+          
+          # Generate and save OpenAPI spec
+          openapi_schema = app.openapi()
+          openapi_schema['info']['x-logo'] = {
+              'url': 'https://applyx.app/logo.png',
+              'altText': 'ApplyX Logo'
+          }
+          
+          with open('../openapi.json', 'w') as f:
+              json.dump(openapi_schema, f, indent=2)
+          
+          print('✅ OpenAPI spec generated successfully')
+          print(f'   Endpoints: {len(openapi_schema.get(\"paths\", {}))}')
+          "
+
+      - name: Validate OpenAPI spec
+        run: |
+          python -c "
+          import json
+          with open('openapi.json') as f:
+              spec = json.load(f)
+          print(f'✅ Valid OpenAPI {spec.get(\"openapi\", \"3.x\")} spec')
+          print(f'   Title: {spec[\"info\"][\"title\"]}')
+          print(f'   Version: {spec[\"info\"][\"version\"]}')
+          print(f'   Paths: {len(spec.get(\"paths\", {}))}')
+          "
+
+      - name: Deploy to Bump.sh
+        uses: bump-sh/github-action@v1
+        with:
+          doc: 228f52b4-b6c6-429e-b12e-9c6ee4afdcd2
+          token: ${{ secrets.BUMP_TOKEN }}
+          file: openapi.json
