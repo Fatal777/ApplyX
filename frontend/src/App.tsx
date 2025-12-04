@@ -4,7 +4,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { Loader2 } from "lucide-react";
+import { SmoothScrollProvider } from "@/components/effects";
+import { SentryErrorBoundary, setUser, clearUser } from "@/lib/sentry";
+import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { useEffect } from "react";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import Signup from "./pages/Signup";
@@ -37,6 +40,18 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
+  // Update Sentry user context when auth changes
+  useEffect(() => {
+    if (user) {
+      setUser({
+        id: user.id,
+        email: user.email || undefined,
+      });
+    } else {
+      clearUser();
+    }
+  }, [user]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -51,6 +66,47 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 
   return children;
 };
+
+// Error fallback component for Sentry error boundary
+const ErrorFallback = ({ error, resetError }: { error: Error; resetError: () => void }) => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+    <div className="max-w-md w-full text-center space-y-6">
+      <div className="w-16 h-16 mx-auto bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+        <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
+      </div>
+      
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Something went wrong
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          We've been notified and are working on a fix.
+        </p>
+        {import.meta.env.DEV && (
+          <p className="text-sm text-red-600 dark:text-red-400 font-mono mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-left overflow-auto max-h-32">
+            {error.message}
+          </p>
+        )}
+      </div>
+      
+      <div className="flex gap-3 justify-center">
+        <button
+          onClick={() => window.location.href = "/"}
+          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+        >
+          Go Home
+        </button>
+        <button
+          onClick={resetError}
+          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Try Again
+        </button>
+      </div>
+    </div>
+  </div>
+);
 
 const AppRoutes = () => {
   return (
@@ -196,18 +252,27 @@ const AppRoutes = () => {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router>
-        <ScrollToTop />
-        <AuthProvider>
-          <TooltipProvider>
-            <AppRoutes />
-            <Toaster />
-            <Sonner />
-          </TooltipProvider>
-        </AuthProvider>
-      </Router>
-    </QueryClientProvider>
+    <SentryErrorBoundary
+      fallback={({ error, resetError }) => (
+        <ErrorFallback error={error} resetError={resetError} />
+      )}
+      showDialog={false}
+    >
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <ScrollToTop />
+          <SmoothScrollProvider>
+            <AuthProvider>
+              <TooltipProvider>
+                <AppRoutes />
+                <Toaster />
+                <Sonner />
+              </TooltipProvider>
+            </AuthProvider>
+          </SmoothScrollProvider>
+        </Router>
+      </QueryClientProvider>
+    </SentryErrorBoundary>
   );
 }
 

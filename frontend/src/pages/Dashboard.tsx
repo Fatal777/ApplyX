@@ -21,6 +21,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
+import { 
+  FadeIn, 
+  StaggerContainer, 
+  StaggerItem, 
+  TiltCard, 
+  CountUp,
+  MagneticButton,
+  Spotlight
+} from "@/components/effects";
 
 interface ProfileStatus {
   is_complete: boolean;
@@ -196,49 +205,79 @@ const Dashboard = () => {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Card className="border-2 border-gray-200 rounded-xl">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Total Resumes</p>
-                    <p className="text-3xl font-bold text-black">{stats.total}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" staggerDelay={0.1}>
+            <StaggerItem>
+              <TiltCard tiltAmount={5} scale={1.02} glare glareOpacity={0.08}>
+                <Card className="border-2 border-gray-200 rounded-xl h-full">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Total Resumes</p>
+                        <p className="text-3xl font-bold text-black">
+                          <CountUp to={stats.total} duration={1.5} />
+                        </p>
+                      </div>
+                      <motion.div 
+                        className="w-12 h-12 bg-black rounded-lg flex items-center justify-center"
+                        whileHover={{ rotate: [0, -10, 10, 0] }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        <FileText className="w-6 h-6 text-white" />
+                      </motion.div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TiltCard>
+            </StaggerItem>
 
-            <Card className="border-2 border-gray-200 rounded-xl">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Analyzed</p>
-                    <p className="text-3xl font-bold text-black">{stats.completed}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-                    <CheckCircle className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <StaggerItem>
+              <TiltCard tiltAmount={5} scale={1.02} glare glareOpacity={0.08}>
+                <Card className="border-2 border-gray-200 rounded-xl h-full">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Analyzed</p>
+                        <p className="text-3xl font-bold text-black">
+                          <CountUp to={stats.completed} duration={1.5} delay={0.1} />
+                        </p>
+                      </div>
+                      <motion.div 
+                        className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center"
+                        whileHover={{ rotate: [0, -10, 10, 0] }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        <CheckCircle className="w-6 h-6 text-white" />
+                      </motion.div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TiltCard>
+            </StaggerItem>
 
-            <Card className="border-2 border-gray-200 rounded-xl">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Avg Score</p>
-                    <p className="text-3xl font-bold text-black">{stats.avgScore}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-lime-400 rounded-lg flex items-center justify-center">
-                    <TrendingUp className="w-6 h-6 text-black" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+            <StaggerItem>
+              <TiltCard tiltAmount={5} scale={1.02} glare glareOpacity={0.08}>
+                <Card className="border-2 border-gray-200 rounded-xl h-full">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Avg Score</p>
+                        <p className="text-3xl font-bold text-black">
+                          <CountUp to={stats.avgScore} duration={2} delay={0.2} />
+                        </p>
+                      </div>
+                      <motion.div 
+                        className="w-12 h-12 bg-lime-400 rounded-lg flex items-center justify-center"
+                        whileHover={{ rotate: [0, -10, 10, 0] }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        <TrendingUp className="w-6 h-6 text-black" />
+                      </motion.div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TiltCard>
+            </StaggerItem>
+          </StaggerContainer>
 
           {/* Search and Filter */}
           <div className="space-y-3">
@@ -480,55 +519,87 @@ const Dashboard = () => {
         )}
 
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-3 gap-6 mt-12">
-          <Card className="border-2 border-gray-200 rounded-xl hover:shadow-lg transition-all cursor-pointer" onClick={() => navigate('/ats-templates')}>
-            <CardContent className="p-6">
-              <div className="w-12 h-12 bg-lime-400 rounded-lg flex items-center justify-center mb-4">
-                <Zap className="w-6 h-6 text-black" />
-              </div>
-              <h3 className="font-bold text-black mb-2">ATS Templates</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Download pre-optimized resume templates
-              </p>
-              <div className="flex items-center text-black font-medium text-sm">
-                Browse Templates
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </div>
-            </CardContent>
-          </Card>
+        <FadeIn delay={0.2}>
+          <StaggerContainer className="grid md:grid-cols-3 gap-6 mt-12" staggerDelay={0.1}>
+            <StaggerItem>
+              <TiltCard tiltAmount={8} scale={1.02} glare glareOpacity={0.1}>
+                <Spotlight>
+                  <Card className="border-2 border-gray-200 rounded-xl hover:shadow-lg transition-all cursor-pointer h-full" onClick={() => navigate('/ats-templates')}>
+                    <CardContent className="p-6">
+                      <motion.div 
+                        className="w-12 h-12 bg-lime-400 rounded-lg flex items-center justify-center mb-4"
+                        whileHover={{ rotate: 360 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        <Zap className="w-6 h-6 text-black" />
+                      </motion.div>
+                      <h3 className="font-bold text-black mb-2">ATS Templates</h3>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Download pre-optimized resume templates
+                      </p>
+                      <div className="flex items-center text-black font-medium text-sm group">
+                        Browse Templates
+                        <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Spotlight>
+              </TiltCard>
+            </StaggerItem>
 
-          <Card className="border-2 border-gray-200 rounded-xl hover:shadow-lg transition-all cursor-pointer" onClick={() => navigate('/mock-interview')}>
-            <CardContent className="p-6">
-              <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center mb-4">
-                <Target className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="font-bold text-black mb-2">Mock Interviews</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Practice with AI-powered interview simulations
-              </p>
-              <div className="flex items-center text-black font-medium text-sm">
-                Start Practicing
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </div>
-            </CardContent>
-          </Card>
+            <StaggerItem>
+              <TiltCard tiltAmount={8} scale={1.02} glare glareOpacity={0.1}>
+                <Spotlight>
+                  <Card className="border-2 border-gray-200 rounded-xl hover:shadow-lg transition-all cursor-pointer h-full" onClick={() => navigate('/mock-interview')}>
+                    <CardContent className="p-6">
+                      <motion.div 
+                        className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center mb-4"
+                        whileHover={{ rotate: 360 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        <Target className="w-6 h-6 text-white" />
+                      </motion.div>
+                      <h3 className="font-bold text-black mb-2">Mock Interviews</h3>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Practice with AI-powered interview simulations
+                      </p>
+                      <div className="flex items-center text-black font-medium text-sm group">
+                        Start Practicing
+                        <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Spotlight>
+              </TiltCard>
+            </StaggerItem>
 
-          <Card className="border-2 border-gray-200 rounded-xl hover:shadow-lg transition-all cursor-pointer" onClick={() => navigate('/jobs')}>
-            <CardContent className="p-6">
-              <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center mb-4">
-                <BarChart2 className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="font-bold text-black mb-2">Job Opportunities</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Find jobs that match your resume profile
-              </p>
-              <div className="flex items-center text-black font-medium text-sm">
-                Explore Jobs
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            <StaggerItem>
+              <TiltCard tiltAmount={8} scale={1.02} glare glareOpacity={0.1}>
+                <Spotlight>
+                  <Card className="border-2 border-gray-200 rounded-xl hover:shadow-lg transition-all cursor-pointer h-full" onClick={() => navigate('/jobs')}>
+                    <CardContent className="p-6">
+                      <motion.div 
+                        className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center mb-4"
+                        whileHover={{ rotate: 360 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        <BarChart2 className="w-6 h-6 text-white" />
+                      </motion.div>
+                      <h3 className="font-bold text-black mb-2">Job Opportunities</h3>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Find jobs that match your resume profile
+                      </p>
+                      <div className="flex items-center text-black font-medium text-sm group">
+                        Explore Jobs
+                        <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Spotlight>
+              </TiltCard>
+            </StaggerItem>
+          </StaggerContainer>
+        </FadeIn>
       </div>
 
       <Footer />

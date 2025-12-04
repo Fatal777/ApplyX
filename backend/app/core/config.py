@@ -73,9 +73,23 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = "logs/app.log"
+    LOG_JSON_FORMAT: bool = True  # JSON logs for production
     
-    # Monitoring
+    # Monitoring - Sentry
     SENTRY_DSN: Optional[str] = None
+    SENTRY_ENVIRONMENT: str = "development"
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.1  # 10% of transactions
+    SENTRY_PROFILES_SAMPLE_RATE: float = 0.1  # 10% for profiling
+    
+    # OpenTelemetry Configuration
+    OTEL_ENABLED: bool = True
+    OTEL_EXPORTER_OTLP_ENDPOINT: Optional[str] = None  # e.g., "http://otel-collector:4317"
+    OTEL_EXPORTER_INSECURE: bool = True
+    OTEL_SERVICE_NAME: str = "applyx-api"
+    
+    # Prometheus Metrics
+    PROMETHEUS_ENABLED: bool = True
+    PROMETHEUS_MULTIPROC_DIR: Optional[str] = None  # Set for multiprocess mode
     
     # External Services
     CLERK_SECRET_KEY: Optional[str] = None

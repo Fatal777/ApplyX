@@ -20,7 +20,9 @@ import {
   Mic,
   Play,
   Brain,
-  Search
+  Search,
+  Quote,
+  Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,6 +30,20 @@ import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ThreeBackground from "@/components/ThreeBackground";
+import { TestimonialCard, testimonials } from "@/components/ui/TestimonialCard";
+import { TrustLogosText } from "@/components/ui/TrustLogos";
+import { 
+  FadeIn, 
+  StaggerContainer, 
+  StaggerItem,
+  TiltCard,
+  TextReveal,
+  CountUp,
+  MagneticButton,
+  CursorGlow,
+  GradientText,
+  Spotlight
+} from "@/components/effects";
 
 const Landing = () => {
   const stats = [
@@ -295,190 +311,192 @@ const Landing = () => {
       {/* Features Section - White Background */}
       <section id="features" className="py-24 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
-          >
+          <FadeIn className="text-center mb-16">
             <h2 className="text-5xl md:text-6xl font-bold mb-6">
               AI-Powered Resume Tools
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
               Everything you need to create the perfect resume and land your dream job
             </p>
-          </motion.div>
+          </FadeIn>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <StaggerContainer className="grid md:grid-cols-3 gap-8" staggerDelay={0.15}>
             {features.map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.2, duration: 0.6 }}
-              >
-                <Card className="group hover:shadow-md transition-shadow duration-200 border-2 hover:border-primary/50 h-full bg-white">
-                  <CardContent className="p-8">
-                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
-                      <feature.icon className="w-8 h-8 text-primary" />
-                    </div>
-                    <div className="inline-flex items-center gap-2 bg-accent/10 text-accent border border-accent/20 px-4 py-1.5 rounded-full text-sm font-bold mb-4">
-                      <Zap className="w-4 h-4" />
-                      {feature.badge}
-                    </div>
-                    <h3 className="text-2xl font-bold mb-3 group-hover:text-primary transition-colors">
-                      {feature.title}
-                    </h3>
-                    <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
+              <StaggerItem key={feature.title}>
+                <TiltCard className="h-full" tiltAmount={8} scale={1.02} glare glareOpacity={0.1}>
+                  <Spotlight className="h-full">
+                    <Card className="group hover:shadow-md transition-shadow duration-200 border-2 hover:border-primary/50 h-full bg-white">
+                      <CardContent className="p-8">
+                        <motion.div 
+                          className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors"
+                          whileHover={{ rotate: [0, -10, 10, 0], transition: { duration: 0.5 } }}
+                        >
+                          <feature.icon className="w-8 h-8 text-primary" />
+                        </motion.div>
+                        <div className="inline-flex items-center gap-2 bg-accent/10 text-accent border border-accent/20 px-4 py-1.5 rounded-full text-sm font-bold mb-4">
+                          <Zap className="w-4 h-4" />
+                          {feature.badge}
+                        </div>
+                        <h3 className="text-2xl font-bold mb-3 group-hover:text-primary transition-colors">
+                          {feature.title}
+                        </h3>
+                        <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
+                      </CardContent>
+                    </Card>
+                  </Spotlight>
+                </TiltCard>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerContainer>
         </div>
       </section>
 
       {/* How It Works Section - Black Background */}
       <section id="how-it-works" className="py-24 bg-black text-white">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-5xl md:text-6xl font-bold mb-6">How It Works</h2>
-            <p className="text-xl text-white/70">Simple steps to your dream job</p>
-          </motion.div>
+        <CursorGlow 
+          className="w-full" 
+          glowColor="rgba(91, 104, 245, 0.15)" 
+          glowSize={500}
+          glowBlur={100}
+        >
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <FadeIn className="text-center mb-16">
+              <h2 className="text-5xl md:text-6xl font-bold mb-6">How It Works</h2>
+              <p className="text-xl text-white/70">Simple steps to your dream job</p>
+            </FadeIn>
 
-          <div className="grid md:grid-cols-4 gap-8 max-w-5xl mx-auto">
-            {[
-              { step: "01", title: "Upload Resume", desc: "Share your current resume with us" },
-              { step: "02", title: "AI Analysis", desc: "Get instant feedback and scoring" },
-              { step: "03", title: "Improve", desc: "Apply suggestions to enhance your resume" },
-              { step: "04", title: "Apply", desc: "Get matched with perfect job opportunities" },
-            ].map((item, index) => (
-              <motion.div
-                key={item.step}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="text-center"
-              >
-                <div className="text-6xl font-bold text-accent/20 mb-4">{item.step}</div>
-                <h3 className="text-xl font-bold mb-2">{item.title}</h3>
-                <p className="text-white/70">{item.desc}</p>
-              </motion.div>
-            ))}
+            <StaggerContainer className="grid md:grid-cols-4 gap-8 max-w-5xl mx-auto" staggerDelay={0.1}>
+              {[
+                { step: "01", title: "Upload Resume", desc: "Share your current resume with us" },
+                { step: "02", title: "AI Analysis", desc: "Get instant feedback and scoring" },
+                { step: "03", title: "Improve", desc: "Apply suggestions to enhance your resume" },
+                { step: "04", title: "Apply", desc: "Get matched with perfect job opportunities" },
+              ].map((item, index) => (
+                <StaggerItem key={item.step} className="text-center group">
+                  <motion.div 
+                    className="text-6xl font-bold text-accent/20 mb-4 transition-colors duration-300 group-hover:text-accent/40"
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                  >
+                    {item.step}
+                  </motion.div>
+                  <h3 className="text-xl font-bold mb-2 group-hover:text-accent transition-colors">{item.title}</h3>
+                  <p className="text-white/70">{item.desc}</p>
+                </StaggerItem>
+              ))}
+            </StaggerContainer>
+
+            <FadeIn delay={0.4} className="text-center mt-16">
+              <Link to="/resume-builder">
+                <MagneticButton strength={0.3}>
+                  <Button 
+                    size="lg"
+                    className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7"
+                  >
+                    Get Started Now
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </MagneticButton>
+              </Link>
+            </FadeIn>
           </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mt-16"
-          >
-            <Link to="/resume-builder">
-              <Button 
-                size="lg"
-                className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7"
-              >
-                Get Started Now
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-            </Link>
-          </motion.div>
-        </div>
+        </CursorGlow>
       </section>
 
       {/* Benefits Section - White Background */}
       <section id="about" className="py-24 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-            >
+            <FadeIn direction="left">
               <h2 className="text-5xl md:text-6xl font-bold mb-8">
-                Why Choose <span className="text-primary">ApplyX</span>?
+                Why Choose <GradientText colors={['#5B68F5', '#c7ff6b', '#5B68F5']}>ApplyX</GradientText>?
               </h2>
               <p className="text-xl text-muted-foreground mb-10 leading-relaxed">
                 We combine cutting-edge AI technology with personalized career guidance to give you the competitive edge in today's job market.
               </p>
-              <div className="space-y-4">
+              <StaggerContainer className="space-y-4" staggerDelay={0.08}>
                 {benefits.map((benefit, index) => (
-                  <motion.div
+                  <StaggerItem
                     key={benefit}
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1, duration: 0.4 }}
-                    className="flex items-start gap-4 p-4 rounded-xl hover:bg-muted/30 transition-colors"
+                    className="flex items-start gap-4 p-4 rounded-xl hover:bg-muted/30 transition-colors cursor-default"
                   >
-                    <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <motion.div 
+                      className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5"
+                      whileHover={{ scale: 1.2, rotate: 360 }}
+                      transition={{ duration: 0.3 }}
+                    >
                       <CheckCircle className="w-4 h-4 text-accent" />
-                    </div>
+                    </motion.div>
                     <span className="text-lg">{benefit}</span>
-                  </motion.div>
+                  </StaggerItem>
                 ))}
-              </div>
-              <Link to="/resume-builder">
-                <Button 
-                  size="lg"
-                  className="mt-10 bg-primary hover:bg-primary/90 text-white text-lg px-8 py-6"
-                >
-                  Get Started Now
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-              </Link>
-            </motion.div>
+              </StaggerContainer>
+              <FadeIn delay={0.5}>
+                <Link to="/resume-builder">
+                  <MagneticButton className="mt-10">
+                    <Button 
+                      size="lg"
+                      className="bg-primary hover:bg-primary/90 text-white text-lg px-8 py-6"
+                    >
+                      Get Started Now
+                      <ArrowRight className="ml-2 w-5 h-5" />
+                    </Button>
+                  </MagneticButton>
+                </Link>
+              </FadeIn>
+            </FadeIn>
 
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="relative"
-            >
-              <div className="bg-gradient-to-br from-primary to-primary/80 rounded-3xl p-12 shadow-lg">
-                <div className="space-y-6">
-                  <div className="bg-white/10 rounded-2xl p-6 border border-white/20">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
-                        <Award className="w-6 h-6 text-black" />
+            <FadeIn direction="right" delay={0.2}>
+              <TiltCard tiltAmount={10} scale={1.02} glare glareOpacity={0.15}>
+                <div className="bg-gradient-to-br from-primary to-primary/80 rounded-3xl p-12 shadow-lg">
+                  <div className="space-y-6">
+                    <motion.div 
+                      className="bg-white/10 rounded-2xl p-6 border border-white/20"
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ type: "spring", stiffness: 300 }}
+                    >
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
+                          <Award className="w-6 h-6 text-black" />
+                        </div>
+                        <div>
+                          <p className="text-white font-semibold text-lg">Resume Score</p>
+                          <p className="text-white/70 text-sm">AI Analysis Complete</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-white font-semibold text-lg">Resume Score</p>
-                        <p className="text-white/70 text-sm">AI Analysis Complete</p>
+                      <div className="flex items-end gap-2">
+                        <span className="text-6xl font-bold text-white">
+                          <CountUp to={92} duration={2.5} />
+                        </span>
+                        <span className="text-2xl text-white/70 mb-2">/100</span>
                       </div>
-                    </div>
-                    <div className="flex items-end gap-2">
-                      <span className="text-6xl font-bold text-white">92</span>
-                      <span className="text-2xl text-white/70 mb-2">/100</span>
-                    </div>
-                  </div>
+                    </motion.div>
 
-                  <div className="bg-white/10 rounded-2xl p-6 border border-white/20">
-                    <p className="text-white font-semibold mb-3">Job Matches</p>
-                    <div className="flex gap-2">
-                      <div className="flex-1 bg-accent/20 rounded-lg p-3 text-center">
-                        <p className="text-3xl font-bold text-accent">47</p>
-                        <p className="text-xs text-white/70 mt-1">Active</p>
+                    <motion.div 
+                      className="bg-white/10 rounded-2xl p-6 border border-white/20"
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ type: "spring", stiffness: 300 }}
+                    >
+                      <p className="text-white font-semibold mb-3">Job Matches</p>
+                      <div className="flex gap-2">
+                        <div className="flex-1 bg-accent/20 rounded-lg p-3 text-center">
+                          <p className="text-3xl font-bold text-accent">
+                            <CountUp to={47} duration={2} delay={0.3} />
+                          </p>
+                          <p className="text-xs text-white/70 mt-1">Active</p>
+                        </div>
+                        <div className="flex-1 bg-white/10 rounded-lg p-3 text-center">
+                          <p className="text-3xl font-bold text-white">
+                            <CountUp to={12} duration={1.5} delay={0.5} />
+                          </p>
+                          <p className="text-xs text-white/70 mt-1">Applied</p>
+                        </div>
                       </div>
-                      <div className="flex-1 bg-white/10 rounded-lg p-3 text-center">
-                        <p className="text-3xl font-bold text-white">12</p>
-                        <p className="text-xs text-white/70 mt-1">Applied</p>
-                      </div>
-                    </div>
+                    </motion.div>
                   </div>
                 </div>
-              </div>
-            </motion.div>
+              </TiltCard>
+            </FadeIn>
           </div>
         </div>
       </section>
@@ -665,48 +683,124 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* Trust Logos Section */}
+      <TrustLogosText title="Students placed at top companies" />
+
+      {/* Testimonials Section */}
+      <section className="py-24 bg-white relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-[0.02]">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, #5B68F5 1px, transparent 0)`,
+            backgroundSize: '40px 40px'
+          }} />
+        </div>
+
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <FadeIn className="text-center mb-16">
+            <Badge className="mb-6 text-base px-6 py-2 bg-primary/10 text-primary font-bold border-0">
+              <Star className="w-4 h-4 mr-2 fill-primary" />
+              Success Stories
+            </Badge>
+            <h2 className="text-5xl md:text-6xl font-bold mb-6">
+              Real Results from <GradientText colors={['#5B68F5', '#c7ff6b', '#5B68F5']}>Real People</GradientText>
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Join thousands of job seekers who landed their dream roles using ApplyX
+            </p>
+          </FadeIn>
+
+          {/* Featured Testimonial */}
+          <div className="max-w-4xl mx-auto mb-12">
+            <TestimonialCard testimonial={testimonials[0]} variant="featured" />
+          </div>
+
+          {/* Grid of Other Testimonials */}
+          <StaggerContainer className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto" staggerDelay={0.1}>
+            {testimonials.slice(1).map((testimonial, index) => (
+              <StaggerItem key={testimonial.id}>
+                <TestimonialCard testimonial={testimonial} index={index} />
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
+
+          {/* Stats Row */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4 }}
+            className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto"
+          >
+            {[
+              { value: "15,000+", label: "Resumes Analyzed" },
+              { value: "92%", label: "Success Rate" },
+              { value: "4.9/5", label: "User Rating" },
+              { value: "500+", label: "Companies Hiring" },
+            ].map((stat, index) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 * index }}
+                className="text-center p-4"
+              >
+                <p className="text-4xl md:text-5xl font-bold text-primary mb-2">{stat.value}</p>
+                <p className="text-gray-500 font-medium">{stat.label}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-24 bg-gradient-to-br from-primary via-primary to-indigo-700 text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-20">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
         </div>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center max-w-4xl mx-auto"
-          >
-            <h2 className="text-5xl md:text-6xl font-bold mb-6">
-              Ready to Launch Your Career?
-            </h2>
-            <p className="text-xl text-white/80 mb-10 leading-relaxed">
-              Join thousands of successful students who have landed their dream jobs with ApplyX
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/resume-builder">
-                <Button 
-                  size="lg"
-                  className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7 transition-colors duration-200"
-                >
-                  Start Building Your Resume
-                  <TrendingUp className="ml-2 w-5 h-5" />
-                </Button>
-              </Link>
-              <Link to="/interview/dashboard">
-                <Button 
-                  size="lg"
-                  variant="outline"
-                  className="border-white/30 text-white hover:bg-white/10 font-bold text-lg px-10 py-7 transition-colors duration-200"
-                >
-                  <Video className="mr-2 w-5 h-5" />
-                  Practice Interview
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
-        </div>
+        <CursorGlow 
+          className="w-full relative z-10"
+          glowColor="rgba(199, 255, 107, 0.2)"
+          glowSize={600}
+          glowBlur={120}
+        >
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <FadeIn className="text-center max-w-4xl mx-auto">
+              <h2 className="text-5xl md:text-6xl font-bold mb-6">
+                Ready to Launch Your Career?
+              </h2>
+              <p className="text-xl text-white/80 mb-10 leading-relaxed">
+                Join thousands of successful students who have landed their dream jobs with ApplyX
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link to="/resume-builder">
+                  <MagneticButton strength={0.25}>
+                    <Button 
+                      size="lg"
+                      className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7 transition-colors duration-200"
+                    >
+                      Start Building Your Resume
+                      <TrendingUp className="ml-2 w-5 h-5" />
+                    </Button>
+                  </MagneticButton>
+                </Link>
+                <Link to="/interview/dashboard">
+                  <MagneticButton strength={0.25}>
+                    <Button 
+                      size="lg"
+                      variant="outline"
+                      className="border-white/30 text-white hover:bg-white/10 font-bold text-lg px-10 py-7 transition-colors duration-200"
+                    >
+                      <Video className="mr-2 w-5 h-5" />
+                      Practice Interview
+                    </Button>
+                  </MagneticButton>
+                </Link>
+              </div>
+            </FadeIn>
+          </div>
+        </CursorGlow>
       </section>
 
       <Footer />

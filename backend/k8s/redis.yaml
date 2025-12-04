@@ -1,0 +1,201 @@
+# ============================================================
+# Redis StatefulSet with Persistence
+# ============================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: applyx
+  labels:
+    app: redis
+spec:
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6379
+              name: redis
+          command:
+            - redis-server
+            - /etc/redis/redis.conf
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+            - name: redis-config
+              mountPath: /etc/redis
+      volumes:
+        - name: redis-config
+          configMap:
+            name: redis-config
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+        storageClassName: standard
+---
+# ============================================================
+# Redis ConfigMap - Persistence Configuration
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: applyx
+  labels:
+    app: redis
+data:
+  redis.conf: |
+    # ============== Network ==============
+    bind 0.0.0.0
+    port 6379
+    tcp-backlog 511
+    timeout 0
+    tcp-keepalive 300
+    
+    # ============== General ==============
+    daemonize no
+    supervised no
+    loglevel notice
+    databases 16
+    
+    # ============== Snapshotting (RDB) ==============
+    # Save to disk periodically
+    # save <seconds> <changes>
+    save 900 1      # Save if 1 key changed in 15 min
+    save 300 10     # Save if 10 keys changed in 5 min
+    save 60 10000   # Save if 10000 keys changed in 1 min
+    
+    stop-writes-on-bgsave-error yes
+    rdbcompression yes
+    rdbchecksum yes
+    dbfilename dump.rdb
+    dir /data
+    
+    # ============== Append Only File (AOF) ==============
+    # More durable than RDB, logs every write
+    appendonly yes
+    appendfilename "appendonly.aof"
+    
+    # fsync policy:
+    # - always: Slow but safest (fsync after every command)
+    # - everysec: Good balance (fsync every second) - RECOMMENDED
+    # - no: Fast but risky (let OS decide when to fsync)
+    appendfsync everysec
+    
+    # Prevent fsync during rewrite to reduce latency
+    no-appendfsync-on-rewrite no
+    
+    # Auto-rewrite AOF when it grows by 100% from last rewrite
+    auto-aof-rewrite-percentage 100
+    auto-aof-rewrite-min-size 64mb
+    
+    # Load truncated AOF on startup (can lose some data)
+    aof-load-truncated yes
+    
+    # Use RDB preamble in AOF for faster loading
+    aof-use-rdb-preamble yes
+    
+    # ============== Memory Management ==============
+    # Set max memory (adjust based on your limits)
+    maxmemory 200mb
+    
+    # Eviction policy when maxmemory is reached
+    # allkeys-lru: Remove least recently used keys
+    maxmemory-policy allkeys-lru
+    
+    # Sample 5 keys for LRU eviction (higher = more accurate but slower)
+    maxmemory-samples 5
+    
+    # ============== Lazy Freeing ==============
+    # Async deletion to avoid blocking
+    lazyfree-lazy-eviction yes
+    lazyfree-lazy-expire yes
+    lazyfree-lazy-server-del yes
+    replica-lazy-flush yes
+    
+    # ============== Security ==============
+    # Disable dangerous commands
+    rename-command FLUSHDB ""
+    rename-command FLUSHALL ""
+    rename-command DEBUG ""
+    rename-command SHUTDOWN SHUTDOWN_APPLYX
+    
+    # ============== Clients ==============
+    maxclients 1000
+    
+    # ============== Slow Log ==============
+    slowlog-log-slower-than 10000
+    slowlog-max-len 128
+---
+# ============================================================
+# Redis Service
+# ============================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: applyx
+  labels:
+    app: redis
+spec:
+  type: ClusterIP
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+      name: redis
+---
+# ============================================================
+# Redis PodDisruptionBudget
+# ============================================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: applyx
+  labels:
+    app: redis
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: redis

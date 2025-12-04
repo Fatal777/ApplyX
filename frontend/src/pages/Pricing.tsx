@@ -7,6 +7,15 @@ import { Switch } from "@/components/ui/switch";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Link } from "react-router-dom";
+import { 
+  FadeIn, 
+  StaggerContainer, 
+  StaggerItem, 
+  TiltCard, 
+  MagneticButton,
+  CursorGlow,
+  Spotlight
+} from "@/components/effects";
 
 const Pricing = () => {
   const [isYearly, setIsYearly] = useState(false);
@@ -100,11 +109,7 @@ const Pricing = () => {
       <div className="pt-24 md:pt-28 pb-20">
         <div className="container mx-auto px-4">
           {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-12"
-          >
+          <FadeIn className="text-center mb-12">
             <h1 className="text-5xl md:text-6xl font-bold mb-4">
               Simple, Transparent Pricing
             </h1>
@@ -135,89 +140,105 @@ const Pricing = () => {
                 </motion.span>
               )}
             </div>
-          </motion.div>
+          </FadeIn>
 
           {/* Pricing Cards */}
-          <div className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+          <StaggerContainer className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto" staggerDelay={0.15}>
             {plans.map((plan, index) => {
               const Icon = plan.icon;
               const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
               const savings = calculateSavings(plan.monthlyPrice, plan.yearlyPrice);
               
               return (
-                <motion.div
-                  key={plan.name}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="relative"
-                >
+                <StaggerItem key={plan.name} className="relative">
                   {plan.popular && (
-                    <div className="absolute -top-4 left-0 right-0 flex justify-center">
+                    <div className="absolute -top-4 left-0 right-0 flex justify-center z-10">
                       <span className="bg-gradient-to-r from-lime-400 to-green-500 text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg">
                         Most Popular
                       </span>
                     </div>
                   )}
                   
-                  <Card className={`h-full ${plan.popular ? 'border-4 border-lime-400 shadow-2xl scale-105' : 'border-2'} hover:shadow-xl transition-all duration-300`}>
-                    <CardHeader>
-                      <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${plan.color} flex items-center justify-center mb-4`}>
-                        <Icon className="w-6 h-6 text-white" />
-                      </div>
-                      <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                      <CardDescription className="text-base">{plan.description}</CardDescription>
-                      
-                      <div className="mt-4">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-5xl font-bold">${price}</span>
-                          <span className="text-gray-500">
-                            /{isYearly ? 'year' : 'month'}
-                          </span>
-                        </div>
-                        {isYearly && savings > 0 && (
-                          <p className="text-sm text-green-600 font-semibold mt-1">
-                            Save {savings}% with yearly billing
-                          </p>
-                        )}
-                        {!isYearly && plan.monthlyPrice > 0 && (
-                          <p className="text-sm text-gray-500 mt-1">
-                            ${plan.yearlyPrice}/year if billed annually
-                          </p>
-                        )}
-                      </div>
-                    </CardHeader>
-                    
-                    <CardContent className="flex-1">
-                      <div className="space-y-3">
-                        {plan.features.map((feature, i) => (
-                          <div key={i} className="flex items-start gap-3">
-                            <Check className="w-5 h-5 text-lime-500 flex-shrink-0 mt-0.5" />
-                            <span className="text-sm">{feature}</span>
+                  <TiltCard 
+                    tiltAmount={plan.popular ? 8 : 5} 
+                    scale={plan.popular ? 1.02 : 1.01} 
+                    glare 
+                    glareOpacity={plan.popular ? 0.15 : 0.08}
+                    className="h-full"
+                  >
+                    <Spotlight>
+                      <Card className={`h-full ${plan.popular ? 'border-4 border-lime-400 shadow-2xl' : 'border-2'} hover:shadow-xl transition-all duration-300`}>
+                        <CardHeader>
+                          <motion.div 
+                            className={`w-12 h-12 rounded-lg bg-gradient-to-br ${plan.color} flex items-center justify-center mb-4`}
+                            whileHover={{ rotate: 360 }}
+                            transition={{ duration: 0.5 }}
+                          >
+                            <Icon className="w-6 h-6 text-white" />
+                          </motion.div>
+                          <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                          <CardDescription className="text-base">{plan.description}</CardDescription>
+                          
+                          <div className="mt-4">
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-5xl font-bold">${price}</span>
+                              <span className="text-gray-500">
+                                /{isYearly ? 'year' : 'month'}
+                              </span>
+                            </div>
+                            {isYearly && savings > 0 && (
+                              <p className="text-sm text-green-600 font-semibold mt-1">
+                                Save {savings}% with yearly billing
+                              </p>
+                            )}
+                            {!isYearly && plan.monthlyPrice > 0 && (
+                              <p className="text-sm text-gray-500 mt-1">
+                                ${plan.yearlyPrice}/year if billed annually
+                              </p>
+                            )}
                           </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                    
-                    <CardFooter>
-                      <Link to={plan.name === "Enterprise" ? "/contact" : "/signup"} className="w-full">
-                        <Button 
-                          className={`w-full ${
-                            plan.popular 
-                              ? 'bg-gradient-to-r from-lime-400 to-green-500 hover:from-lime-500 hover:to-green-600 text-black' 
-                              : 'bg-black hover:bg-gray-800 text-white'
-                          } font-bold py-6 text-lg group`}
-                        >
-                          {plan.cta}
-                          <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                        </Button>
-                      </Link>
-                    </CardFooter>
-                  </Card>
-                </motion.div>
+                        </CardHeader>
+                        
+                        <CardContent className="flex-1">
+                          <div className="space-y-3">
+                            {plan.features.map((feature, i) => (
+                              <motion.div 
+                                key={i} 
+                                className="flex items-start gap-3"
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: i * 0.05 }}
+                              >
+                                <Check className="w-5 h-5 text-lime-500 flex-shrink-0 mt-0.5" />
+                                <span className="text-sm">{feature}</span>
+                              </motion.div>
+                            ))}
+                          </div>
+                        </CardContent>
+                        
+                        <CardFooter>
+                          <Link to={plan.name === "Enterprise" ? "/contact" : "/signup"} className="w-full">
+                            <MagneticButton className="w-full" strength={0.2}>
+                              <Button 
+                                className={`w-full ${
+                                  plan.popular 
+                                    ? 'bg-gradient-to-r from-lime-400 to-green-500 hover:from-lime-500 hover:to-green-600 text-black' 
+                                    : 'bg-black hover:bg-gray-800 text-white'
+                                } font-bold py-6 text-lg group`}
+                              >
+                                {plan.cta}
+                                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                              </Button>
+                            </MagneticButton>
+                          </Link>
+                        </CardFooter>
+                      </Card>
+                    </Spotlight>
+                  </TiltCard>
+                </StaggerItem>
               );
             })}
-          </div>
+          </StaggerContainer>
 
           {/* FAQ Section */}
           <motion.div
@@ -298,33 +319,38 @@ const Pricing = () => {
           </motion.div>
 
           {/* CTA Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="mt-20 text-center"
-          >
-            <Card className="bg-gradient-to-r from-black to-gray-900 text-white border-0 max-w-4xl mx-auto">
-              <CardContent className="p-12">
-                <h2 className="text-4xl font-bold mb-4">Still have questions?</h2>
-                <p className="text-xl text-gray-300 mb-8">
-                  Our team is here to help you choose the right plan for your needs.
-                </p>
-                <div className="flex gap-4 justify-center flex-wrap">
-                  <Link to="/contact">
-                    <Button size="lg" className="bg-lime-400 hover:bg-lime-500 text-black font-bold">
-                      Contact Sales
-                    </Button>
-                  </Link>
-                  <Link to="/signup">
-                    <Button size="lg" variant="outline" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-black">
-                      Start Free Trial
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+          <FadeIn delay={0.4} className="mt-20 text-center">
+            <CursorGlow 
+              glowColor="rgba(199, 255, 107, 0.2)" 
+              glowSize={400}
+              className="rounded-2xl"
+            >
+              <Card className="bg-gradient-to-r from-black to-gray-900 text-white border-0 max-w-4xl mx-auto">
+                <CardContent className="p-12">
+                  <h2 className="text-4xl font-bold mb-4">Still have questions?</h2>
+                  <p className="text-xl text-gray-300 mb-8">
+                    Our team is here to help you choose the right plan for your needs.
+                  </p>
+                  <div className="flex gap-4 justify-center flex-wrap">
+                    <Link to="/contact">
+                      <MagneticButton strength={0.25}>
+                        <Button size="lg" className="bg-lime-400 hover:bg-lime-500 text-black font-bold">
+                          Contact Sales
+                        </Button>
+                      </MagneticButton>
+                    </Link>
+                    <Link to="/signup">
+                      <MagneticButton strength={0.25}>
+                        <Button size="lg" variant="outline" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-black">
+                          Start Free Trial
+                        </Button>
+                      </MagneticButton>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            </CursorGlow>
+          </FadeIn>
         </div>
       </div>
 

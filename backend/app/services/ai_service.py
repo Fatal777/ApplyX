@@ -3,9 +3,17 @@
 import logging
 from typing import List, Dict, Any, Optional
 import openai
+import pybreaker
 from app.core.config import settings
+from app.core.resilience import (
+    openai_breaker,
+    with_retry,
+    get_logger,
+    with_timeout,
+    RetryError
+)
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class AIService:
@@ -104,25 +112,69 @@ class AIService:
             if isinstance(keywords, str):
                 keywords = [k.strip() for k in keywords.split(',')]
             
-            logger.info(f"Generating AI suggestions using {self.provider} with model {self.model}")
+            logger.info(
+                "Generating AI suggestions",
+                provider=self.provider,
+                model=self.model,
+                keywords_count=len(keywords)
+            )
             prompt = self._build_suggestion_prompt(resume_text, analysis_data, job_description, keywords)
             
-            response = openai.ChatCompletion.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an expert ATS resume consultant. Analyze resumes based on extracted keywords and provide specific, actionable suggestions. Always include priority (high/medium/low), category, issue, suggestion, and example."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                temperature=0.7,
-                max_tokens=2500,
-                timeout=30  # Add timeout
-            )
+            # Use circuit breaker + retry + timeout for resilient API calls
+            async def _make_api_call():
+                return openai.ChatCompletion.create(
+                    model=self.model,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are an expert ATS resume consultant. Analyze resumes based on extracted keywords and provide specific, actionable suggestions. Always include priority (high/medium/low), category, issue, suggestion, and example."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    temperature=0.7,
+                    max_tokens=2500,
+                    timeout=30
+                )
+            
+            # Wrap with circuit breaker and retry
+            try:
+                # Circuit breaker protects against cascading failures
+                with openai_breaker:
+                    response = await with_timeout(
+                        with_retry(
+                            _make_api_call,
+                            max_attempts=2,
+                            base_delay=1.0,
+                            retryable_exceptions=(
+                                openai.error.RateLimitError,
+                                openai.error.Timeout,
+                                openai.error.APIConnectionError,
+                                ConnectionError,
+                                TimeoutError,
+                            ),
+                            logger=logger,
+                        ),
+                        timeout_seconds=45,
+                        timeout_message=f"AI request timed out after 45s ({self.provider})"
+                    )
+            except pybreaker.CircuitBreakerError:
+                logger.error(
+                    "Circuit breaker open - AI service unavailable",
+                    provider=self.provider,
+                    breaker_state=str(openai_breaker.current_state)
+                )
+                return self._fallback_suggestions(analysis_data)
+            except RetryError as e:
+                logger.error(
+                    "All retry attempts failed for AI service",
+                    provider=self.provider,
+                    attempts=e.attempts,
+                    last_error=str(e.last_error)
+                )
+                return self._fallback_suggestions(analysis_data)
             
             suggestions_text = response.choices[0].message.content
             logger.info(f"Received AI response from {self.provider}, parsing suggestions...")

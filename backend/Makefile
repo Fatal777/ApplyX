@@ -20,6 +20,7 @@ help:
 	@echo "init-db      - Initialize database"
 	@echo "migrate      - Run database migrations"
 	@echo "admin        - Create admin user"
+	@echo "openapi      - Generate OpenAPI spec"
 
 install:
 	pip install -r requirements.txt
@@ -83,5 +84,9 @@ admin:
 security-scan:
 	bandit -r app/ -f json -o bandit-report.json
 	safety check
+
+openapi:
+	python -c "import json; from app.main import app; print(json.dumps(app.openapi(), indent=2))" > ../openapi.json
+	@echo "✅ OpenAPI spec generated at ../openapi.json"
 
 all: install format lint test

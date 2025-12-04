@@ -21,11 +21,20 @@ services:
     networks:
       - applyx-network
 
-  # Redis for caching and Celery
+  # Redis for caching and Celery - with AOF + RDB persistence
   redis:
     image: redis:7-alpine
     container_name: applyx-redis
-    command: redis-server --appendonly yes
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 300
     volumes:
       - redis_data:/data
     ports:
@@ -37,6 +46,10 @@ services:
       retries: 5
     networks:
       - applyx-network
+    deploy:
+      resources:
+        limits:
+          memory: 300M
 
   # FastAPI Application
   api:

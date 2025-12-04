@@ -1,42 +1,27 @@
 /**
- * Interview Dashboard - Premium Full-Screen Experience
- * A sophisticated interview preparation and practice platform
- * with glassmorphism UI, smooth animations, and real-time features
+ * Interview Dashboard - Notion/Wellfound-inspired Clean Design
+ * Aligned with ApplyX design system - light theme, minimal aesthetic
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Home,
-  Play,
-  History,
-  BarChart3,
-  Settings,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
   Sparkles,
   Mic,
   Video,
-  Brain,
-  Target,
-  Trophy,
+  Volume2,
+  Play,
   Clock,
   TrendingUp,
-  Star,
-  Zap,
-  ArrowRight,
-  Calendar,
-  Users,
-  BookOpen,
-  MessageSquare,
-  Volume2
+  Target,
+  ChevronRight
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardContent } from '@/components/ui/card';
 
 // Import dashboard components
-import DashboardSidebar from '@/components/interview/dashboard/DashboardSidebar';
+import InterviewSidebar from '@/components/interview/dashboard/InterviewSidebar';
 import StatsOverview from '@/components/interview/dashboard/StatsOverview';
 import SessionHistory from '@/components/interview/dashboard/SessionHistory';
 import QuickStartPanel from '@/components/interview/dashboard/QuickStartPanel';
@@ -54,7 +39,6 @@ const InterviewDashboard = () => {
 
   // Start a new interview session
   const handleStartInterview = (config: any) => {
-    // Navigate to interview room with config
     const params = new URLSearchParams({
       type: config.type,
       difficulty: config.difficulty,
@@ -78,100 +62,133 @@ const InterviewDashboard = () => {
     navigate('/');
   };
 
-  return (
-    <div className="h-screen w-screen overflow-hidden bg-[#0a0a0f] flex">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        {/* Gradient Orbs */}
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-primary/20 blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-[#c7ff6b]/15 blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-[40%] right-[20%] w-[300px] h-[300px] rounded-full bg-purple-500/10 blur-[80px] animate-pulse" style={{ animationDelay: '2s' }} />
-        
-        {/* Grid Pattern */}
-        <div 
-          className="absolute inset-0 opacity-[0.02]"
-          style={{
-            backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
-            `,
-            backgroundSize: '50px 50px'
-          }}
-        />
-      </div>
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+  const userEmail = user?.email;
 
+  return (
+    <div className="h-screen w-screen overflow-hidden bg-gray-50 flex">
       {/* Sidebar */}
-      <DashboardSidebar
+      <InterviewSidebar
         currentView={currentView}
         onViewChange={setCurrentView}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         onLogout={handleLogout}
-        userName={user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
+        userName={userName}
+        userEmail={userEmail}
       />
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden relative">
+      <main className="flex-1 overflow-hidden bg-white">
         <AnimatePresence mode="wait">
           {currentView === 'overview' && (
             <motion.div
               key="overview"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-              className="h-full overflow-y-auto custom-scrollbar"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="h-full overflow-y-auto"
             >
-              <div className="p-8 space-y-8">
+              <div className="max-w-5xl mx-auto px-8 py-8">
                 {/* Header */}
-                <header className="flex items-center justify-between">
-                  <div>
-                    <motion.h1 
-                      className="text-3xl font-bold text-white"
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                    >
-                      Welcome back, {user?.user_metadata?.full_name?.split(' ')[0] || 'there'}
-                      <span className="inline-block ml-2 animate-bounce">👋</span>
-                    </motion.h1>
-                    <motion.p 
-                      className="text-gray-400 mt-1"
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      Ready to ace your next interview? Let's practice!
-                    </motion.p>
-                  </div>
-                  
-                  <motion.div 
-                    className="flex items-center gap-3"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.3 }}
+                <header className="mb-8">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-start justify-between"
                   >
-                    <div className="px-4 py-2 rounded-full bg-[#c7ff6b]/10 border border-[#c7ff6b]/20">
-                      <span className="text-[#c7ff6b] text-sm font-medium flex items-center gap-2">
-                        <Sparkles className="w-4 h-4" />
-                        Pro Member
+                    <div>
+                      <h1 className="text-3xl font-bold text-gray-900">
+                        Good {getGreeting()}, {userName.split(' ')[0]}
+                      </h1>
+                      <p className="text-gray-500 mt-1">
+                        Ready to ace your next interview? Let's practice.
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-lime-100 border border-lime-200">
+                        <Sparkles className="w-4 h-4 text-lime-600" />
+                        <span className="text-sm font-medium text-lime-700">Pro Member</span>
                       </span>
                     </div>
                   </motion.div>
                 </header>
 
-                {/* Stats Overview */}
-                <StatsOverview />
+                {/* Quick Stats */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 }}
+                  className="grid grid-cols-4 gap-4 mb-8"
+                >
+                  <StatCard
+                    label="Total Sessions"
+                    value="24"
+                    icon={Play}
+                    iconBg="bg-blue-100"
+                    iconColor="text-blue-600"
+                  />
+                  <StatCard
+                    label="Practice Hours"
+                    value="12.5"
+                    icon={Clock}
+                    iconBg="bg-purple-100"
+                    iconColor="text-purple-600"
+                  />
+                  <StatCard
+                    label="Avg. Score"
+                    value="85"
+                    suffix="/100"
+                    icon={Target}
+                    iconBg="bg-lime-100"
+                    iconColor="text-lime-600"
+                  />
+                  <StatCard
+                    label="Improvement"
+                    value="+23%"
+                    icon={TrendingUp}
+                    iconBg="bg-green-100"
+                    iconColor="text-green-600"
+                  />
+                </motion.div>
 
-                {/* Quick Start Panel */}
-                <QuickStartPanel onStartInterview={handleStartInterview} />
+                {/* Quick Start Section */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="mb-8"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-gray-900">Start Interview</h2>
+                  </div>
+                  <QuickStartPanel onStartInterview={handleStartInterview} />
+                </motion.div>
 
                 {/* Recent Sessions */}
-                <SessionHistory 
-                  limit={5} 
-                  onViewAll={() => setCurrentView('history')}
-                  onResumeSession={handleResumeSession}
-                />
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-gray-900">Recent Sessions</h2>
+                    <button 
+                      onClick={() => setCurrentView('history')}
+                      className="text-sm font-medium text-gray-500 hover:text-gray-900 flex items-center gap-1 transition-colors"
+                    >
+                      View all
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <SessionHistory 
+                    limit={5} 
+                    onViewAll={() => setCurrentView('history')}
+                    onResumeSession={handleResumeSession}
+                  />
+                </motion.div>
               </div>
             </motion.div>
           )}
@@ -179,10 +196,10 @@ const InterviewDashboard = () => {
           {currentView === 'practice' && (
             <motion.div
               key="practice"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
               className="h-full"
             >
               {activeSessionId ? (
@@ -194,12 +211,13 @@ const InterviewDashboard = () => {
                   }}
                 />
               ) : (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <QuickStartPanel 
-                      onStartInterview={handleStartInterview} 
-                      fullWidth 
-                    />
+                <div className="h-full flex items-center justify-center bg-gray-50">
+                  <div className="max-w-3xl w-full px-8">
+                    <div className="text-center mb-8">
+                      <h1 className="text-2xl font-bold text-gray-900 mb-2">Start a New Interview</h1>
+                      <p className="text-gray-500">Choose your interview type and customize your practice session</p>
+                    </div>
+                    <QuickStartPanel onStartInterview={handleStartInterview} fullWidth />
                   </div>
                 </div>
               )}
@@ -209,16 +227,16 @@ const InterviewDashboard = () => {
           {currentView === 'history' && (
             <motion.div
               key="history"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-              className="h-full overflow-y-auto custom-scrollbar"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="h-full overflow-y-auto"
             >
-              <div className="p-8">
+              <div className="max-w-5xl mx-auto px-8 py-8">
                 <header className="mb-8">
-                  <h1 className="text-3xl font-bold text-white">Interview History</h1>
-                  <p className="text-gray-400 mt-1">Review your past sessions and track your progress</p>
+                  <h1 className="text-2xl font-bold text-gray-900">Interview History</h1>
+                  <p className="text-gray-500 mt-1">Review your past sessions and track your progress</p>
                 </header>
                 <SessionHistory showAll onResumeSession={handleResumeSession} />
               </div>
@@ -228,16 +246,16 @@ const InterviewDashboard = () => {
           {currentView === 'analytics' && (
             <motion.div
               key="analytics"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-              className="h-full overflow-y-auto custom-scrollbar"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="h-full overflow-y-auto"
             >
-              <div className="p-8">
+              <div className="max-w-5xl mx-auto px-8 py-8">
                 <header className="mb-8">
-                  <h1 className="text-3xl font-bold text-white">Performance Analytics</h1>
-                  <p className="text-gray-400 mt-1">Deep insights into your interview skills</p>
+                  <h1 className="text-2xl font-bold text-gray-900">Performance Analytics</h1>
+                  <p className="text-gray-500 mt-1">Deep insights into your interview skills</p>
                 </header>
                 <StatsOverview detailed />
               </div>
@@ -247,80 +265,122 @@ const InterviewDashboard = () => {
           {currentView === 'settings' && (
             <motion.div
               key="settings"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-              className="h-full overflow-y-auto custom-scrollbar p-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="h-full overflow-y-auto"
             >
-              <header className="mb-8">
-                <h1 className="text-3xl font-bold text-white">Settings</h1>
-                <p className="text-gray-400 mt-1">Customize your interview experience</p>
-              </header>
-              
-              {/* Settings Content - Placeholder */}
-              <div className="grid gap-6 max-w-2xl">
-                <GlassCard>
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <Mic className="w-5 h-5 text-[#c7ff6b]" />
-                    Audio Settings
-                  </h3>
-                  <p className="text-gray-400 text-sm">Configure microphone and speaker settings for interviews.</p>
-                </GlassCard>
+              <div className="max-w-3xl mx-auto px-8 py-8">
+                <header className="mb-8">
+                  <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+                  <p className="text-gray-500 mt-1">Customize your interview experience</p>
+                </header>
                 
-                <GlassCard>
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <Video className="w-5 h-5 text-[#c7ff6b]" />
-                    Video Settings
-                  </h3>
-                  <p className="text-gray-400 text-sm">Adjust camera and video quality preferences.</p>
-                </GlassCard>
-                
-                <GlassCard>
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <Volume2 className="w-5 h-5 text-[#c7ff6b]" />
-                    Voice Preferences
-                  </h3>
-                  <p className="text-gray-400 text-sm">Choose AI interviewer voice and speaking pace.</p>
-                </GlassCard>
+                <div className="space-y-4">
+                  <SettingsCard
+                    icon={Mic}
+                    iconBg="bg-blue-100"
+                    iconColor="text-blue-600"
+                    title="Audio Settings"
+                    description="Configure microphone and speaker settings for interviews"
+                  />
+                  
+                  <SettingsCard
+                    icon={Video}
+                    iconBg="bg-purple-100"
+                    iconColor="text-purple-600"
+                    title="Video Settings"
+                    description="Adjust camera and video quality preferences"
+                  />
+                  
+                  <SettingsCard
+                    icon={Volume2}
+                    iconBg="bg-lime-100"
+                    iconColor="text-lime-600"
+                    title="Voice Preferences"
+                    description="Choose AI interviewer voice and speaking pace"
+                  />
+                </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </main>
-
-      {/* Custom Scrollbar Styles */}
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.2);
-        }
-      `}</style>
     </div>
   );
 };
 
-// Reusable Glass Card Component
-const GlassCard = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div className={`
-    relative p-6 rounded-2xl
-    bg-white/[0.03] backdrop-blur-xl
-    border border-white/[0.08]
-    hover:border-white/[0.15] hover:bg-white/[0.05]
-    transition-all duration-300
-    ${className}
-  `}>
-    {children}
-  </div>
+// Helper function for greeting
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'morning';
+  if (hour < 17) return 'afternoon';
+  return 'evening';
+};
+
+// Stat Card Component
+const StatCard = ({ 
+  label, 
+  value, 
+  suffix,
+  icon: Icon, 
+  iconBg, 
+  iconColor
+}: { 
+  label: string;
+  value: string;
+  suffix?: string;
+  icon: React.ElementType;
+  iconBg: string;
+  iconColor: string;
+}) => (
+  <Card className="border border-gray-200 rounded-xl hover:shadow-md transition-shadow">
+    <CardContent className="p-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm text-gray-500 mb-1">{label}</p>
+          <p className="text-2xl font-bold text-gray-900">
+            {value}
+            {suffix && <span className="text-sm font-normal text-gray-400">{suffix}</span>}
+          </p>
+        </div>
+        <div className={`w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center`}>
+          <Icon className={`w-5 h-5 ${iconColor}`} />
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+// Settings Card Component
+const SettingsCard = ({
+  icon: Icon,
+  iconBg,
+  iconColor,
+  title,
+  description
+}: {
+  icon: React.ElementType;
+  iconBg: string;
+  iconColor: string;
+  title: string;
+  description: string;
+}) => (
+  <Card className="border border-gray-200 rounded-xl hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer group">
+    <CardContent className="p-5">
+      <div className="flex items-start gap-4">
+        <div className={`w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center flex-shrink-0`}>
+          <Icon className={`w-5 h-5 ${iconColor}`} />
+        </div>
+        <div className="flex-1">
+          <h3 className="font-semibold text-gray-900 mb-1">{title}</h3>
+          <p className="text-sm text-gray-500">{description}</p>
+        </div>
+        <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-400 transition-colors" />
+      </div>
+    </CardContent>
+  </Card>
 );
 
 export default InterviewDashboard;

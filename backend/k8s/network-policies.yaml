@@ -1,0 +1,251 @@
+# ============================================================
+# Pod Disruption Budgets - Ensure availability during updates
+# ============================================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: applyx-api-pdb
+  namespace: applyx
+  labels:
+    app: applyx-api
+spec:
+  # At least 1 pod must always be available
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: applyx-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: applyx-celery-pdb
+  namespace: applyx
+  labels:
+    app: applyx-celery-worker
+spec:
+  # At least 1 Celery worker must always be available
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: applyx-celery-worker
+---
+# ============================================================
+# Network Policies - Pod-to-pod communication security
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: applyx
+spec:
+  # Default deny all ingress and egress
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: applyx-api-network-policy
+  namespace: applyx
+  labels:
+    app: applyx-api
+spec:
+  podSelector:
+    matchLabels:
+      app: applyx-api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow ingress from Ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Allow health checks from kubelet
+    - from: []
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Allow Prometheus scraping
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow connection to PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgresql
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow connection to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow external HTTPS (for AI APIs, Supabase, etc.)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: applyx-celery-network-policy
+  namespace: applyx
+  labels:
+    app: applyx-celery-worker
+spec:
+  podSelector:
+    matchLabels:
+      app: applyx-celery-worker
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow Flower monitoring
+    - from:
+        - podSelector:
+            matchLabels:
+              app: celery-flower
+      ports:
+        - protocol: TCP
+          port: 5555
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgresql
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow Redis (broker)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow external HTTPS
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-network-policy
+  namespace: applyx
+  labels:
+    app: redis
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Only allow connections from API and Celery
+    - from:
+        - podSelector:
+            matchLabels:
+              app: applyx-api
+        - podSelector:
+            matchLabels:
+              app: applyx-celery-worker
+        - podSelector:
+            matchLabels:
+              app: celery-flower
+      ports:
+        - protocol: TCP
+          port: 6379
+  egress:
+    # Redis only needs DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgresql-network-policy
+  namespace: applyx
+  labels:
+    app: postgresql
+spec:
+  podSelector:
+    matchLabels:
+      app: postgresql
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Only allow connections from API and Celery
+    - from:
+        - podSelector:
+            matchLabels:
+              app: applyx-api
+        - podSelector:
+            matchLabels:
+              app: applyx-celery-worker
+        # Allow backup job
+        - podSelector:
+            matchLabels:
+              app: pg-backup
+      ports:
+        - protocol: TCP
+          port: 5432
+  egress:
+    # PostgreSQL needs DNS for external connections
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53

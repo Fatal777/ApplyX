@@ -21,7 +21,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Python lib directories (not frontend/src/lib)
+/lib/
 lib64/
 parts/
 sdist/
@@ -125,5 +126,5 @@ DEPLOYMENT.md
 QUICKSTART.md
 SECURITY.md
 
-# GitHub workflows
-.github/
+# GitHub instructions (keep workflows)
+.github/instructions/

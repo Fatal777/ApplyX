@@ -1,17 +1,24 @@
 """Speech Service for Interview Platform - Whisper STT + ElevenLabs TTS"""
 
-import logging
 import io
 import base64
-import asyncio
 from typing import Optional, Dict, Any, Tuple
 from abc import ABC, abstractmethod
 
 import httpx
+import pybreaker
 
 from app.core.config import settings
+from app.core.resilience import (
+    openai_breaker,
+    elevenlabs_breaker,
+    with_retry,
+    get_logger,
+    with_timeout,
+    RetryError
+)
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class STTProvider(ABC):
@@ -64,24 +71,56 @@ class OpenAIWhisperSTT(STTProvider):
                 "Authorization": f"Bearer {self.api_key}"
             }
             
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(
-                    self.api_url,
-                    headers=headers,
-                    files=files
-                )
-                response.raise_for_status()
-                
-                result = response.json()
-                transcript = result.get("text", "").strip()
-                duration = result.get("duration", 0.0)
-                
-                logger.info(f"Whisper transcription successful: {len(transcript)} chars, {duration:.2f}s")
-                return transcript, duration
+            async def _make_request():
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    response = await client.post(
+                        self.api_url,
+                        headers=headers,
+                        files=files
+                    )
+                    response.raise_for_status()
+                    return response.json()
+            
+            # Use circuit breaker + retry for resilient API calls
+            try:
+                with openai_breaker:
+                    result = await with_timeout(
+                        with_retry(
+                            _make_request,
+                            max_attempts=2,
+                            base_delay=1.0,
+                            retryable_exceptions=(
+                                httpx.TimeoutException,
+                                httpx.NetworkError,
+                                httpx.HTTPStatusError,
+                            ),
+                            logger=logger,
+                        ),
+                        timeout_seconds=90,
+                        timeout_message="Whisper transcription timed out after 90s"
+                    )
+            except pybreaker.CircuitBreakerError:
+                logger.error("Circuit breaker open - Whisper service unavailable")
+                raise SpeechServiceError("Transcription service temporarily unavailable")
+            except RetryError as e:
+                logger.error("All retry attempts failed for Whisper", error=str(e.last_error))
+                raise SpeechServiceError(f"Transcription failed: {str(e.last_error)}")
+            
+            transcript = result.get("text", "").strip()
+            duration = result.get("duration", 0.0)
+            
+            logger.info(
+                "Whisper transcription successful",
+                chars=len(transcript),
+                duration_secs=f"{duration:.2f}"
+            )
+            return transcript, duration
                 
         except httpx.HTTPStatusError as e:
             logger.error(f"Whisper API HTTP error: {e.response.status_code} - {e.response.text}")
             raise SpeechServiceError(f"Transcription failed: {e.response.status_code}")
+        except SpeechServiceError:
+            raise
         except Exception as e:
             logger.error(f"Whisper transcription error: {str(e)}")
             raise SpeechServiceError(f"Transcription failed: {str(e)}")
@@ -151,17 +190,48 @@ class ElevenLabsTTS(TTSProvider):
                 "voice_settings": self.voice_settings
             }
             
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(url, headers=headers, json=payload)
-                response.raise_for_status()
-                
-                audio_bytes = response.content
-                logger.info(f"ElevenLabs TTS successful: {len(text)} chars -> {len(audio_bytes)} bytes")
-                return audio_bytes
+            async def _make_request():
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.post(url, headers=headers, json=payload)
+                    response.raise_for_status()
+                    return response.content
+            
+            # Use circuit breaker + retry for resilient API calls
+            try:
+                with elevenlabs_breaker:
+                    audio_bytes = await with_timeout(
+                        with_retry(
+                            _make_request,
+                            max_attempts=2,
+                            base_delay=0.5,
+                            retryable_exceptions=(
+                                httpx.TimeoutException,
+                                httpx.NetworkError,
+                            ),
+                            logger=logger,
+                        ),
+                        timeout_seconds=45,
+                        timeout_message="ElevenLabs TTS timed out after 45s"
+                    )
+            except pybreaker.CircuitBreakerError:
+                logger.error("Circuit breaker open - ElevenLabs service unavailable")
+                raise SpeechServiceError("Speech synthesis service temporarily unavailable")
+            except RetryError as e:
+                logger.error("All retry attempts failed for ElevenLabs", error=str(e.last_error))
+                raise SpeechServiceError(f"Speech synthesis failed: {str(e.last_error)}")
+            
+            logger.info(
+                "ElevenLabs TTS successful",
+                text_chars=len(text),
+                audio_bytes=len(audio_bytes)
+            )
+            return audio_bytes
                 
         except httpx.HTTPStatusError as e:
             logger.error(f"ElevenLabs API HTTP error: {e.response.status_code} - {e.response.text}")
             raise SpeechServiceError(f"Speech synthesis failed: {e.response.status_code}")
+        except SpeechServiceError:
+            raise
         except Exception as e:
             logger.error(f"ElevenLabs TTS error: {str(e)}")
             raise SpeechServiceError(f"Speech synthesis failed: {str(e)}")
