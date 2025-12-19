@@ -21,6 +21,7 @@ pycryptodome>=3.19.0
 sqlalchemy[asyncio]>=2.0.23
 psycopg>=3.1.0          # Use psycopg3 (pure Python, no build needed)
 psycopg-binary>=3.1.0   # Binary driver for psycopg3
+psycopg2-binary>=2.9.0  # Required for Celery/sync database access
 alembic>=1.13.0
 
 # Redis & Caching - Async
