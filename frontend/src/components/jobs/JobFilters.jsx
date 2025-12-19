@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, ChevronDown, ChevronUp } from 'lucide-react';
-import { INDIAN_CITIES, TECH_HUBS, INDIAN_STATES } from '../../data/indianCities';
+import { ALL_INDIAN_CITIES, TECH_HUBS, INDIAN_STATES } from '../../data/indianCities';
 
 const JobFilters = ({ filters, onFilterChange, onClearFilters }) => {
     const [expandedSections, setExpandedSections] = useState({
@@ -66,8 +66,8 @@ const JobFilters = ({ filters, onFilterChange, onClearFilters }) => {
                                 key={city}
                                 onClick={() => onFilterChange('city', filters.city === city ? '' : city)}
                                 className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${filters.city === city
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                     }`}
                             >
                                 {city}
@@ -83,7 +83,7 @@ const JobFilters = ({ filters, onFilterChange, onClearFilters }) => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                     <option value="">All Cities</option>
-                    {INDIAN_CITIES.map(({ name }) => (
+                    {ALL_INDIAN_CITIES.map(({ name }) => (
                         <option key={name} value={name}>{name}</option>
                     ))}
                 </select>
