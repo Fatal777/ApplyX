@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ArrowLeft, 
-  Settings, 
-  Phone, 
+import {
+  ArrowLeft,
+  Settings,
+  Phone,
   PhoneOff,
   Loader2,
   AlertCircle,
@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { 
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -28,7 +28,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import WebcamDisplay from './WebcamDisplay';
 import VoiceAgent from './VoiceAgent';
 import FeedbackView from './FeedbackView';
-import interviewService, { 
+import { LatencyMonitor } from './LatencyMonitor';
+import interviewService, {
   type InterviewQuestion,
   type InterviewFeedback,
   type InterviewPersona,
@@ -57,7 +58,7 @@ export function InterviewRoom() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
-  
+
   // Interview state
   const [phase, setPhase] = useState<InterviewPhase>('setup');
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -65,7 +66,7 @@ export function InterviewRoom() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [feedback, setFeedback] = useState<InterviewFeedback | null>(null);
   const [error, setError] = useState<string | null>(null);
-  
+
   // UI state
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -74,11 +75,11 @@ export function InterviewRoom() {
   const [webcamActive, setWebcamActive] = useState(true);
   const [currentAudio, setCurrentAudio] = useState<string | undefined>();
   const [transcript, setTranscript] = useState('');
-  
+
   // Recording refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  
+
   // Interview config from URL params or defaults
   const [config] = useState<InterviewConfig>(() => ({
     interviewType: (searchParams.get('type') as InterviewType) || 'mixed',
@@ -93,13 +94,13 @@ export function InterviewRoom() {
   // Check auth and start interview on mount
   useEffect(() => {
     if (authLoading) return;
-    
+
     if (!user) {
       setPhase('auth-required');
       setError('Please sign in to start an interview');
       return;
     }
-    
+
     startInterview();
   }, [user, authLoading]);
 
@@ -107,7 +108,7 @@ export function InterviewRoom() {
     try {
       setPhase('setup');
       setError(null);
-      
+
       const response = await interviewService.startInterview({
         interview_type: config.interviewType,
         difficulty: config.difficulty,
@@ -117,16 +118,16 @@ export function InterviewRoom() {
         job_role: config.jobRole,
         job_description: config.jobDescription,
       });
-      
+
       setSessionId(response.session_id);
       setQuestions(response.questions);
       setPhase('in-progress');
-      
+
       toast({
         title: "Interview started",
         description: `${response.questions.length} questions prepared. Good luck!`,
       });
-      
+
       // Play greeting audio if available
       if (response.greeting_audio) {
         setCurrentAudio(response.greeting_audio);
@@ -150,21 +151,21 @@ export function InterviewRoom() {
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
       });
-      
+
       audioChunksRef.current = [];
-      
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
-      
+
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         await processRecording(audioBlob);
         stream.getTracks().forEach(track => track.stop());
       };
-      
+
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start();
       setIsListening(true);
@@ -188,9 +189,9 @@ export function InterviewRoom() {
 
   const processRecording = async (audioBlob: Blob) => {
     if (!sessionId) return;
-    
+
     setIsProcessing(true);
-    
+
     try {
       // Convert blob to base64
       const reader = new FileReader();
@@ -202,34 +203,44 @@ export function InterviewRoom() {
         reader.onerror = reject;
         reader.readAsDataURL(audioBlob);
       });
-      
+
       // Transcribe audio
+      const transcribeStartTime = Date.now();
       const transcribeResponse = await interviewService.transcribeAudio({
         session_id: sessionId,
         audio_data: base64Audio,
         audio_format: 'webm',
         question_number: currentQuestionIndex + 1,
       });
-      
+
+      // Track STT latency
+      const sttLatency = Date.now() - transcribeStartTime;
+      (window as any).__latencyMonitor?.addLatency({ stt: sttLatency });
+
       if (!transcribeResponse.success) {
         throw new Error(transcribeResponse.error || 'Transcription failed');
       }
-      
+
       setTranscript(transcribeResponse.transcript);
-      
+
       // Get AI response
+      const aiStartTime = Date.now();
       const respondResponse = await interviewService.getInterviewerResponse({
         session_id: sessionId,
         question_number: currentQuestionIndex + 1,
         transcript: transcribeResponse.transcript,
       });
-      
+
+      // Track AI latency
+      const aiLatency = Date.now() - aiStartTime;
+      (window as any).__latencyMonitor?.addLatency({ ai: aiLatency });
+
       // Play response audio
       if (respondResponse.audio_data) {
         setCurrentAudio(respondResponse.audio_data);
         setIsSpeaking(true);
       }
-      
+
       // Check if interview is complete
       if (respondResponse.is_conclusion) {
         toast({
@@ -241,7 +252,7 @@ export function InterviewRoom() {
         // Move to next question
         setCurrentQuestionIndex(prev => prev + 1);
       }
-      
+
     } catch (err) {
       console.error('Error processing recording:', err);
       setError(err instanceof Error ? err.message : 'Failed to process your response');
@@ -252,12 +263,12 @@ export function InterviewRoom() {
 
   const completeInterview = async () => {
     if (!sessionId) return;
-    
+
     setPhase('analyzing');
-    
+
     try {
       const analyzeResponse = await interviewService.analyzeInterview(sessionId);
-      
+
       if (analyzeResponse.success) {
         const feedbackData = await interviewService.getFeedback(sessionId);
         setFeedback(feedbackData);
@@ -305,15 +316,15 @@ export function InterviewRoom() {
   };
 
   // Calculate progress
-  const progress = questions.length > 0 
-    ? ((currentQuestionIndex + 1) / questions.length) * 100 
+  const progress = questions.length > 0
+    ? ((currentQuestionIndex + 1) / questions.length) * 100
     : 0;
 
   // Render feedback view
   if (phase === 'feedback' && feedback) {
     return (
-      <FeedbackView 
-        feedback={feedback} 
+      <FeedbackView
+        feedback={feedback}
         onRetry={handleRetry}
         onBack={() => navigate('/dashboard')}
       />
@@ -325,15 +336,15 @@ export function InterviewRoom() {
       {/* Header */}
       <header className="bg-white border-b px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             onClick={() => setShowExitDialog(true)}
             className="gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             Exit Interview
           </Button>
-          
+
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">
               Question {currentQuestionIndex + 1} of {questions.length}
@@ -342,9 +353,9 @@ export function InterviewRoom() {
               <Progress value={progress} className="h-2" />
             </div>
           </div>
-          
-          <Button 
-            variant="outline" 
+
+          <Button
+            variant="outline"
             size="icon"
             onClick={() => setWebcamActive(prev => !prev)}
           >
@@ -400,7 +411,7 @@ export function InterviewRoom() {
               </div>
               <h2 className="text-2xl font-semibold mb-2">Sign In Required</h2>
               <p className="text-gray-600 mb-6 text-center max-w-md">
-                Please sign in to your account to start a mock interview session. 
+                Please sign in to your account to start a mock interview session.
                 Your progress and feedback will be saved to your profile.
               </p>
               <div className="flex gap-4">
@@ -458,7 +469,7 @@ export function InterviewRoom() {
                     audioToPlay={currentAudio}
                     persona={config.persona}
                   />
-                  
+
                   {/* Transcript display */}
                   {transcript && (
                     <div className="mt-6 p-4 bg-gray-50 rounded-lg">
@@ -471,11 +482,14 @@ export function InterviewRoom() {
 
               {/* Webcam Section - Right */}
               <div className="space-y-4">
-                <WebcamDisplay 
-                  isActive={webcamActive} 
+                <WebcamDisplay
+                  isActive={webcamActive}
                   className="aspect-video w-full"
                 />
-                
+
+                {/* Latency Monitor */}
+                <LatencyMonitor className="w-full" compact={false} />
+
                 {/* Interview info */}
                 <Card className="p-4">
                   <h3 className="font-medium mb-2">Interview Details</h3>
@@ -487,8 +501,8 @@ export function InterviewRoom() {
                 </Card>
 
                 {/* End call button */}
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   className="w-full gap-2"
                   onClick={completeInterview}
                 >

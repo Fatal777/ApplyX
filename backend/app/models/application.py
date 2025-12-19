@@ -228,6 +228,7 @@ class UserCredits(Base):
     
     # Usage stats
     total_credits_used = Column(Integer, default=0, nullable=False)
+    resume_analysis_count = Column(Integer, default=0, nullable=False)  # Lifetime resume analyses used (2 free)
     
     # Timestamps
     created_at = Column(DateTime, default=func.now())

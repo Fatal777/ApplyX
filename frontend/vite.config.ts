@@ -9,16 +9,22 @@ export default defineConfig(({ mode }) => ({
     host: "0.0.0.0",
     port: 5000,
     strictPort: true,
-    hmr: false, // Disable HMR to prevent reload loops in Replit
-    allowedHosts: [
-      "88d619a8-d6c4-4eac-9c71-b37d242e37c0-00-21w6tfpinex63.sisko.replit.dev",
-      ".replit.dev",
-      ".replit.app",
-      "localhost",
-    ],
+  },
+  build: {
+    // Production optimizations
+    minify: 'esbuild',
+    sourcemap: mode === 'development',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          supabase: ['@supabase/supabase-js'],
+        },
+      },
+    },
   },
   plugins: [
-    react(), 
+    react(),
     mode === "development" && componentTagger()
   ].filter(Boolean),
   resolve: {
@@ -27,3 +33,4 @@ export default defineConfig(({ mode }) => ({
     },
   },
 }));
+

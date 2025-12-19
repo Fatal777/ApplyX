@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import { useResumes } from "@/hooks/useResumes";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { SuccessStoryCard, defaultSuccessStories } from "@/components/ui/SuccessStoryCard";
+import { SuccessStoryCard, successStories } from "@/components/ui/SuccessStoryCard";
 
 interface ResumeData {
   id: number;
@@ -543,7 +543,7 @@ const ResumeAnalysis = () => {
             {/* Success Story */}
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Recent Success</h3>
-              <SuccessStoryCard story={defaultSuccessStories[0]} variant="compact" />
+              <SuccessStoryCard story={successStories[0]} variant="compact" />
             </div>
           </div>
         </div>

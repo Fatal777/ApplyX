@@ -31,6 +31,7 @@ import ATSTemplates from "./pages/ATSTemplates";
 import Dashboard from "./pages/Dashboard";
 import LivePdfEditor from "./pages/LivePdfEditor";
 import Pricing from "./pages/Pricing";
+import AdminDashboard from "./pages/AdminDashboard";
 import ScrollToTop from "./components/ScrollToTop";
 
 const queryClient = new QueryClient();
@@ -74,7 +75,7 @@ const ErrorFallback = ({ error, resetError }: { error: Error; resetError: () => 
       <div className="w-16 h-16 mx-auto bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
         <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
       </div>
-      
+
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Something went wrong
@@ -88,7 +89,7 @@ const ErrorFallback = ({ error, resetError }: { error: Error; resetError: () => 
           </p>
         )}
       </div>
-      
+
       <div className="flex gap-3 justify-center">
         <button
           onClick={() => window.location.href = "/"}
@@ -115,117 +116,117 @@ const AppRoutes = () => {
       <Route path="/landing" element={<Landing />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
-      
+
       {/* Protected Routes */}
       <Route path="/resume-builder" element={
         <ProtectedRoute>
           <ResumeBuilder />
         </ProtectedRoute>
       } />
-      
+
       <Route path="/resume/:id" element={
         <ProtectedRoute>
           <ResumeAnalysis />
         </ProtectedRoute>
       } />
-      
+
       <Route path="/mock-interview" element={
         <ProtectedRoute>
           <MockInterview />
         </ProtectedRoute>
       } />
-      
+
       <Route path="/interview/setup" element={
         <ProtectedRoute>
           <InterviewSetup />
         </ProtectedRoute>
       } />
-      
+
       <Route path="/interview/room" element={
         <ProtectedRoute>
           <InterviewRoomPage />
         </ProtectedRoute>
       } />
-      
+
       {/* Interview Dashboard - Full-screen premium experience */}
       <Route path="/interview/dashboard" element={
         <ProtectedRoute>
           <InterviewDashboard />
         </ProtectedRoute>
       } />
-      
+
       <Route path="/jobs" element={
         <ProtectedRoute>
           <JobsPage />
         </ProtectedRoute>
       } />
-      
+
       {/* Public Job Search - accessible without login */}
       <Route path="/job-search" element={<JobsPage />} />
-      
+
       {/* Applications Dashboard - Track saved/applied jobs */}
       <Route path="/applications" element={
         <ProtectedRoute>
           <ApplicationsPage />
         </ProtectedRoute>
       } />
-      
+
       {/* Job Application Board - Kanban-style job tracking */}
       <Route path="/job-board" element={
         <ProtectedRoute>
           <JobApplicationBoard />
         </ProtectedRoute>
       } />
-      
+
       <Route path="/certifications" element={
         <ProtectedRoute>
           <Certifications />
         </ProtectedRoute>
       } />
-      
+
       <Route path="/college-solutions" element={
         <ProtectedRoute>
           <CollegeSolutions />
         </ProtectedRoute>
       } />
-      
+
       <Route path="/assessments" element={
         <ProtectedRoute>
           <Assessments />
         </ProtectedRoute>
       } />
-      
+
       <Route path="/employers" element={
         <ProtectedRoute>
           <Employers />
         </ProtectedRoute>
       } />
-      
+
       <Route path="/settings" element={
         <ProtectedRoute>
           <Settings />
         </ProtectedRoute>
       } />
-      
+
       <Route path="/ats-templates" element={
         <ProtectedRoute>
           <ATSTemplates />
         </ProtectedRoute>
       } />
-      
+
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <Dashboard />
         </ProtectedRoute>
       } />
-      
+
       {/* PDF Editor - Redirect to Live Editor (deprecated) */}
       <Route path="/pdf-editor/:id" element={
         <ProtectedRoute>
           <LivePdfEditor />
         </ProtectedRoute>
       } />
-      
+
       {/* Live PDF Editor - WYSIWYG resume editing */}
       <Route path="/live-editor" element={
         <ProtectedRoute>
@@ -237,13 +238,16 @@ const AppRoutes = () => {
           <LivePdfEditor />
         </ProtectedRoute>
       } />
-      
+
       {/* Demo Editor - No authentication required */}
       <Route path="/demo/pdf-editor" element={<LivePdfEditor />} />
       <Route path="/demo/live-editor" element={<LivePdfEditor />} />
-      
+
       <Route path="/pricing" element={<Pricing />} />
-      
+
+      {/* Hidden Admin Dashboard - Not linked anywhere */}
+      <Route path="/nexus-control" element={<AdminDashboard />} />
+
       {/* Catch-all route */}
       <Route path="*" element={<NotFound />} />
     </Routes>

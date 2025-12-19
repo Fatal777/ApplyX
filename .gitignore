@@ -128,3 +128,7 @@ SECURITY.md
 
 # GitHub instructions (keep workflows)
 .github/instructions/
+
+# Scrapy sensitive files (contains API keys)
+backend/scrapers/zyte_scrapers/settings.py
+backend/app/services/scrapingbee_service.py

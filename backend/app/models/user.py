@@ -49,8 +49,9 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     full_name = Column(String, nullable=True)
     
-    # Contact Information
-    phone_number = Column(String(20), nullable=True)
+    # Contact Information (phone must be unique across all accounts)
+    phone_number = Column(String(20), unique=True, nullable=True, index=True)
+    phone_verified = Column(Boolean, default=False, nullable=False)
     
     # Profile metadata
     profile_completed = Column(Boolean, default=False)
@@ -70,6 +71,7 @@ class User(Base):
     applications = relationship("JobApplication", back_populates="user", cascade="all, delete-orphan")
     credits = relationship("UserCredits", back_populates="user", uselist=False, cascade="all, delete-orphan")
     customized_resumes = relationship("CustomizedResume", back_populates="user", cascade="all, delete-orphan")
+    subscription = relationship("Subscription", back_populates="user", uselist=False, cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User {self.email}>"

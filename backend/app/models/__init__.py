@@ -18,6 +18,21 @@ from app.models.application import (
     UserCredits,
     CreditUsage,
 )
+from app.models.subscription import (
+    SubscriptionPlan,
+    SubscriptionStatus,
+    PaymentStatus,
+    Subscription,
+    Payment,
+)
+from app.models.phone_verification import (
+    PhoneVerification,
+    OTPRateLimit,
+)
+from app.models.payment_audit import (
+    AuditAction,
+    PaymentAudit,
+)
 
 __all__ = [
     "User",
@@ -34,4 +49,16 @@ __all__ = [
     "CustomizedResume",
     "UserCredits",
     "CreditUsage",
+    "SubscriptionPlan",
+    "SubscriptionStatus",
+    "PaymentStatus",
+    "Subscription",
+    "Payment",
+    "PhoneVerification",
+    "OTPRateLimit",
+    "AuditAction",
+    "PaymentAudit",
 ]
+
+
+

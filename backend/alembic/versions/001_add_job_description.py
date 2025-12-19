@@ -1,6 +1,6 @@
 """Add job_description to resumes
 
-Revision ID: 001
+Revision ID: 001_add_job_description
 Revises: 
 Create Date: 2025-10-31 16:25:00.000000
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '001'
+revision = '001_add_job_description'
 down_revision = None
 branch_labels = None
 depends_on = None

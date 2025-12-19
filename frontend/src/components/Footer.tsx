@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Sparkles, Mail, MapPin, Phone, Github, Twitter, Linkedin, Instagram } from "lucide-react";
+import { Mail, Github, Twitter, Linkedin, Instagram, ArrowRight } from "lucide-react";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -13,16 +13,15 @@ const Footer = () => {
       { name: "Job Matching", href: "/jobs" },
     ],
     company: [
-      { name: "About Us", href: "/about" },
-      { name: "Careers", href: "/careers" },
+      { name: "About", href: "/about" },
       { name: "Blog", href: "/blog" },
+      { name: "Careers", href: "/careers" },
       { name: "Contact", href: "/contact" },
     ],
     resources: [
       { name: "Help Center", href: "/help" },
-      { name: "Terms of Service", href: "/terms" },
-      { name: "Privacy Policy", href: "/privacy" },
-      { name: "Cookie Policy", href: "/cookies" },
+      { name: "Privacy", href: "/privacy" },
+      { name: "Terms", href: "/terms" },
     ],
   };
 
@@ -34,51 +33,66 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="relative bg-white border-t border-border">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-12">
-          {/* Brand Section */}
-          <div className="lg:col-span-2">
-            <Link to="/" className="flex items-center gap-0 mb-4 group">
+    <footer className="relative bg-black">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        
+        {/* Main Grid - 5 columns on large screens */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 lg:gap-6">
+          
+          {/* Brand Column - Takes 2 cols on lg */}
+          <div className="col-span-2 md:col-span-3 lg:col-span-2">
+            <Link to="/" className="inline-block group">
               <img 
-                src="/Light BG Logo.png"
+                src="/Dark BG Logo.png"
                 alt="ApplyX Logo"
-                className="h-16 md:h-36 w-auto transition-all duration-300 hover:scale-105"
+                className="h-20 md:h-44 w-auto transition-all duration-300 hover:scale-105"
               />
             </Link>
-            <p className="text-muted-foreground mb-6 max-w-sm leading-relaxed">
-              Unlock your career potential with AI-powered resume analysis, interview preparation, and personalized job matching.
+            <p className="text-gray-400 mt-4 text-base md:text-lg leading-relaxed max-w-sm">
+              AI-powered career platform for resume analysis, interview preparation, and personalized job matching.
             </p>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-primary" />
-                <span>support@applyx.com</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-primary" />
-                <span>+1 (555) 123-4567</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-primary" />
-                <span>San Francisco, CA</span>
-              </div>
+            
+            {/* Newsletter / CTA */}
+            <div className="mt-6">
+              <p className="text-white text-base font-medium mb-2">Stay updated</p>
+              <a 
+                href="mailto:support@applyx.com" 
+                className="inline-flex items-center gap-2 text-gray-400 text-base hover:text-white transition-colors group"
+              >
+                <Mail className="w-5 h-5" />
+                support@applyx.com
+                <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+              </a>
+            </div>
+
+            {/* Social Links - Under brand on large screens */}
+            <div className="flex items-center gap-3 mt-6">
+              {socialLinks.map((social) => (
+                <motion.a
+                  key={social.label}
+                  href={social.href}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-11 h-11 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:bg-white hover:text-black hover:border-white transition-all duration-200"
+                  aria-label={social.label}
+                >
+                  <social.icon className="w-5 h-5" />
+                </motion.a>
+              ))}
             </div>
           </div>
 
           {/* Product Links */}
           <div>
-            <h3 className="font-semibold text-foreground mb-4 text-lg">Product</h3>
+            <h3 className="font-medium text-white mb-4 text-base">Product</h3>
             <ul className="space-y-3">
               {footerLinks.product.map((link) => (
                 <li key={link.name}>
                   <a
                     href={link.href}
-                    className="text-muted-foreground hover:text-primary transition-colors inline-block group"
+                    className="text-gray-400 text-base hover:text-white transition-colors duration-200"
                   >
-                    <span className="relative">
-                      {link.name}
-                      <span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300" />
-                    </span>
+                    {link.name}
                   </a>
                 </li>
               ))}
@@ -87,18 +101,15 @@ const Footer = () => {
 
           {/* Company Links */}
           <div>
-            <h3 className="font-semibold text-foreground mb-4 text-lg">Company</h3>
+            <h3 className="font-medium text-white mb-4 text-base">Company</h3>
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
                 <li key={link.name}>
                   <a
                     href={link.href}
-                    className="text-muted-foreground hover:text-primary transition-colors inline-block group"
+                    className="text-gray-400 text-base hover:text-white transition-colors duration-200"
                   >
-                    <span className="relative">
-                      {link.name}
-                      <span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300" />
-                    </span>
+                    {link.name}
                   </a>
                 </li>
               ))}
@@ -107,18 +118,15 @@ const Footer = () => {
 
           {/* Resources Links */}
           <div>
-            <h3 className="font-semibold text-foreground mb-4 text-lg">Resources</h3>
+            <h3 className="font-medium text-white mb-4 text-base">Legal</h3>
             <ul className="space-y-3">
               {footerLinks.resources.map((link) => (
                 <li key={link.name}>
                   <a
                     href={link.href}
-                    className="text-muted-foreground hover:text-primary transition-colors inline-block group"
+                    className="text-gray-400 text-base hover:text-white transition-colors duration-200"
                   >
-                    <span className="relative">
-                      {link.name}
-                      <span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300" />
-                    </span>
+                    {link.name}
                   </a>
                 </li>
               ))}
@@ -126,27 +134,11 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Bottom Section */}
-        <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-muted-foreground">
+        {/* Bottom Bar */}
+        <div className="mt-12 pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <p className="text-gray-500 text-sm">
             © {currentYear} ApplyX. All rights reserved.
           </p>
-          
-          {/* Social Links */}
-          <div className="flex items-center gap-4">
-            {socialLinks.map((social) => (
-              <motion.a
-                key={social.label}
-                href={social.href}
-                whileHover={{ scale: 1.1, rotate: 5 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300 border border-border"
-                aria-label={social.label}
-              >
-                <social.icon className="w-5 h-5" />
-              </motion.a>
-            ))}
-          </div>
         </div>
       </div>
     </footer>

@@ -1,0 +1,57 @@
+name: Deploy Scrapy to Zyte Cloud
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/scrapers/**'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy-to-zyte:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install shub CLI
+        run: |
+          pip install shub
+          shub version
+      
+      - name: Login to Zyte
+        env:
+          ZYTE_API_KEY: ${{ secrets.ZYTE_API_KEY }}
+        run: |
+          if [ -n "$ZYTE_API_KEY" ]; then
+            echo "Logging into Zyte Scrapy Cloud..."
+            echo "$ZYTE_API_KEY" | shub login
+          else
+            echo "ZYTE_API_KEY not configured, skipping Zyte login"
+          fi
+      
+      - name: Deploy to Zyte Cloud
+        run: |
+          cd backend/scrapers
+          echo "Deploying ApplyX scrapers to project ID 840796..."
+          shub deploy 840796
+      
+      - name: Verify Deployment
+        run: |
+          echo "Deployment successful! Spiders available:"
+          cd backend/scrapers
+          shub schedule -l 840796 || echo "Note: Schedule command requires additional setup"
+      
+      - name: Deployment Summary
+        run: |
+          echo "✅ Deployment Complete!"
+          echo "🕷️ Spiders: linkedin, indeed, naukri"
+          echo "🌐 Project: https://app.zyte.com/p/840796"
+          echo "📊 View jobs at: https://app.zyte.com/p/840796/jobs"

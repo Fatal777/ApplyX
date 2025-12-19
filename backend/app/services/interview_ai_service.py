@@ -2,10 +2,12 @@
 
 import logging
 import json
+import asyncio
 from typing import List, Dict, Any, Optional
 from enum import Enum
 
-import openai
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 from app.core.config import settings
 from app.models.interview import InterviewType, DifficultyLevel
@@ -65,34 +67,78 @@ TECHNICAL_THEORY_QUESTIONS = {
 
 class InterviewAIService:
     """
-    AI service for conducting mock interviews.
+    AI service for conducting mock interviews using Gemini 2.5 Flash.
     
     Handles:
     - Dynamic question generation based on resume and job role
     - Real-time response analysis
     - Follow-up question generation
     - Final feedback compilation
+    - Concurrency control with AsyncIO Semaphore
     """
     
     def __init__(self):
         self.model = None
         self.provider = None
+        self.model_name = None
+        self._semaphore: Optional[asyncio.Semaphore] = None
         self._init_ai()
     
     def _init_ai(self):
-        """Initialize AI provider (OpenAI or AgentRouter)"""
+        """Initialize AI provider with Gemini (preferred) or fallback to OpenAI"""
         try:
-            if settings.OPENAI_API_KEY:
+            # Try Gemini first (budget-optimized)
+            if settings.GEMINI_API_KEY:
+                genai.configure(api_key=settings.GEMINI_API_KEY)
+                self.model_name = settings.GEMINI_MODEL
+                
+                # Configure Gemini model with safety settings
+                generation_config = {
+                    "temperature": 0.7,
+                    "top_p": 0.95,
+                    "top_k": 40,
+                    "max_output_tokens": 2048,
+                }
+                
+                safety_settings = {
+                    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                }
+                
+                self.model = genai.GenerativeModel(
+                    model_name=self.model_name,
+                    generation_config=generation_config,
+                    safety_settings=safety_settings,
+                )
+                
+                self.provider = "gemini"
+                
+                # Initialize semaphore for concurrency control
+                max_concurrent = settings.GEMINI_MAX_CONCURRENT
+                self._semaphore = asyncio.Semaphore(max_concurrent)
+                
+                logger.info(f"Interview AI initialized with Gemini {self.model_name} (max concurrent: {max_concurrent})")
+                
+            # Fallback to OpenAI if Gemini not available
+            elif settings.OPENAI_API_KEY:
+                import openai
                 openai.api_key = settings.OPENAI_API_KEY
                 openai.api_base = "https://api.openai.com/v1"
-                self.model = "gpt-4o-mini"  # Cost-effective for interviews
+                self.model = "gpt-4o-mini"
                 self.provider = "openai"
+                self.model_name = self.model
                 logger.info(f"Interview AI initialized with OpenAI (model: {self.model})")
+                
+            # Fallback to AgentRouter
             elif settings.AGENTROUTER_KEY:
+                import openai
                 openai.api_key = settings.AGENTROUTER_KEY
                 openai.api_base = "https://agentrouter.org/v1"
                 self.model = "gpt-5"
                 self.provider = "agentrouter"
+                self.model_name = self.model
                 logger.info(f"Interview AI initialized with AgentRouter")
             else:
                 logger.warning("No AI API key configured for interview service")
@@ -100,6 +146,58 @@ class InterviewAIService:
         except Exception as e:
             logger.error(f"Failed to initialize Interview AI: {str(e)}")
             self.model = None
+    
+    async def _call_gemini(self, prompt: str, system_instruction: Optional[str] = None, temperature: float = 0.7) -> str:
+        """
+        Call Gemini API with concurrency control
+        
+        Args:
+            prompt: User prompt
+            system_instruction: System instruction for model behavior
+            temperature: Generation temperature
+            
+        Returns:
+            Generated text response
+        """
+        if not self.model or self.provider != "gemini":
+            raise AIServiceError("Gemini model not initialized")
+        
+        # Apply concurrency control
+        if self._semaphore:
+            # Try to acquire semaphore with timeout
+            try:
+                acquired = await asyncio.wait_for(
+                    self._semaphore.acquire(),
+                    timeout=5.0
+                )
+            except asyncio.TimeoutError:
+                # All slots busy for >5s, return 503
+                logger.warning("Gemini API concurrency limit reached - all slots busy")
+                raise AIServiceError("AI service temporarily busy - please try again", status_code=503)
+        
+        try:
+            # Create model with system instruction if provided
+            if system_instruction:
+                model = genai.GenerativeModel(
+                    model_name=self.model_name,
+                    generation_config={"temperature": temperature},
+                    system_instruction=system_instruction,
+                )
+            else:
+                model = self.model
+            
+            # Make async API call
+            response = await model.generate_content_async(prompt)
+            
+            if not response or not response.text:
+                raise AIServiceError("Empty response from Gemini API")
+            
+            return response.text
+            
+        finally:
+            # Always release semaphore
+            if self._semaphore:
+                self._semaphore.release()
     
     def get_system_prompt(self, persona: InterviewPersona = InterviewPersona.PROFESSIONAL) -> str:
         """Get system prompt based on interviewer persona"""
@@ -152,21 +250,24 @@ Important guidelines:
                 num_questions, difficulty
             )
             
-            response = openai.ChatCompletion.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an expert interview coach who creates tailored interview questions. Always respond with valid JSON."
-                    },
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.7,
-                max_tokens=2000,
-                timeout=30
-            )
+            system_instruction = "You are an expert interview coach who creates tailored interview questions. Always respond with valid JSON."
             
-            result_text = response.choices[0].message.content
+            if self.provider == "gemini":
+                result_text = await self._call_gemini(prompt, system_instruction, temperature=0.7)
+            else:
+                # OpenAI/AgentRouter fallback
+                import openai
+                response = openai.ChatCompletion.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_instruction},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=2000,
+                    timeout=30
+                )
+                result_text = response.choices[0].message.content
             
             # Parse JSON response
             try:
@@ -187,6 +288,8 @@ Important guidelines:
                 logger.warning("Failed to parse AI questions, using fallback")
                 return self._fallback_questions(interview_type, num_questions)
                 
+        except AIServiceError:
+            raise
         except Exception as e:
             logger.error(f"Error generating interview questions: {str(e)}")
             return self._fallback_questions(interview_type, num_questions)
@@ -286,19 +389,21 @@ Make questions progressively more challenging if difficulty is high."""
             return self._fallback_response(next_question)
         
         try:
-            # Build conversation context
-            messages = [{"role": "system", "content": self.get_system_prompt(persona)}]
+            system_instruction = self.get_system_prompt(persona)
             
-            # Add conversation history (last 6 exchanges max)
+            # Build conversation context
+            context = ""
             for msg in conversation_history[-12:]:
-                messages.append(msg)
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                context += f"{role}: {content}\n"
             
             # Add current context
             prompt = f"""The candidate just answered the question: "{current_question}"
 
 Their response: "{user_transcript}"
 
-{"Next planned question: " + next_question if next_question else "This was the last question."}
+{f"Next planned question: {next_question}" if next_question else "This was the last question."}
 
 Provide a brief, natural interviewer response. Either:
 1. Acknowledge their answer and smoothly transition to the next question
@@ -307,17 +412,24 @@ Provide a brief, natural interviewer response. Either:
 
 Keep your response under 3 sentences. Be natural and conversational."""
 
-            messages.append({"role": "user", "content": prompt})
-            
-            response = openai.ChatCompletion.create(
-                model=self.model,
-                messages=messages,
-                temperature=0.8,
-                max_tokens=200,
-                timeout=15
-            )
-            
-            response_text = response.choices[0].message.content.strip()
+            if self.provider == "gemini":
+                response_text = await self._call_gemini(prompt, system_instruction, temperature=0.8)
+            else:
+                # OpenAI/AgentRouter fallback
+                import openai
+                messages = [{"role": "system", "content": system_instruction}]
+                for msg in conversation_history[-12:]:
+                    messages.append(msg)
+                messages.append({"role": "user", "content": prompt})
+                
+                response = openai.ChatCompletion.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=0.8,
+                    max_tokens=200,
+                    timeout=15
+                )
+                response_text = response.choices[0].message.content.strip()
             
             # Determine if this is a follow-up or transition
             is_follow_up = "?" in response_text and next_question and next_question not in response_text
@@ -329,6 +441,8 @@ Keep your response under 3 sentences. Be natural and conversational."""
                 "is_conclusion": next_question is None
             }
             
+        except AIServiceError:
+            raise
         except Exception as e:
             logger.error(f"Error generating interviewer response: {str(e)}")
             return self._fallback_response(next_question)
@@ -398,21 +512,23 @@ Provide analysis in this exact JSON format:
   "example_provided": true/false
 }}"""
 
-            response = openai.ChatCompletion.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an expert interview coach analyzing responses. Return only valid JSON."
-                    },
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3,  # Lower temp for consistent analysis
-                max_tokens=800,
-                timeout=20
-            )
+            system_instruction = "You are an expert interview coach analyzing responses. Return only valid JSON."
             
-            result_text = response.choices[0].message.content
+            if self.provider == "gemini":
+                result_text = await self._call_gemini(prompt, system_instruction, temperature=0.3)
+            else:
+                import openai
+                response = openai.ChatCompletion.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_instruction},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=800,
+                    timeout=20
+                )
+                result_text = response.choices[0].message.content
             
             # Parse JSON
             if "```json" in result_text:
@@ -424,6 +540,8 @@ Provide analysis in this exact JSON format:
             logger.info(f"Response analysis completed with scores: {analysis.get('scores', {})}")
             return analysis
             
+        except AIServiceError:
+            raise
         except Exception as e:
             logger.error(f"Error analyzing response: {str(e)}")
             return self._fallback_analysis()
@@ -512,21 +630,23 @@ Provide feedback in this exact JSON format:
   "next_steps": "What the candidate should focus on next"
 }}"""
 
-            response = openai.ChatCompletion.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an expert interview coach providing constructive feedback. Return only valid JSON."
-                    },
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.4,
-                max_tokens=1500,
-                timeout=30
-            )
+            system_instruction = "You are an expert interview coach providing constructive feedback. Return only valid JSON."
             
-            result_text = response.choices[0].message.content
+            if self.provider == "gemini":
+                result_text = await self._call_gemini(prompt, system_instruction, temperature=0.4)
+            else:
+                import openai
+                response = openai.ChatCompletion.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_instruction},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.4,
+                    max_tokens=1500,
+                    timeout=30
+                )
+                result_text = response.choices[0].message.content
             
             if "```json" in result_text:
                 result_text = result_text.split("```json")[1].split("```")[0]
@@ -537,6 +657,8 @@ Provide feedback in this exact JSON format:
             logger.info(f"Generated final feedback with overall score: {feedback.get('overall_score', 0)}")
             return feedback
             
+        except AIServiceError:
+            raise
         except Exception as e:
             logger.error(f"Error generating final feedback: {str(e)}")
             return self._fallback_final_feedback(response_analyses)
@@ -587,8 +709,17 @@ Provide feedback in this exact JSON format:
         return {
             "available": self.model is not None,
             "provider": self.provider,
-            "model": self.model
+            "model": self.model_name,
+            "concurrency_limit": settings.GEMINI_MAX_CONCURRENT if self.provider == "gemini" else None,
         }
+
+
+class AIServiceError(Exception):
+    """Custom exception for AI service errors"""
+    def __init__(self, message: str, status_code: int = 500):
+        self.message = message
+        self.status_code = status_code
+        super().__init__(self.message)
 
 
 # Global instance

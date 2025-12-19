@@ -33,10 +33,39 @@ from app.schemas.interview import (
 from app.api.dependencies import get_current_active_user
 from app.services.speech_service import speech_service
 from app.services.interview_ai_service import interview_ai_service
+from app.services.razorpay_service import get_razorpay_service
 from app.middleware.security import limiter
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/interview", tags=["Interview"])
+
+
+# ============== Subscription Check Dependency ==============
+
+async def require_interview_subscription(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> User:
+    """
+    Require active Pro/Enterprise subscription for interview features.
+    
+    Raises 402 Payment Required if user has free plan.
+    """
+    service = get_razorpay_service(db)
+    access = service.check_interview_access(current_user.id)
+    
+    if not access.get("allowed"):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail={
+                "error": access.get("error", "subscription_required"),
+                "message": access.get("message", "A Pro or Enterprise subscription is required to access the AI Interview Platform"),
+                "upgrade_url": access.get("upgrade_url", "/pricing"),
+                "current_plan": access.get("current_plan", "free")
+            }
+        )
+    
+    return current_user
 
 
 # ============== API Endpoints ==============
@@ -60,11 +89,13 @@ async def start_interview(
     request: StartInterviewRequest,
     http_request: Request,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_interview_subscription),  # Requires subscription
     db: Session = Depends(get_db)
 ):
     """
     Start a new interview session.
+    
+    **Requires Pro or Enterprise subscription.**
     
     Generates questions based on interview type and optional resume/job context.
     Returns the first question with optional audio greeting.

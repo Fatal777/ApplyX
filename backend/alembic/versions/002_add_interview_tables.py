@@ -1,7 +1,7 @@
 """Add interview platform tables
 
-Revision ID: 002
-Revises: 001
+Revision ID: 002_add_interview_tables
+Revises: 002_add_application_tracking
 Create Date: 2025-01-15 10:00:00.000000
 
 """
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '002'
-down_revision = '001'
+revision = '002_add_interview_tables'
+down_revision = '002_add_application_tracking'
 branch_labels = None
 depends_on = None
 

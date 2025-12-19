@@ -1,12 +1,15 @@
-"""Speech Service for Interview Platform - Whisper STT + ElevenLabs TTS"""
+"""Speech Service for Interview Platform - Deepgram STT + edge-tts TTS"""
 
 import io
 import base64
+import asyncio
 from typing import Optional, Dict, Any, Tuple
 from abc import ABC, abstractmethod
 
 import httpx
 import pybreaker
+from deepgram import DeepgramClient
+import edge_tts
 
 from app.core.config import settings
 from app.core.resilience import (
@@ -39,8 +42,182 @@ class TTSProvider(ABC):
         pass
 
 
+class DeepgramSTT(STTProvider):
+    """Deepgram Nova-2 API for speech-to-text (Budget-optimized)"""
+    
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        # Initialize Deepgram client with API key
+        self.client = DeepgramClient(api_key=api_key)
+        self.model = settings.DEEPGRAM_MODEL
+    
+    async def transcribe(self, audio_data: bytes, audio_format: str = "webm") -> Tuple[str, float]:
+        """
+        Transcribe audio using Deepgram Nova-2 API
+        
+        Args:
+            audio_data: Raw audio bytes
+            audio_format: Audio format (webm, mp3, wav, etc.)
+            
+        Returns:
+            Tuple of (transcript text, audio duration in seconds)
+        """
+        try:
+            # Configure Deepgram options
+            options = {
+                "model": self.model,
+                "language": "en",
+                "smart_format": True,
+                "punctuate": True,
+                "utterances": False,
+                "diarize": False,
+            }
+            
+            # Make API call with retry logic
+            async def _make_request():
+                response = await self.client.listen.rest.v("1").transcribe_file(
+                    {"buffer": audio_data},
+                    options
+                )
+                return response
+            
+            try:
+                result = await with_timeout(
+                    with_retry(
+                        _make_request,
+                        max_attempts=2,
+                        base_delay=1.0,
+                        retryable_exceptions=(
+                            Exception,  # Deepgram SDK exceptions
+                        ),
+                        logger=logger,
+                    ),
+                    timeout_seconds=60,
+                    timeout_message="Deepgram transcription timed out after 60s"
+                )
+            except RetryError as e:
+                logger.error("All retry attempts failed for Deepgram", error=str(e.last_error))
+                raise SpeechServiceError(f"Transcription failed: {str(e.last_error)}")
+            
+            # Extract transcript and duration
+            transcript = ""
+            duration = 0.0
+            
+            if result and hasattr(result, 'results'):
+                channels = result.results.channels
+                if channels and len(channels) > 0:
+                    alternatives = channels[0].alternatives
+                    if alternatives and len(alternatives) > 0:
+                        transcript = alternatives[0].transcript.strip()
+                
+                # Get duration from metadata
+                if hasattr(result.results, 'metadata') and result.results.metadata:
+                    duration = result.results.metadata.duration or 0.0
+            
+            logger.info(
+                "Deepgram transcription successful",
+                chars=len(transcript),
+                duration_secs=f"{duration:.2f}"
+            )
+            return transcript, duration
+                
+        except SpeechServiceError:
+            raise
+        except Exception as e:
+            logger.error(f"Deepgram transcription error: {str(e)}")
+            raise SpeechServiceError(f"Transcription failed: {str(e)}")
+
+
+class EdgeTTS(TTSProvider):
+    """Microsoft edge-tts for text-to-speech (Free, high-quality)"""
+    
+    # Voice presets for different interview personas
+    VOICE_PRESETS = {
+        "professional": "en-US-JennyNeural",      # Professional female voice
+        "friendly": "en-US-AriaNeural",           # Friendly female voice
+        "authoritative": "en-US-GuyNeural",       # Authoritative male voice
+        "default": "en-US-JennyNeural",           # Jenny as default
+    }
+    
+    def __init__(self):
+        self.default_voice = self.VOICE_PRESETS["default"]
+    
+    async def synthesize(
+        self, 
+        text: str, 
+        voice_id: Optional[str] = None
+    ) -> bytes:
+        """
+        Synthesize text to speech using edge-tts
+        
+        Args:
+            text: Text to synthesize
+            voice_id: Voice preset name or edge-tts voice ID
+            
+        Returns:
+            Audio bytes in mp3 format
+        """
+        try:
+            # Resolve voice ID from preset or use directly
+            if voice_id in self.VOICE_PRESETS:
+                resolved_voice = self.VOICE_PRESETS[voice_id]
+            elif voice_id:
+                resolved_voice = voice_id
+            else:
+                resolved_voice = self.default_voice
+            
+            # Create TTS communicator
+            communicate = edge_tts.Communicate(text, resolved_voice)
+            
+            # Generate audio
+            audio_chunks = []
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    audio_chunks.append(chunk["data"])
+            
+            if not audio_chunks:
+                raise SpeechServiceError("No audio generated from edge-tts")
+            
+            audio_bytes = b"".join(audio_chunks)
+            
+            logger.info(
+                "edge-tts synthesis successful",
+                text_chars=len(text),
+                audio_bytes=len(audio_bytes),
+                voice=resolved_voice
+            )
+            return audio_bytes
+                
+        except SpeechServiceError:
+            raise
+        except Exception as e:
+            logger.error(f"edge-tts synthesis error: {str(e)}")
+            raise SpeechServiceError(f"Speech synthesis failed: {str(e)}")
+    
+    async def get_available_voices(self) -> list[Dict[str, Any]]:
+        """Get list of available voices from edge-tts"""
+        try:
+            voices = await edge_tts.list_voices()
+            # Filter to English voices only
+            english_voices = [
+                {
+                    "id": v["ShortName"],
+                    "name": v["ShortName"],
+                    "gender": v["Gender"],
+                    "locale": v["Locale"]
+                }
+                for v in voices
+                if v["Locale"].startswith("en-")
+            ]
+            return english_voices[:20]  # Return first 20 English voices
+        except Exception as e:
+            logger.error(f"Failed to get edge-tts voices: {str(e)}")
+            return []
+
+
+# Legacy providers kept for backward compatibility
 class OpenAIWhisperSTT(STTProvider):
-    """OpenAI Whisper API for speech-to-text"""
+    """OpenAI Whisper API for speech-to-text (LEGACY)"""
     
     def __init__(self, api_key: str):
         self.api_key = api_key
@@ -127,7 +304,7 @@ class OpenAIWhisperSTT(STTProvider):
 
 
 class ElevenLabsTTS(TTSProvider):
-    """ElevenLabs API for text-to-speech"""
+    """ElevenLabs API for text-to-speech (LEGACY)"""
     
     # Default voices for different interview personas
     VOICE_PRESETS = {
@@ -264,7 +441,7 @@ class SpeechServiceError(Exception):
 class SpeechService:
     """
     Unified speech service for interview platform.
-    Handles both STT (Whisper) and TTS (ElevenLabs) with fallbacks.
+    Handles both STT (Deepgram/Whisper) and TTS (edge-tts/ElevenLabs) with fallbacks.
     """
     
     def __init__(self):
@@ -276,21 +453,31 @@ class SpeechService:
     
     def _init_providers(self):
         """Initialize STT and TTS providers based on configuration"""
-        # Initialize Whisper STT (uses OpenAI API)
+        # Initialize STT - Prefer Deepgram (budget-optimized), fallback to Whisper
+        deepgram_key = settings.DEEPGRAM_API_KEY
         openai_key = settings.OPENAI_API_KEY
-        if openai_key:
-            self.stt_provider = OpenAIWhisperSTT(openai_key)
-            logger.info("Whisper STT initialized with OpenAI API")
-        else:
-            logger.warning("OpenAI API key not configured - STT will not work")
         
-        # Initialize ElevenLabs TTS
+        if deepgram_key:
+            self.stt_provider = DeepgramSTT(deepgram_key)
+            logger.info("STT initialized with Deepgram Nova-2 (budget-optimized)")
+        elif openai_key:
+            self.stt_provider = OpenAIWhisperSTT(openai_key)
+            logger.info("STT initialized with OpenAI Whisper (legacy fallback)")
+        else:
+            logger.warning("No STT API key configured - STT will not work")
+        
+        # Initialize TTS - Prefer edge-tts (free), fallback to ElevenLabs
+        # edge-tts is always available (no API key needed)
+        self.tts_provider = EdgeTTS()
+        logger.info("TTS initialized with edge-tts (budget-optimized, free)")
+        
+        # Store ElevenLabs as fallback if available
         elevenlabs_key = getattr(settings, 'ELEVENLABS_API_KEY', None)
         if elevenlabs_key:
-            self.tts_provider = ElevenLabsTTS(elevenlabs_key)
-            logger.info("ElevenLabs TTS initialized")
+            self._tts_fallback = ElevenLabsTTS(elevenlabs_key)
+            logger.info("ElevenLabs TTS available as fallback")
         else:
-            logger.warning("ElevenLabs API key not configured - TTS will not work")
+            self._tts_fallback = None
         
         self._initialized = True
     
@@ -371,7 +558,7 @@ class SpeechService:
         
         Args:
             text: Text to synthesize
-            voice: Voice preset or ElevenLabs voice ID
+            voice: Voice preset or voice ID
             return_base64: Whether to return audio as base64 string
             
         Returns:
@@ -409,6 +596,26 @@ class SpeechService:
             }
             
         except SpeechServiceError as e:
+            # Try fallback to ElevenLabs if available
+            if self._tts_fallback:
+                try:
+                    logger.info("edge-tts failed, trying ElevenLabs fallback")
+                    audio_bytes = await self._tts_fallback.synthesize(text, voice)
+                    
+                    if return_base64:
+                        audio_data = base64.b64encode(audio_bytes).decode("utf-8")
+                    else:
+                        audio_data = audio_bytes
+                    
+                    return {
+                        "success": True,
+                        "audio": audio_data,
+                        "format": "mp3",
+                        "error": None
+                    }
+                except Exception as fallback_error:
+                    logger.error(f"Fallback TTS also failed: {str(fallback_error)}")
+            
             return {
                 "success": False,
                 "error": str(e),
@@ -432,15 +639,15 @@ class SpeechService:
             {"id": "authoritative", "name": "Authoritative", "description": "Confident, commanding tone"},
         ]
         
-        # Optionally fetch custom voices from ElevenLabs
-        if isinstance(self.tts_provider, ElevenLabsTTS):
+        # Optionally fetch custom voices from edge-tts
+        if isinstance(self.tts_provider, EdgeTTS):
             try:
                 custom_voices = await self.tts_provider.get_available_voices()
                 for voice in custom_voices[:5]:  # Limit to first 5 custom voices
                     presets.append({
-                        "id": voice.get("voice_id", ""),
+                        "id": voice.get("id", ""),
                         "name": voice.get("name", "Custom Voice"),
-                        "description": voice.get("description", "Custom voice")
+                        "description": f"{voice.get('gender', '')} - {voice.get('locale', '')}"
                     })
             except Exception as e:
                 logger.warning(f"Failed to fetch custom voices: {str(e)}")
@@ -449,11 +656,24 @@ class SpeechService:
     
     async def health_check(self) -> Dict[str, Any]:
         """Check health of speech services"""
+        stt_provider_name = None
+        if isinstance(self.stt_provider, DeepgramSTT):
+            stt_provider_name = "deepgram"
+        elif isinstance(self.stt_provider, OpenAIWhisperSTT):
+            stt_provider_name = "whisper"
+        
+        tts_provider_name = None
+        if isinstance(self.tts_provider, EdgeTTS):
+            tts_provider_name = "edge-tts"
+        elif isinstance(self.tts_provider, ElevenLabsTTS):
+            tts_provider_name = "elevenlabs"
+        
         return {
             "stt_available": self.is_stt_available,
-            "stt_provider": "whisper" if self.is_stt_available else None,
+            "stt_provider": stt_provider_name,
             "tts_available": self.is_tts_available,
-            "tts_provider": "elevenlabs" if self.is_tts_available else None,
+            "tts_provider": tts_provider_name,
+            "tts_fallback": "elevenlabs" if self._tts_fallback else None,
         }
 
 

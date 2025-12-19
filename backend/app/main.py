@@ -36,8 +36,13 @@ from app.core.telemetry import (
     record_request_metrics,
     REQUEST_IN_PROGRESS,
 )
-from app.api.routes import auth, resumes, pdf_edit, jobs, interview, profile, applications, ats
+
+# Phase 4: Infrastructure imports
+from app.core.logging_config import setup_logging
+from app.middleware.performance import PerformanceMiddleware
+from app.api.routes import auth, resumes, pdf_edit, jobs, interview, profile, applications, ats, payment, phone, admin
 from app.api.routes import interview_ws  # WebSocket routes
+from app.api.routes import health, metrics  # Phase 4: Health & Metrics
 from app.middleware.security import (
     SecurityHeadersMiddleware,
     RequestLoggingMiddleware,
@@ -97,7 +102,13 @@ if settings.SENTRY_DSN:
 
 os.makedirs("logs", exist_ok=True)
 
-# Configure structured logging
+# Phase 4: Configure structured JSON logging for production
+if settings.ENV == "production":
+    setup_logging(log_level="INFO", json_logs=True)
+else:
+    setup_logging(log_level="DEBUG", json_logs=False)
+
+# Configure structured logging (from resilience.py)
 configure_structured_logging(
     log_level=settings.LOG_LEVEL,
     json_format=settings.LOG_JSON_FORMAT and settings.ENVIRONMENT == "production",
@@ -226,6 +237,10 @@ app.add_middleware(
     max_age=3600,
 )
 logger.info("CORS middleware configured with all methods including OPTIONS")
+
+# Phase 4: Performance metrics middleware
+app.add_middleware(PerformanceMiddleware)
+logger.info("Performance metrics middleware enabled")
 
 # Security middleware (order matters - DDoS first, then validation, then logging, then headers)
 app.add_middleware(SecurityHeadersMiddleware)
@@ -412,10 +427,15 @@ app.include_router(jobs.router, prefix="/api/v1")
 app.include_router(interview.router, prefix="/api/v1")
 app.include_router(interview_ws.router, prefix="/api/v1")  # WebSocket routes
 app.include_router(profile.router, prefix="/api/v1")
-app.include_router(applications.router, prefix="/api/v1/applications", tags=["Applications"])
 app.include_router(ats.router, prefix="/api/v1", tags=["ATS Scoring"])
+app.include_router(applications.router, prefix="/api/v1")
+app.include_router(payment.router, prefix="/api/v1")  # Payment & Subscription
+app.include_router(phone.router, prefix="/api/v1")  # Phone Verification
+app.include_router(admin.router, prefix="/api/v1")  # Admin Dashboard (hidden)
 
-
+# Phase 4: Health & Metrics endpoints
+app.include_router(health.router, prefix="/api/v1")
+app.include_router(metrics.router, prefix="/api/v1")
 # Startup event (deprecated but kept for compatibility)
 @app.on_event("startup")
 async def startup_event():

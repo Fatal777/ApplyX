@@ -231,7 +231,7 @@ def validate_file_type(filename: str, content: bytes) -> bool:
     
     # Check extension
     extension = filename.rsplit('.', 1)[-1].lower()
-    if extension not in settings.ALLOWED_EXTENSIONS:
+    if extension not in settings.allowed_extensions_list:
         return False
     
     # Check magic bytes

@@ -3,7 +3,7 @@
  * Aligned with ApplyX design system - light theme, minimal aesthetic
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -26,6 +26,8 @@ import StatsOverview from '@/components/interview/dashboard/StatsOverview';
 import SessionHistory from '@/components/interview/dashboard/SessionHistory';
 import QuickStartPanel from '@/components/interview/dashboard/QuickStartPanel';
 import ActiveSession from '@/components/interview/dashboard/ActiveSession';
+import { ServiceStatusIndicator } from '@/components/interview';
+import interviewService, { type InterviewSession } from '@/services/interviewService';
 
 // View types for the dashboard
 type DashboardView = 'overview' | 'practice' | 'history' | 'analytics' | 'settings';
@@ -36,6 +38,15 @@ const InterviewDashboard = () => {
   const [currentView, setCurrentView] = useState<DashboardView>('overview');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
+
+  // Real stats state
+  const [stats, setStats] = useState({
+    totalSessions: 0,
+    practiceHours: 0,
+    avgScore: 0,
+    improvement: 0
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
 
   // Start a new interview session
   const handleStartInterview = (config: any) => {
@@ -61,6 +72,92 @@ const InterviewDashboard = () => {
     await signOut();
     navigate('/');
   };
+
+  // Load real stats from API
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        setLoadingStats(true);
+        const sessions = await interviewService.listSessions(100, 0);
+
+        // Calculate real stats
+        const completedSessions = sessions.filter(s => s.status === 'completed');
+        const totalSessions = sessions.length;
+
+        // Calculate practice hours from session durations
+        let totalMinutes = 0;
+        let totalScore = 0;
+        let scoreCount = 0;
+
+        for (const session of completedSessions) {
+          // Estimate ~5 min per question
+          const questionCount = session.config?.num_questions || 5;
+          totalMinutes += questionCount * 5;
+
+          // Try to get feedback scores
+          try {
+            const feedback = await interviewService.getFeedback(session.id);
+            totalScore += feedback.overall_score;
+            scoreCount++;
+          } catch {
+            // Feedback not available for this session
+          }
+        }
+
+        const practiceHours = totalMinutes / 60;
+        const avgScore = scoreCount > 0 ? Math.round(totalScore / scoreCount) : 0;
+
+        // Calculate improvement (compare last 5 vs previous 5)
+        let improvement = 0;
+        if (completedSessions.length >= 10) {
+          const recent = completedSessions.slice(0, 5);
+          const previous = completedSessions.slice(5, 10);
+
+          let recentAvg = 0;
+          let previousAvg = 0;
+          let recentCount = 0;
+          let previousCount = 0;
+
+          for (const session of recent) {
+            try {
+              const feedback = await interviewService.getFeedback(session.id);
+              recentAvg += feedback.overall_score;
+              recentCount++;
+            } catch { }
+          }
+
+          for (const session of previous) {
+            try {
+              const feedback = await interviewService.getFeedback(session.id);
+              previousAvg += feedback.overall_score;
+              previousCount++;
+            } catch { }
+          }
+
+          if (recentCount > 0 && previousCount > 0) {
+            const recentScore = recentAvg / recentCount;
+            const previousScore = previousAvg / previousCount;
+            improvement = Math.round(((recentScore - previousScore) / previousScore) * 100);
+          }
+        }
+
+        setStats({
+          totalSessions,
+          practiceHours: Math.round(practiceHours * 10) / 10,
+          avgScore,
+          improvement
+        });
+      } catch (error) {
+        console.error('Failed to load stats:', error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    if (user) {
+      loadStats();
+    }
+  }, [user]);
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
   const userEmail = user?.email;
@@ -106,7 +203,7 @@ const InterviewDashboard = () => {
                         Ready to ace your next interview? Let's practice.
                       </p>
                     </div>
-                    
+
                     <div className="flex items-center gap-3">
                       <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-lime-100 border border-lime-200">
                         <Sparkles className="w-4 h-4 text-lime-600" />
@@ -116,38 +213,48 @@ const InterviewDashboard = () => {
                   </motion.div>
                 </header>
 
-                {/* Quick Stats */}
+                {/* Service Status */}
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.05 }}
+                  className="mb-6"
+                >
+                  <ServiceStatusIndicator className="w-full" />
+                </motion.div>
+
+                {/* Quick Stats */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.08 }}
                   className="grid grid-cols-4 gap-4 mb-8"
                 >
                   <StatCard
                     label="Total Sessions"
-                    value="24"
+                    value={loadingStats ? "-" : stats.totalSessions.toString()}
                     icon={Play}
                     iconBg="bg-blue-100"
                     iconColor="text-blue-600"
                   />
                   <StatCard
                     label="Practice Hours"
-                    value="12.5"
+                    value={loadingStats ? "-" : stats.practiceHours.toString()}
                     icon={Clock}
                     iconBg="bg-purple-100"
                     iconColor="text-purple-600"
                   />
                   <StatCard
                     label="Avg. Score"
-                    value="85"
-                    suffix="/100"
+                    value={loadingStats ? "-" : stats.avgScore.toString()}
+                    suffix={loadingStats ? "" : "/100"}
                     icon={Target}
                     iconBg="bg-lime-100"
                     iconColor="text-lime-600"
                   />
                   <StatCard
                     label="Improvement"
-                    value="+23%"
+                    value={loadingStats ? "-" : `${stats.improvement > 0 ? '+' : ''}${stats.improvement}%`}
                     icon={TrendingUp}
                     iconBg="bg-green-100"
                     iconColor="text-green-600"
@@ -175,7 +282,7 @@ const InterviewDashboard = () => {
                 >
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-semibold text-gray-900">Recent Sessions</h2>
-                    <button 
+                    <button
                       onClick={() => setCurrentView('history')}
                       className="text-sm font-medium text-gray-500 hover:text-gray-900 flex items-center gap-1 transition-colors"
                     >
@@ -183,8 +290,8 @@ const InterviewDashboard = () => {
                       <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
-                  <SessionHistory 
-                    limit={5} 
+                  <SessionHistory
+                    limit={5}
                     onViewAll={() => setCurrentView('history')}
                     onResumeSession={handleResumeSession}
                   />
@@ -203,7 +310,7 @@ const InterviewDashboard = () => {
               className="h-full"
             >
               {activeSessionId ? (
-                <ActiveSession 
+                <ActiveSession
                   sessionId={activeSessionId}
                   onEnd={() => {
                     setActiveSessionId(null);
@@ -276,7 +383,7 @@ const InterviewDashboard = () => {
                   <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
                   <p className="text-gray-500 mt-1">Customize your interview experience</p>
                 </header>
-                
+
                 <div className="space-y-4">
                   <SettingsCard
                     icon={Mic}
@@ -285,7 +392,7 @@ const InterviewDashboard = () => {
                     title="Audio Settings"
                     description="Configure microphone and speaker settings for interviews"
                   />
-                  
+
                   <SettingsCard
                     icon={Video}
                     iconBg="bg-purple-100"
@@ -293,7 +400,7 @@ const InterviewDashboard = () => {
                     title="Video Settings"
                     description="Adjust camera and video quality preferences"
                   />
-                  
+
                   <SettingsCard
                     icon={Volume2}
                     iconBg="bg-lime-100"
@@ -320,14 +427,14 @@ const getGreeting = () => {
 };
 
 // Stat Card Component
-const StatCard = ({ 
-  label, 
-  value, 
+const StatCard = ({
+  label,
+  value,
   suffix,
-  icon: Icon, 
-  iconBg, 
+  icon: Icon,
+  iconBg,
   iconColor
-}: { 
+}: {
   label: string;
   value: string;
   suffix?: string;

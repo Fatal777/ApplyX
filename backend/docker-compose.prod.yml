@@ -1,0 +1,150 @@
+version: '3.8'
+
+# Production Docker Compose for ApplyX
+# Deploy with: docker compose -f docker-compose.prod.yml up -d
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: applyx-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-applyx}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-applyx}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - applyx-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-applyx}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and Celery
+  redis:
+    image: redis:7-alpine
+    container_name: applyx-redis
+    restart: always
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - applyx-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: applyx-api
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-applyx}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-applyx}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      ENVIRONMENT: production
+      DEBUG: "false"
+    expose:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    networks:
+      - applyx-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`api.applyx.in`)"
+      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.celery
+    container_name: applyx-celery-worker
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-applyx}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-applyx}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    networks:
+      - applyx-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: applyx-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - frontend_build:/usr/share/nginx/html:ro
+    depends_on:
+      - api
+    networks:
+      - applyx-network
+
+  # Certbot for SSL
+  certbot:
+    image: certbot/certbot
+    container_name: applyx-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+  # Frontend (build and serve)
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: applyx-frontend
+    restart: always
+    volumes:
+      - frontend_build:/app/dist
+    networks:
+      - applyx-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  frontend_build:
+
+networks:
+  applyx-network:
+    driver: bridge
