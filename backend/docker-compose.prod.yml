@@ -1,5 +1,5 @@
 # Production Docker Compose for ApplyX
-# Deploy with: docker compose -f docker-compose.prod.yml up -d
+# Deploy with: docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 
 services:
   # PostgreSQL Database
@@ -10,15 +10,15 @@ services:
     env_file:
       - .env.production
     environment:
-      POSTGRES_USER: ${DB_USER:-applyx}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME:-applyx}
+      POSTGRES_USER: applyx
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      POSTGRES_DB: applyx
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - applyx-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-applyx}"]
+      test: ["CMD-SHELL", "pg_isready -U applyx"]
       interval: 10s
       timeout: 5s
       retries: 5
