@@ -43,10 +43,29 @@ export function VoiceAgent({
     if (audioToPlay && audioRef.current) {
       const audioSrc = `data:audio/mp3;base64,${audioToPlay}`;
       audioRef.current.src = audioSrc;
-      audioRef.current.play().catch(console.error);
-      setAudioPlaying(true);
+
+      // Add a fallback timeout in case onEnded doesn't fire
+      const fallbackTimeout = setTimeout(() => {
+        console.log('Audio fallback timeout triggered');
+        setAudioPlaying(false);
+        onAudioEnd?.();
+      }, 30000); // 30 second max for any audio
+
+      audioRef.current.play()
+        .then(() => {
+          setAudioPlaying(true);
+        })
+        .catch((err) => {
+          console.error('Audio play error:', err);
+          setAudioPlaying(false);
+          onAudioEnd?.();
+        });
+
+      return () => {
+        clearTimeout(fallbackTimeout);
+      };
     }
-  }, [audioToPlay]);
+  }, [audioToPlay, onAudioEnd]);
 
   const handleAudioEnd = () => {
     setAudioPlaying(false);
@@ -76,7 +95,14 @@ export function VoiceAgent({
       {/* Hidden audio element */}
       <audio
         ref={audioRef}
-        onEnded={handleAudioEnd}
+        onEnded={() => {
+          console.log('Audio ended');
+          handleAudioEnd();
+        }}
+        onError={(e) => {
+          console.error('Audio error:', e);
+          handleAudioEnd(); // Reset state on error
+        }}
         className="hidden"
       />
 

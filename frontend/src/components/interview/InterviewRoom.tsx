@@ -113,6 +113,19 @@ export function InterviewRoom() {
       setPhase('setup');
       setError(null);
 
+      // Request mic permission upfront so user can respond
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(track => track.stop()); // Stop immediately, just requesting permission
+      } catch (micErr) {
+        console.warn('Mic permission denied/unavailable:', micErr);
+        toast({
+          title: "Microphone access needed",
+          description: "Please allow microphone access to respond during the interview",
+          variant: "destructive",
+        });
+      }
+
       const response = await interviewService.startInterview({
         interview_type: config.interviewType,
         difficulty: config.difficulty,
