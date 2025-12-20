@@ -85,9 +85,17 @@ class User(Base):
     @classmethod
     def from_supabase_auth(cls, db, user_data: dict):
         """Create or update user from Supabase auth data"""
+        from app.core.config import settings
+        from app.models.subscription import Subscription, SubscriptionPlan, SubscriptionStatus
+        from datetime import timedelta
+        
         email = user_data.get('email')
         if not email:
             return None
+        
+        # Check if this is the admin user
+        admin_email = getattr(settings, 'ADMIN_USERNAME', '') + '@applyx.in'
+        is_admin = email.lower() == admin_email.lower()
             
         # Check if user exists
         user = db.query(cls).filter(cls.email == email).first()
@@ -99,16 +107,56 @@ class User(Base):
             
             user = cls(
                 email=email,
-                full_name=full_name,
+                full_name=full_name if full_name else ('ApplyX Admin' if is_admin else None),
                 is_verified=user_data.get('email_confirmed_at') is not None,
+                is_superadmin=is_admin,
                 last_login=datetime.utcnow(),
                 contact_source='google' if metadata.get('provider') == 'google' else None
             )
             db.add(user)
+            db.flush()  # Get user ID for subscription
+            
+            # Create Pro+ subscription for admin
+            if is_admin:
+                admin_subscription = Subscription(
+                    user_id=user.id,
+                    plan=SubscriptionPlan.PRO_PLUS,
+                    status=SubscriptionStatus.ACTIVE,
+                    resume_edits_used=0,
+                    resume_edits_limit=-1,  # Unlimited
+                    interviews_used=0,
+                    interviews_limit=-1,  # Unlimited
+                    current_period_start=datetime.utcnow(),
+                    current_period_end=datetime.utcnow() + timedelta(days=36500),  # 100 years
+                )
+                db.add(admin_subscription)
         else:
             # Update existing user
             user.is_verified = user_data.get('email_confirmed_at') is not None
             user.last_login = datetime.utcnow()
+            
+            # If admin, ensure they have superadmin status and Pro+ subscription
+            if is_admin:
+                user.is_superadmin = True
+                if not user.subscription:
+                    admin_subscription = Subscription(
+                        user_id=user.id,
+                        plan=SubscriptionPlan.PRO_PLUS,
+                        status=SubscriptionStatus.ACTIVE,
+                        resume_edits_used=0,
+                        resume_edits_limit=-1,
+                        interviews_used=0,
+                        interviews_limit=-1,
+                        current_period_start=datetime.utcnow(),
+                        current_period_end=datetime.utcnow() + timedelta(days=36500),
+                    )
+                    db.add(admin_subscription)
+                else:
+                    # Ensure admin always has Pro+ with unlimited
+                    user.subscription.plan = SubscriptionPlan.PRO_PLUS
+                    user.subscription.status = SubscriptionStatus.ACTIVE
+                    user.subscription.resume_edits_limit = -1
+                    user.subscription.interviews_limit = -1
             
             # Update name from Google if not already set
             if not user.full_name:
@@ -118,3 +166,4 @@ class User(Base):
         db.commit()
         db.refresh(user)
         return user
+
