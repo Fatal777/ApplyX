@@ -3,6 +3,8 @@
  * Handles all interview-related API calls including sessions, transcription, and feedback
  */
 
+import { supabase } from '@/integrations/supabase/client';
+
 const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/v1';
 
 // ============== Types ==============
@@ -129,24 +131,16 @@ class InterviewService {
     this.baseUrl = API_BASE_URL;
   }
 
-  private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('supabase.auth.token');
-    if (!token) {
+  private async getAuthHeaders(): Promise<HeadersInit> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
       throw new Error('Not authenticated');
     }
-    
-    try {
-      const parsed = JSON.parse(token);
-      return {
-        'Authorization': `Bearer ${parsed.access_token}`,
-        'Content-Type': 'application/json',
-      };
-    } catch {
-      return {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
-    }
+
+    return {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    };
   }
 
   /**
@@ -154,11 +148,11 @@ class InterviewService {
    */
   async checkHealth(): Promise<ServiceHealth> {
     const response = await fetch(`${this.baseUrl}/interview/health`);
-    
+
     if (!response.ok) {
       throw new Error('Failed to check interview service health');
     }
-    
+
     return response.json();
   }
 
@@ -168,15 +162,15 @@ class InterviewService {
   async startInterview(params: StartInterviewRequest): Promise<StartInterviewResponse> {
     const response = await fetch(`${this.baseUrl}/interview/start`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
       body: JSON.stringify(params),
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to start interview');
     }
-    
+
     return response.json();
   }
 
@@ -186,15 +180,15 @@ class InterviewService {
   async transcribeAudio(params: TranscribeRequest): Promise<TranscribeResponse> {
     const response = await fetch(`${this.baseUrl}/interview/transcribe`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
       body: JSON.stringify(params),
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to transcribe audio');
     }
-    
+
     return response.json();
   }
 
@@ -204,15 +198,15 @@ class InterviewService {
   async getInterviewerResponse(params: RespondRequest): Promise<RespondResponse> {
     const response = await fetch(`${this.baseUrl}/interview/respond`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
       body: JSON.stringify(params),
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to get interviewer response');
     }
-    
+
     return response.json();
   }
 
@@ -228,15 +222,15 @@ class InterviewService {
   }> {
     const response = await fetch(`${this.baseUrl}/interview/analyze`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
       body: JSON.stringify({ session_id: sessionId }),
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to analyze interview');
     }
-    
+
     return response.json();
   }
 
@@ -246,14 +240,14 @@ class InterviewService {
   async getFeedback(sessionId: number): Promise<InterviewFeedback> {
     const response = await fetch(`${this.baseUrl}/interview/feedback/${sessionId}`, {
       method: 'GET',
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to get feedback');
     }
-    
+
     return response.json();
   }
 
@@ -265,15 +259,15 @@ class InterviewService {
       `${this.baseUrl}/interview/sessions?limit=${limit}&offset=${offset}`,
       {
         method: 'GET',
-        headers: this.getAuthHeaders(),
+        headers: await this.getAuthHeaders(),
       }
     );
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to list sessions');
     }
-    
+
     return response.json();
   }
 
@@ -283,14 +277,14 @@ class InterviewService {
   async getSessionStatus(sessionId: number): Promise<InterviewStatusResponse> {
     const response = await fetch(`${this.baseUrl}/interview/session/${sessionId}/status`, {
       method: 'GET',
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to get session status');
     }
-    
+
     return response.json();
   }
 
@@ -300,14 +294,14 @@ class InterviewService {
   async cancelInterview(sessionId: number): Promise<{ success: boolean; message: string }> {
     const response = await fetch(`${this.baseUrl}/interview/session/${sessionId}`, {
       method: 'DELETE',
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to cancel interview');
     }
-    
+
     return response.json();
   }
 
@@ -316,11 +310,11 @@ class InterviewService {
    */
   async getVoiceOptions(): Promise<{ voices: VoiceOption[] }> {
     const response = await fetch(`${this.baseUrl}/interview/voices`);
-    
+
     if (!response.ok) {
       throw new Error('Failed to get voice options');
     }
-    
+
     return response.json();
   }
 }
