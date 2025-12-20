@@ -7,11 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     X,
     Crown,
-    Sparkles,
     Check,
-    Zap,
-    MessageSquare,
-    FileText,
     Star,
     ArrowRight
 } from 'lucide-react';
@@ -85,46 +81,39 @@ const SubscriptionModal = ({ isOpen, onClose, feature = 'Mock Interview' }: Subs
     return (
         <AnimatePresence>
             {isOpen && (
-                <>
-                    {/* Backdrop */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={onClose}
-                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-                    />
-
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+                    onClick={onClose}
+                >
                     {/* Modal */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
+                        initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                                   w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto
-                                   bg-white dark:bg-gray-900 rounded-3xl shadow-2xl z-50"
+                        className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 rounded-3xl shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
                     >
                         {/* Close button */}
                         <button
                             onClick={onClose}
-                            className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 dark:bg-gray-800 
-                         hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors z-10"
+                            className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors z-10"
                         >
                             <X className="w-5 h-5" />
                         </button>
 
                         {/* Header */}
                         <div className="relative px-8 pt-8 pb-6 text-center overflow-hidden">
-                            {/* Background decoration */}
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-[#c7ff6b]/5" />
 
                             <motion.div
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
                                 transition={{ delay: 0.1, type: 'spring' }}
-                                className="relative inline-flex items-center justify-center w-20 h-20 rounded-full 
-                           bg-gradient-to-br from-[#c7ff6b] to-[#a8e063] mb-4"
+                                className="relative inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#c7ff6b] to-[#a8e063] mb-4"
                             >
                                 <Crown className="w-10 h-10 text-black" />
                             </motion.div>
@@ -144,7 +133,7 @@ const SubscriptionModal = ({ isOpen, onClose, feature = 'Mock Interview' }: Subs
                                 transition={{ delay: 0.2 }}
                                 className="relative text-gray-600 dark:text-gray-400 max-w-md mx-auto"
                             >
-                                Get access to AI-powered mock interviews, detailed feedback, and more with a subscription
+                                Get access to AI-powered features with a subscription
                             </motion.p>
                         </div>
 
@@ -157,17 +146,15 @@ const SubscriptionModal = ({ isOpen, onClose, feature = 'Mock Interview' }: Subs
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: 0.25 + index * 0.1 }}
-                                        className={`relative p-5 rounded-2xl border-2 transition-all duration-300 
-                               ${plan.popular
+                                        className={`relative p-5 rounded-2xl border-2 transition-all duration-300 ${plan.popular
                                                 ? 'border-[#c7ff6b] bg-[#c7ff6b]/5'
-                                                : 'border-gray-200 dark:border-gray-700 hover:border-primary/50'}`}
+                                                : 'border-gray-200 dark:border-gray-700 hover:border-primary/50'
+                                            }`}
                                     >
                                         {/* Popular badge */}
                                         {plan.popular && (
                                             <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full 
-                                       bg-gradient-to-r from-[#c7ff6b] to-[#a8e063] 
-                                       text-black text-xs font-bold">
+                                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r from-[#c7ff6b] to-[#a8e063] text-black text-xs font-bold">
                                                     <Star className="w-3 h-3" />
                                                     MOST POPULAR
                                                 </span>
@@ -186,10 +173,10 @@ const SubscriptionModal = ({ isOpen, onClose, feature = 'Mock Interview' }: Subs
 
                                         {/* Features */}
                                         <ul className="space-y-2 mb-5">
-                                            {plan.features.map((feature, i) => (
+                                            {plan.features.map((feat, i) => (
                                                 <li key={i} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                                                     <Check className={`w-4 h-4 flex-shrink-0 ${plan.popular ? 'text-[#7fb832]' : 'text-primary'}`} />
-                                                    <span>{feature}</span>
+                                                    <span>{feat}</span>
                                                 </li>
                                             ))}
                                         </ul>
@@ -198,8 +185,8 @@ const SubscriptionModal = ({ isOpen, onClose, feature = 'Mock Interview' }: Subs
                                         <Button
                                             onClick={() => handleSelectPlan(plan.name)}
                                             className={`w-full h-11 font-bold transition-all duration-200 ${plan.popular
-                                                ? 'bg-gradient-to-r from-[#c7ff6b] to-[#a8e063] hover:from-[#b8f55a] hover:to-[#98d052] text-black'
-                                                : 'bg-primary hover:bg-primary/90 text-white'
+                                                    ? 'bg-gradient-to-r from-[#c7ff6b] to-[#a8e063] hover:from-[#b8f55a] hover:to-[#98d052] text-black'
+                                                    : 'bg-primary hover:bg-primary/90 text-white'
                                                 }`}
                                         >
                                             Get Started
@@ -210,17 +197,12 @@ const SubscriptionModal = ({ isOpen, onClose, feature = 'Mock Interview' }: Subs
                             </div>
 
                             {/* Footer note */}
-                            <motion.p
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 0.6 }}
-                                className="text-center text-xs text-gray-500 mt-6"
-                            >
+                            <p className="text-center text-xs text-gray-500 mt-6">
                                 All plans include a 7-day money-back guarantee • Cancel anytime
-                            </motion.p>
+                            </p>
                         </div>
                     </motion.div>
-                </>
+                </motion.div>
             )}
         </AnimatePresence>
     );
