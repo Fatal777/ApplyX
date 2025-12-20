@@ -12,7 +12,7 @@ class TrieNode {
     }
 }
 
-export class Autocomplete Trie {
+export class AutocompleteTrie {
     constructor() {
         this.root = new TrieNode();
         this.cache = new Map(); // LRU cache for repeated queries
