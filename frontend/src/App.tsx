@@ -32,6 +32,7 @@ import Dashboard from "./pages/Dashboard";
 import LivePdfEditor from "./pages/LivePdfEditor";
 import Pricing from "./pages/Pricing";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminPanel from "./pages/AdminPanel";
 import ScrollToTop from "./components/ScrollToTop";
 
 const queryClient = new QueryClient();
@@ -247,6 +248,9 @@ const AppRoutes = () => {
 
       {/* Hidden Admin Dashboard - Not linked anywhere */}
       <Route path="/nexus-control" element={<AdminDashboard />} />
+
+      {/* Admin Panel - HTTPBasic Auth protected */}
+      <Route path="/admin" element={<AdminPanel />} />
 
       {/* Catch-all route */}
       <Route path="*" element={<NotFound />} />

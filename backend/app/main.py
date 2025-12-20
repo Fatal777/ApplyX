@@ -200,6 +200,19 @@ async def lifespan(app: FastAPI):
         setup_telemetry(app=app, db_engine=engine)
         logger.info("OpenTelemetry instrumentation enabled")
     
+    # Seed admin user on startup
+    try:
+        from app.db.admin_seeder import seed_admin_user
+        from app.db.database import SessionLocal
+        db = SessionLocal()
+        try:
+            seed_admin_user(db)
+            logger.info("Admin user seeding completed")
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Failed to seed admin user: {e}")
+    
     yield
     
     # Shutdown
