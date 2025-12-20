@@ -184,6 +184,21 @@ def get_current_user_from_token(token: str) -> Dict[str, Any]:
         )
 
 
+def verify_supabase_token(token: str) -> Optional[Dict[str, Any]]:
+    """
+    Verify a Supabase JWT token and return the payload.
+    Returns None if verification fails.
+    """
+    try:
+        payload = decode_token(token)
+        return payload
+    except HTTPException:
+        return None
+    except Exception as e:
+        logger.error(f"Token verification failed: {str(e)}")
+        return None
+
+
 class AESCipher:
     """AES encryption/decryption for sensitive data"""
     
