@@ -237,6 +237,11 @@ app.state.limiter = limiter
 
 # CORS middleware
 # Convert comma-separated string to list of origins
+# Trust proxy headers (X-Forwarded-Proto, X-Forwarded-For) from nginx
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
+logger.info("ProxyHeadersMiddleware enabled for HTTPS behind nginx")
+
 cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
 logger.info(f"CORS Origins configured: {cors_origins}")
 
