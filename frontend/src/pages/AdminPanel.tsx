@@ -26,8 +26,9 @@ import Navbar from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-// Admin API calls with Basic Auth
-const ADMIN_API_BASE = '/api/v1/nexus-control';
+// Admin API calls with Basic Auth - use the API domain
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.applyx.in';
+const ADMIN_API_BASE = `${API_URL}/api/v1/nexus-control`;
 
 interface DashboardStats {
     users: {
@@ -404,9 +405,9 @@ const AdminPanel = () => {
                                                 <td className="py-3 px-4 text-sm">{u.phone || '—'}</td>
                                                 <td className="py-3 px-4">
                                                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${u.subscription?.plan === 'pro_plus' ? 'bg-purple-100 text-purple-700' :
-                                                            u.subscription?.plan === 'pro' ? 'bg-green-100 text-green-700' :
-                                                                u.subscription?.plan === 'basic' ? 'bg-blue-100 text-blue-700' :
-                                                                    'bg-gray-100 text-gray-700'
+                                                        u.subscription?.plan === 'pro' ? 'bg-green-100 text-green-700' :
+                                                            u.subscription?.plan === 'basic' ? 'bg-blue-100 text-blue-700' :
+                                                                'bg-gray-100 text-gray-700'
                                                         }`}>
                                                         {u.subscription?.plan || 'free'}
                                                     </span>
