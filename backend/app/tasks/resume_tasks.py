@@ -70,6 +70,7 @@ def process_resume_task(self, resume_id: int):
     - Generate feedback
     """
     db = SessionLocal()
+    resume = None  # Initialize to avoid UnboundLocalError in exception handler
     
     try:
         logger.info(f"Starting resume processing for ID: {resume_id}")
