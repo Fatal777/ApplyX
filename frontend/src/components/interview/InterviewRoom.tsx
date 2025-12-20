@@ -96,6 +96,51 @@ export function InterviewRoom() {
     jobDescription: searchParams.get('jobDesc') || undefined,
   }));
 
+  // Cleanup function to stop all media
+  const cleanupMedia = useCallback(() => {
+    // Stop recording if active
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsListening(false);
+
+    // Turn off webcam
+    setWebcamActive(false);
+
+    // Clear audio
+    setCurrentAudio(undefined);
+    setIsSpeaking(false);
+  }, []);
+
+  // Tab visibility handler - pause/resume on tab switch
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Tab hidden - pause media
+        console.log('Tab hidden - pausing interview');
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+          mediaRecorderRef.current.pause();
+        }
+        setCurrentAudio(undefined); // Stop TTS audio
+        setIsSpeaking(false);
+      } else {
+        // Tab visible - resume
+        console.log('Tab visible - resuming interview');
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'paused') {
+          mediaRecorderRef.current.resume();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup on unmount
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      cleanupMedia();
+    };
+  }, [cleanupMedia]);
+
   // Check auth and start interview on mount
   useEffect(() => {
     if (authLoading) return;
@@ -323,6 +368,9 @@ export function InterviewRoom() {
   };
 
   const handleEndInterview = async () => {
+    // Cleanup media before exiting
+    cleanupMedia();
+
     if (sessionId && phase === 'in-progress') {
       try {
         await interviewService.cancelInterview(sessionId);
