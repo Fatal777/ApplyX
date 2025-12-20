@@ -103,7 +103,7 @@ if settings.SENTRY_DSN:
 os.makedirs("logs", exist_ok=True)
 
 # Phase 4: Configure structured JSON logging for production
-if settings.ENV == "production":
+if settings.ENVIRONMENT == "production":
     setup_logging(log_level="INFO", json_logs=True)
 else:
     setup_logging(log_level="DEBUG", json_logs=False)
