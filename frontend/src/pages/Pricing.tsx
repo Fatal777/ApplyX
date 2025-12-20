@@ -259,7 +259,7 @@ const Pricing = () => {
 
                           <div className="mt-4">
                             <div className="flex items-baseline gap-2">
-                              <span className="text-5xl font-bold">${price}</span>
+                              <span className="text-5xl font-bold">₹{price}</span>
                               <span className="text-gray-500">
                                 /{isYearly ? 'year' : 'month'}
                               </span>
@@ -271,7 +271,7 @@ const Pricing = () => {
                             )}
                             {!isYearly && plan.monthlyPrice > 0 && (
                               <p className="text-sm text-gray-500 mt-1">
-                                ${plan.yearlyPrice}/year if billed annually
+                                ₹{plan.yearlyPrice}/year if billed annually
                               </p>
                             )}
                           </div>
