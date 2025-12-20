@@ -32,12 +32,15 @@ class S3StorageService(StorageService):
     """AWS S3 storage service"""
     
     def __init__(self):
+        # Only use endpoint_url if it's set and not empty
+        endpoint_url = settings.S3_ENDPOINT_URL if settings.S3_ENDPOINT_URL else None
+        
         self.s3_client = boto3.client(
             's3',
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             region_name=settings.AWS_REGION,
-            endpoint_url=settings.S3_ENDPOINT_URL
+            endpoint_url=endpoint_url
         )
         self.bucket_name = settings.S3_BUCKET_NAME
     
