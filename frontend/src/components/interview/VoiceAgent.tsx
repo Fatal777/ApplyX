@@ -10,6 +10,7 @@ interface VoiceAgentProps {
   currentQuestion: string;
   onStartRecording: () => void;
   onStopRecording: () => void;
+  onAudioEnd?: () => void; // Called when AI audio finishes playing
   audioToPlay?: string; // Base64 audio data
   className?: string;
   persona?: 'friendly' | 'professional' | 'challenging';
@@ -29,6 +30,7 @@ export function VoiceAgent({
   currentQuestion,
   onStartRecording,
   onStopRecording,
+  onAudioEnd,
   audioToPlay,
   className,
   persona = 'professional'
@@ -48,6 +50,7 @@ export function VoiceAgent({
 
   const handleAudioEnd = () => {
     setAudioPlaying(false);
+    onAudioEnd?.(); // Notify parent that audio finished
   };
 
   // Get persona avatar color
@@ -71,8 +74,8 @@ export function VoiceAgent({
   return (
     <div className={cn("flex flex-col items-center", className)}>
       {/* Hidden audio element */}
-      <audio 
-        ref={audioRef} 
+      <audio
+        ref={audioRef}
         onEnded={handleAudioEnd}
         className="hidden"
       />

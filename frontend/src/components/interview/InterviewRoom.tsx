@@ -514,6 +514,10 @@ export function InterviewRoom() {
                     currentQuestion={questions[currentQuestionIndex]?.question || ''}
                     onStartRecording={startRecording}
                     onStopRecording={stopRecording}
+                    onAudioEnd={() => {
+                      setIsSpeaking(false);
+                      setCurrentAudio(undefined);
+                    }}
                     audioToPlay={currentAudio}
                     persona={config.persona}
                   />
