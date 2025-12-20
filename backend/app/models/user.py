@@ -93,8 +93,8 @@ class User(Base):
         if not email:
             return None
         
-        # Check if this is the admin user
-        admin_email = getattr(settings, 'ADMIN_USERNAME', '') + '@applyx.in'
+        # Check if this is the admin user (supports ADMIN_EMAIL or falls back to ADMIN_USERNAME@applyx.in)
+        admin_email = getattr(settings, 'ADMIN_EMAIL', None) or (getattr(settings, 'ADMIN_USERNAME', '') + '@applyx.in')
         is_admin = email.lower() == admin_email.lower()
             
         # Check if user exists

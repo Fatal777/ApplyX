@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     # Admin Dashboard Credentials (change in production!)
     ADMIN_USERNAME: str = "applyx_admin"
     ADMIN_PASSWORD: str = "SecureAdminPass2024!"
+    ADMIN_EMAIL: Optional[str] = None  # Full email for admin recognition (overrides ADMIN_USERNAME@applyx.in)
     
     # Database - Optimized for sub-10ms latency
     DATABASE_URL: str
