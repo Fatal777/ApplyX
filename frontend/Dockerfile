@@ -30,11 +30,19 @@ RUN npm run build
 # Stage 2: Serve with nginx
 FROM nginx:alpine
 
-# Copy built files
+# Copy built files to nginx html
 COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Also copy to a backup location
+COPY --from=builder /app/dist /app/dist-backup
 
 # Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Create startup script that copies files to shared volume
+RUN echo '#!/bin/sh' > /docker-entrypoint.d/99-copy-files.sh && \
+    echo 'cp -r /usr/share/nginx/html/* /app/dist/ 2>/dev/null || true' >> /docker-entrypoint.d/99-copy-files.sh && \
+    chmod +x /docker-entrypoint.d/99-copy-files.sh
 
 # Expose port
 EXPOSE 80
