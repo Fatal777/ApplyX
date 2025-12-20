@@ -86,8 +86,8 @@ async def interview_health_check():
 @router.post("/start", response_model=StartInterviewResponse)
 @limiter.limit("10/minute")  # Rate limit session creation
 async def start_interview(
-    request: StartInterviewRequest,
-    http_request: Request,
+    request: Request,  # Starlette Request - required by rate limiter
+    interview_request: StartInterviewRequest,  # Pydantic request body
     background_tasks: BackgroundTasks,
     current_user: User = Depends(require_interview_subscription),  # Requires subscription
     db: Session = Depends(get_db)
@@ -103,10 +103,10 @@ async def start_interview(
     try:
         # Get resume text if provided
         resume_text = None
-        if request.resume_id:
+        if interview_request.resume_id:
             from app.models.resume import Resume
             resume = db.query(Resume).filter(
-                Resume.id == request.resume_id,
+                Resume.id == interview_request.resume_id,
                 Resume.user_id == current_user.id
             ).first()
             if resume:
@@ -114,12 +114,12 @@ async def start_interview(
         
         # Generate interview questions
         questions = await interview_ai_service.generate_questions(
-            interview_type=request.interview_type,
+            interview_type=interview_request.interview_type,
             resume_text=resume_text,
-            job_description=request.job_description,
-            job_role=request.job_role,
-            num_questions=request.num_questions,
-            difficulty=request.difficulty
+            job_description=interview_request.job_description,
+            job_role=interview_request.job_role,
+            num_questions=interview_request.num_questions,
+            difficulty=interview_request.difficulty
         )
         
         if not questions:
@@ -130,10 +130,10 @@ async def start_interview(
         
         # Create session config
         config = {
-            "difficulty": request.difficulty.value,
-            "persona": request.persona.value,
-            "job_role": request.job_role,
-            "job_description": request.job_description[:500] if request.job_description else None,
+            "difficulty": interview_request.difficulty.value,
+            "persona": interview_request.persona.value,
+            "job_role": interview_request.job_role,
+            "job_description": interview_request.job_description[:500] if interview_request.job_description else None,
             "questions": questions,
             "num_questions": len(questions)
         }
@@ -141,8 +141,8 @@ async def start_interview(
         # Create interview session
         session = InterviewSession(
             user_id=current_user.id,
-            resume_id=request.resume_id,
-            interview_type=request.interview_type,
+            resume_id=interview_request.resume_id,
+            interview_type=interview_request.interview_type,
             status=InterviewStatus.IN_PROGRESS,
             config=config
         )
@@ -159,7 +159,7 @@ async def start_interview(
         try:
             tts_result = await speech_service.synthesize_speech(
                 text=greeting,
-                voice=request.persona.value
+                voice=interview_request.persona.value
             )
             if tts_result["success"]:
                 greeting_audio = tts_result["audio"]
