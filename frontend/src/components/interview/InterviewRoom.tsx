@@ -32,6 +32,7 @@ import VoiceAgent from './VoiceAgent';
 import FeedbackView from './FeedbackView';
 import SubscriptionModal from './SubscriptionModal';
 import { LatencyMonitor } from './LatencyMonitor';
+import TranscriptionDisplay from './TranscriptionDisplay';
 import interviewService, {
   type InterviewQuestion,
   type InterviewFeedback,
@@ -535,13 +536,14 @@ export function InterviewRoom() {
                     persona={config.persona}
                   />
 
-                  {/* Transcript display */}
-                  {transcript && (
-                    <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-500 mb-1">Your response:</p>
-                      <p className="text-gray-700">{transcript}</p>
-                    </div>
-                  )}
+                  {/* Live Transcription Display */}
+                  <TranscriptionDisplay
+                    aiText={questions[currentQuestionIndex]?.question}
+                    userText={transcript}
+                    isAiSpeaking={isSpeaking}
+                    isUserSpeaking={isListening}
+                    className="mt-6"
+                  />
                 </Card>
               </div>
 
