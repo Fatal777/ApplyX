@@ -153,10 +153,10 @@ export const SEARCH_CATEGORIES = [
     { value: "stack", label: "Tech Stack", icon: "🛠️" },
 ];
 
-// Get data for specific category
+// Get data for specific category (with defensive null checks)
 export const getCategoryData = (category) => {
     const dataMap = {
-        location: ALL_INDIAN_CITIES.map(c => c.name),
+        location: ALL_INDIAN_CITIES.filter(c => c && c.name).map(c => c.name),
         role: JOB_ROLES,
         field: TECH_FIELDS,
         language: PROGRAMMING_LANGUAGES,
@@ -165,20 +165,22 @@ export const getCategoryData = (category) => {
     return dataMap[category] || [];
 };
 
-// Group cities by state
-export const citiesByState = ALL_INDIAN_CITIES.reduce((acc, city) => {
-    const state = city.state;
-    if (!acc[state]) {
-        acc[state] = [];
-    }
-    if (!acc[state].includes(city.name)) {
-        acc[state].push(city.name);
-    }
-    return acc;
-}, {});
+// Group cities by state (with defensive null check)
+export const citiesByState = ALL_INDIAN_CITIES
+    .filter(city => city && city.state && city.name)  // Defensive filter
+    .reduce((acc, city) => {
+        const state = city.state;
+        if (!acc[state]) {
+            acc[state] = [];
+        }
+        if (!acc[state].includes(city.name)) {
+            acc[state].push(city.name);
+        }
+        return acc;
+    }, {});
 
-// Tech hubs only
+// Tech hubs only (with defensive null checks)
 export const TECH_HUBS = ALL_INDIAN_CITIES
-    .filter(city => city.techHub)
+    .filter(city => city && city.techHub && city.name)  // Defensive filter
     .map(city => city.name)
     .filter((name, index, self) => self.indexOf(name) === index); // Remove duplicates
