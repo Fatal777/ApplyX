@@ -97,13 +97,13 @@ const SubscriptionModal = ({ isOpen, onClose, feature = 'Mock Interview' }: Subs
 
                     {/* Modal */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 
-                       md:w-[90vw] md:max-w-4xl md:max-h-[85vh] overflow-auto
-                       bg-white dark:bg-gray-900 rounded-3xl shadow-2xl z-50"
+                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+                                   w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto
+                                   bg-white dark:bg-gray-900 rounded-3xl shadow-2xl z-50"
                     >
                         {/* Close button */}
                         <button
