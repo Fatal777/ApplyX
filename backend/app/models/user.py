@@ -93,8 +93,16 @@ class User(Base):
         if not email:
             return None
         
-        # Check if this is the admin user (supports ADMIN_EMAIL or falls back to ADMIN_USERNAME@applyx.in)
-        admin_email = getattr(settings, 'ADMIN_EMAIL', None) or (getattr(settings, 'ADMIN_USERNAME', '') + '@applyx.in')
+        # Check if this is the admin user
+        # Supports: ADMIN_EMAIL (full), or ADMIN_USERNAME (with or without @)
+        admin_username = getattr(settings, 'ADMIN_USERNAME', '')
+        admin_email_config = getattr(settings, 'ADMIN_EMAIL', None)
+        if admin_email_config:
+            admin_email = admin_email_config
+        elif '@' in admin_username:
+            admin_email = admin_username  # Already a full email
+        else:
+            admin_email = admin_username + '@applyx.in'
         is_admin = email.lower() == admin_email.lower()
             
         # Check if user exists
