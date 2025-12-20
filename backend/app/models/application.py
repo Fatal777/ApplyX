@@ -174,7 +174,7 @@ class CustomizedResume(Base):
     # Relationships
     application = relationship("JobApplication", back_populates="customized_resume")
     user = relationship("User", back_populates="customized_resumes")
-    resume = relationship("Resume", back_populates="customized_versions")
+    base_resume = relationship("Resume", back_populates="customized_versions")
     
     # Index for fast version lookups
     __table_args__ = (
