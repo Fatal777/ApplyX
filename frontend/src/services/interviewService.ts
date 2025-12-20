@@ -167,8 +167,15 @@ class InterviewService {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Failed to start interview');
+      // Include status code in error for proper detection (e.g., 402 Payment Required)
+      let errorMessage = `HTTP ${response.status}: `;
+      try {
+        const error = await response.json();
+        errorMessage += typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail) || 'Failed to start interview';
+      } catch {
+        errorMessage += response.statusText || 'Failed to start interview';
+      }
+      throw new Error(errorMessage);
     }
 
     return response.json();
