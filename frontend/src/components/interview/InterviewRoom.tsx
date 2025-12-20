@@ -9,7 +9,9 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle,
-  LogIn
+  LogIn,
+  Crown,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -28,6 +30,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import WebcamDisplay from './WebcamDisplay';
 import VoiceAgent from './VoiceAgent';
 import FeedbackView from './FeedbackView';
+import SubscriptionModal from './SubscriptionModal';
 import { LatencyMonitor } from './LatencyMonitor';
 import interviewService, {
   type InterviewQuestion,
@@ -37,7 +40,7 @@ import interviewService, {
   type InterviewType
 } from '@/services/interviewService';
 
-type InterviewPhase = 'setup' | 'in-progress' | 'analyzing' | 'feedback' | 'error' | 'auth-required';
+type InterviewPhase = 'setup' | 'in-progress' | 'analyzing' | 'feedback' | 'error' | 'auth-required' | 'subscription-required';
 
 interface InterviewConfig {
   interviewType: InterviewType;
@@ -75,6 +78,7 @@ export function InterviewRoom() {
   const [webcamActive, setWebcamActive] = useState(true);
   const [currentAudio, setCurrentAudio] = useState<string | undefined>();
   const [transcript, setTranscript] = useState('');
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   // Recording refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -133,8 +137,22 @@ export function InterviewRoom() {
         setCurrentAudio(response.greeting_audio);
         setIsSpeaking(true);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to start interview:', err);
+
+      // Check if it's a 402 Payment Required error
+      const errorMessage = err?.message || '';
+      const is402Error = errorMessage.includes('402') ||
+        errorMessage.includes('payment') ||
+        errorMessage.includes('subscription') ||
+        errorMessage.includes('credits');
+
+      if (is402Error) {
+        setPhase('subscription-required');
+        setShowSubscriptionModal(true);
+        return;
+      }
+
       setError(err instanceof Error ? err.message : 'Failed to start interview');
       setPhase('error');
       toast({
@@ -447,7 +465,37 @@ export function InterviewRoom() {
             </motion.div>
           )}
 
-          {/* In-Progress Phase */}
+          {/* Subscription Required Phase */}
+          {phase === 'subscription-required' && (
+            <motion.div
+              key="subscription-required"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center min-h-[60vh]"
+            >
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#c7ff6b] to-[#a8e063] flex items-center justify-center mb-6 shadow-lg">
+                <Crown className="w-12 h-12 text-black" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">Subscription Required</h2>
+              <p className="text-gray-600 mb-6 text-center max-w-md">
+                Unlock AI-powered mock interviews with personalized feedback. Choose a plan that fits your job search needs.
+              </p>
+              <div className="flex gap-4">
+                <Button
+                  onClick={() => setShowSubscriptionModal(true)}
+                  className="gap-2 bg-gradient-to-r from-[#c7ff6b] to-[#a8e063] hover:from-[#b8f55a] hover:to-[#98d052] text-black font-bold"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  View Plans
+                </Button>
+                <Button variant="outline" onClick={() => navigate('/dashboard')}>
+                  Back to Dashboard
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
           {phase === 'in-progress' && (
             <motion.div
               key="in-progress"
@@ -534,6 +582,13 @@ export function InterviewRoom() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Subscription Modal */}
+      <SubscriptionModal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+        feature="Mock Interview"
+      />
     </div>
   );
 }
