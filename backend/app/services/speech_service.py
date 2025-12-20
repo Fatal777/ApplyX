@@ -63,7 +63,25 @@ class DeepgramSTT(STTProvider):
             Tuple of (transcript text, audio duration in seconds)
         """
         try:
-            # Configure Deepgram options
+            # Technical vocabulary keywords for better accuracy
+            tech_keywords = [
+                # Databases
+                "PostgreSQL", "MongoDB", "MySQL", "Redis", "Cassandra", "DynamoDB", "SQLite",
+                # Languages & Frameworks
+                "Python", "JavaScript", "TypeScript", "React", "Vue", "Angular", "Node.js",
+                "FastAPI", "Django", "Flask", "Express", "Next.js", "Nuxt",
+                # Cloud & DevOps
+                "Kubernetes", "Docker", "AWS", "Azure", "GCP", "Terraform", "Ansible",
+                "CI/CD", "Jenkins", "GitHub Actions", "GitLab",
+                # Tools & Concepts
+                "GraphQL", "REST API", "microservices", "serverless", "OAuth", "JWT",
+                "Webpack", "Vite", "npm", "yarn", "pip", "virtualenv",
+                # General CS
+                "algorithm", "data structure", "async", "await", "callback", "promise",
+                "API", "SDK", "ORM", "CRUD", "SQL", "NoSQL", "schema",
+            ]
+            
+            # Configure Deepgram options with enhanced accuracy
             options = {
                 "model": self.model,
                 "language": "en",
@@ -71,6 +89,7 @@ class DeepgramSTT(STTProvider):
                 "punctuate": True,
                 "utterances": False,
                 "diarize": False,
+                "keywords": tech_keywords,  # Boost technical vocabulary
             }
             
             # Make API call with retry logic
