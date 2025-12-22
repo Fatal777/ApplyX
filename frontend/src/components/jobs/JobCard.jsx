@@ -10,7 +10,7 @@ import {
     Laptop, TrendingUp, ExternalLink, Sparkles
 } from 'lucide-react';
 
-const JobCard = ({ job, onClick }) => {
+const JobCard = ({ job, onClick = () => { } }) => {
     const formatSalary = () => {
         if (job.salary_display) return job.salary_display;
         if (job.salary_min && job.salary_max) {
@@ -36,7 +36,7 @@ const JobCard = ({ job, onClick }) => {
     return (
         <div
             className="group relative bg-white border border-gray-100 rounded-2xl p-6 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 transition-all duration-300 cursor-pointer overflow-hidden"
-            onClick={() => onClick(job)}
+            onClick={() => onClick?.(job)}
         >
             {/* Background Gradient Effect on Hover */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />

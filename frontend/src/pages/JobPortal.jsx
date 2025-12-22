@@ -4,8 +4,8 @@
  * Features: Glassmorphism, modern gradients, premium UI
  */
 
-import React, { useState, useEffect } from 'react';
-import { Search, Loader2, Briefcase, Sparkles, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Loader2, Briefcase, Sparkles, TrendingUp, ArrowUpDown } from 'lucide-react';
 import JobCard from '../components/jobs/JobCard';
 import JobFilters from '../components/jobs/JobFilters';
 import AdvancedJobSearch from '../components/jobs/AdvancedJobSearch';
@@ -25,6 +25,7 @@ const JobPortal = () => {
         work_location: '',
         skills: '',
     });
+    const [sortBy, setSortBy] = useState('newest'); // 'newest', 'salary_high', 'salary_low', 'relevance'
     const [pagination, setPagination] = useState({
         page: 1,
         limit: 20,
@@ -121,6 +122,26 @@ const JobPortal = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    // Sort jobs based on selected option
+    const sortedJobs = useMemo(() => {
+        const sorted = [...jobs];
+        switch (sortBy) {
+            case 'newest':
+                return sorted.sort((a, b) => {
+                    const dateA = new Date(a.posted_date || a.created_at || 0);
+                    const dateB = new Date(b.posted_date || b.created_at || 0);
+                    return dateB - dateA;
+                });
+            case 'salary_high':
+                return sorted.sort((a, b) => (b.salary_max || b.salary_min || 0) - (a.salary_max || a.salary_min || 0));
+            case 'salary_low':
+                return sorted.sort((a, b) => (a.salary_min || a.salary_max || 999999999) - (b.salary_min || b.salary_max || 999999999));
+            case 'relevance':
+            default:
+                return sorted; // API default order is by relevance
+        }
+    }, [jobs, sortBy]);
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-primary/5">
             {/* Use same Navbar as landing page */}
@@ -180,9 +201,29 @@ const JobPortal = () => {
                             </div>
                         ) : (
                             <>
+                                {/* Sort Bar */}
+                                <div className="flex items-center justify-between mb-6 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                        Showing <span className="font-bold text-gray-900 dark:text-white">{sortedJobs.length}</span> jobs
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <ArrowUpDown size={16} className="text-gray-400" />
+                                        <select
+                                            value={sortBy}
+                                            onChange={(e) => setSortBy(e.target.value)}
+                                            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm font-medium bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-primary focus:border-primary"
+                                        >
+                                            <option value="relevance">Relevance</option>
+                                            <option value="newest">Newest First</option>
+                                            <option value="salary_high">Salary: High to Low</option>
+                                            <option value="salary_low">Salary: Low to High</option>
+                                        </select>
+                                    </div>
+                                </div>
+
                                 {/* Jobs Grid */}
                                 <div className="space-y-5">
-                                    {jobs.map(job => (
+                                    {sortedJobs.map(job => (
                                         <JobCard
                                             key={job.id}
                                             job={job}
