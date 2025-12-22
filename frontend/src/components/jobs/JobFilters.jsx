@@ -8,7 +8,18 @@ import React, { useState, useEffect } from 'react';
 import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { ALL_INDIAN_CITIES, TECH_HUBS, INDIAN_STATES } from '../../data/indianCities';
 
-const JobFilters = ({ filters, onFilterChange, onClearFilters }) => {
+const JobFilters = ({ filters = {}, onFilterChange, onClearFilters }) => {
+    // Provide safe defaults for filter properties
+    const safeFilters = {
+        city: filters?.city || '',
+        state: filters?.state || '',
+        salary_min: filters?.salary_min || '',
+        experience_level: filters?.experience_level || '',
+        experience_max: filters?.experience_max || null,
+        employment_type: filters?.employment_type || '',
+        work_location: filters?.work_location || '',
+        skills: filters?.skills || '',
+    };
     const [expandedSections, setExpandedSections] = useState({
         location: true,
         salary: true,
@@ -64,8 +75,8 @@ const JobFilters = ({ filters, onFilterChange, onClearFilters }) => {
                         {TECH_HUBS.slice(0, 4).map(city => (
                             <button
                                 key={city}
-                                onClick={() => onFilterChange('city', filters.city === city ? '' : city)}
-                                className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${filters.city === city
+                                onClick={() => onFilterChange('city', safeFilters.city === city ? '' : city)}
+                                className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${safeFilters.city === city
                                     ? 'bg-blue-600 text-white'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                     }`}
@@ -78,7 +89,7 @@ const JobFilters = ({ filters, onFilterChange, onClearFilters }) => {
 
                 {/* City Dropdown */}
                 <select
-                    value={filters.city || ''}
+                    value={safeFilters.city}
                     onChange={(e) => onFilterChange('city', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
@@ -90,7 +101,7 @@ const JobFilters = ({ filters, onFilterChange, onClearFilters }) => {
 
                 {/* State Dropdown */}
                 <select
-                    value={filters.state || ''}
+                    value={safeFilters.state}
                     onChange={(e) => onFilterChange('state', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm mt-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
@@ -116,7 +127,7 @@ const JobFilters = ({ filters, onFilterChange, onClearFilters }) => {
                             <input
                                 type="radio"
                                 name="salary"
-                                checked={filters.salary_min === value}
+                                checked={safeFilters.salary_min === value}
                                 onChange={() => onFilterChange('salary_min', value)}
                                 className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                             />
@@ -140,7 +151,7 @@ const JobFilters = ({ filters, onFilterChange, onClearFilters }) => {
                             <input
                                 type="radio"
                                 name="experience"
-                                checked={filters.experience_level === level}
+                                checked={safeFilters.experience_level === level}
                                 onChange={() => {
                                     onFilterChange('experience_level', level);
                                     onFilterChange('experience_max', max);
@@ -167,7 +178,7 @@ const JobFilters = ({ filters, onFilterChange, onClearFilters }) => {
                             <input
                                 type="radio"
                                 name="employment_type"
-                                checked={filters.employment_type === value}
+                                checked={safeFilters.employment_type === value}
                                 onChange={() => onFilterChange('employment_type', value)}
                                 className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                             />
@@ -190,7 +201,7 @@ const JobFilters = ({ filters, onFilterChange, onClearFilters }) => {
                             <input
                                 type="radio"
                                 name="work_location"
-                                checked={filters.work_location === value}
+                                checked={safeFilters.work_location === value}
                                 onChange={() => onFilterChange('work_location', value)}
                                 className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                             />
@@ -204,7 +215,7 @@ const JobFilters = ({ filters, onFilterChange, onClearFilters }) => {
             <FilterSection title="Skills" sectionKey="skills">
                 <input
                     type="text"
-                    value={filters.skills || ''}
+                    value={safeFilters.skills}
                     onChange={(e) => onFilterChange('skills', e.target.value)}
                     placeholder="python, react, aws..."
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
