@@ -57,7 +57,7 @@ def scrape_linkedin_jobs(keywords: List[str], job_count: int = 10):
         }
         
         try:
-            response = requests.post(url, json=data, auth=("YOUR_SCRAPY_CLOUD_KEY", ""))
+            response = requests.post(url, json=data, auth=(settings.ZYTE_API_KEY, ""))
             if response.status_code == 200:
                 job_id = response.json().get('jobid')
                 logger.info(f"LinkedIn spider scheduled: {job_id} for '{keyword}'")
@@ -85,7 +85,7 @@ def scrape_indeed_jobs(keywords: List[str], job_count: int = 50):
         }
         
         try:
-            response = requests.post(url, json=data, auth=("YOUR_SCRAPY_CLOUD_KEY", ""))
+            response = requests.post(url, json=data, auth=(settings.ZYTE_API_KEY, ""))
             if response.status_code == 200:
                 job_id = response.json().get('jobid')
                 logger.info(f"Indeed spider scheduled: {job_id} for '{keyword}'")
@@ -113,7 +113,7 @@ def scrape_naukri_jobs(keywords: List[str], job_count: int = 10):
         }
         
         try:
-            response = requests.post(url,json=data, auth=("YOUR_SCRAPY_CLOUD_KEY", ""))
+            response = requests.post(url, json=data, auth=(settings.ZYTE_API_KEY, ""))
             if response.status_code == 200:
                 job_id = response.json().get('jobid')
                 logger.info(f"Naukri spider scheduled: {job_id} for '{keyword}'")
@@ -135,7 +135,7 @@ def fetch_and_store_jobs(job_id: str):
     url = f"https://storage.scrapinghub.com/items/{job_id}"
     
     try:
-        response = requests.get(url, auth=("YOUR_SCRAPY_CLOUD_KEY", ""))
+        response = requests.get(url, auth=(settings.ZYTE_API_KEY, ""))
         
         if response.status_code == 200:
             jobs_data = response.json()
