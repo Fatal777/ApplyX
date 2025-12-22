@@ -64,6 +64,7 @@ const JobsPage = () => {
           keywords: 'software developer',
           location: 'India',
           limit: 6,
+          skipAbort: true,  // Don't cancel this when user starts new search
         });
         setFeaturedJobs(response.jobs.slice(0, 6));
       } catch (error) {

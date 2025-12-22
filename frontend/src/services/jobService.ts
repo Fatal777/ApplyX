@@ -40,6 +40,7 @@ export interface JobSearchParams {
   experience_level?: 'fresher' | 'mid' | 'senior';
   limit?: number;
   useFastSearch?: boolean;  // Use high-performance search endpoint
+  skipAbort?: boolean;  // Don't abort previous requests (for background fetches)
 }
 
 export interface JobSearchResponse {
@@ -78,13 +79,13 @@ class LRUCache<K, V> {
   get(key: K): V | undefined {
     const entry = this.cache.get(key);
     if (!entry) return undefined;
-    
+
     // Check TTL
     if (Date.now() - entry.timestamp > this.ttl) {
       this.cache.delete(key);
       return undefined;
     }
-    
+
     // Move to end (most recently used)
     this.cache.delete(key);
     this.cache.set(key, entry);
@@ -96,13 +97,13 @@ class LRUCache<K, V> {
     if (this.cache.has(key)) {
       this.cache.delete(key);
     }
-    
+
     // Evict oldest if at capacity
     if (this.cache.size >= this.capacity) {
       const firstKey = this.cache.keys().next().value;
       this.cache.delete(firstKey);
     }
-    
+
     this.cache.set(key, { value, timestamp: Date.now() });
   }
 
@@ -194,7 +195,7 @@ class JobService {
    */
   async searchJobs(params: JobSearchParams): Promise<JobSearchResponse> {
     const cacheKey = this.getCacheKey(params);
-    
+
     // Check cache first
     const cached = this.cache.get(cacheKey);
     if (cached) {
@@ -203,15 +204,20 @@ class JobService {
 
     // Use deduplication to prevent duplicate concurrent requests
     return this.deduplicator.dedupe(cacheKey, async () => {
-      // Cancel any previous request
-      if (this.abortController) {
+      // Cancel any previous request (unless skipAbort is true)
+      if (!params.skipAbort && this.abortController) {
         this.abortController.abort();
       }
-      this.abortController = new AbortController();
+
+      // Create new abort controller only if not skipping
+      const controller = params.skipAbort ? null : new AbortController();
+      if (!params.skipAbort) {
+        this.abortController = controller;
+      }
 
       const queryParams = new URLSearchParams();
       queryParams.append('keywords', params.keywords);
-      
+
       if (params.location) queryParams.append('location', params.location);
       if (params.portal) queryParams.append('portal', params.portal);
       if (params.experience_level) queryParams.append('experience_level', params.experience_level);
@@ -227,7 +233,7 @@ class JobService {
             'Content-Type': 'application/json',
           },
           credentials: 'include',
-          signal: this.abortController.signal,
+          ...(controller && { signal: controller.signal }),
         });
 
         if (!response.ok) {
@@ -235,10 +241,10 @@ class JobService {
         }
 
         const result = await response.json();
-        
+
         // Cache the result
         this.cache.set(cacheKey, result);
-        
+
         return result;
       } catch (error) {
         if ((error as Error).name === 'AbortError') {
@@ -270,7 +276,7 @@ class JobService {
     queryParams.append('keywords', keywords);
     queryParams.append('location', location);
     queryParams.append('limit', limit.toString());
-    
+
     if (sources && sources.length > 0) {
       queryParams.append('sources', sources.join(','));
     }
@@ -440,7 +446,7 @@ class JobService {
    */
   formatSalary(min?: number | null, max?: number | null): string {
     if (!min && !max) return 'Not specified';
-    
+
     const formatNum = (n: number) => {
       if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
       if (n >= 1000) return `₹${(n / 1000).toFixed(0)}K`;
