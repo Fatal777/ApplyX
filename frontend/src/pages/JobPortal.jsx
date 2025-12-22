@@ -34,26 +34,26 @@ const JobPortal = () => {
         total_pages: 0,
     });
 
-    const fetchJobs = async (page = 1, searchKeywords = 'software,developer,engineer') => {
+    const fetchJobs = async (searchKeywords = 'software,developer,engineer') => {
         setLoading(true);
         try {
             const params = {
                 keywords: searchKeywords,
                 location: filters.city || filters.state || 'India',
-                limit: pagination.limit * page, // For pagination, get more results
+                limit: 100, // Get 100 jobs for client-side pagination
                 ...(filters.experience_level && { experience_level: filters.experience_level }),
             };
 
             // Use fast-search for cached, faster results
             const response = await axios.get('/api/v1/jobs/fast-search', { params });
 
-            const jobs = response.data.jobs || [];
-            setJobs(jobs);
+            const allJobs = response.data.jobs || [];
+            setJobs(allJobs);
             setPagination({
-                page: page,
+                page: 1,
                 limit: pagination.limit,
-                total: response.data.count || jobs.length,
-                total_pages: Math.ceil((response.data.count || jobs.length) / pagination.limit),
+                total: allJobs.length,
+                total_pages: Math.ceil(allJobs.length / pagination.limit),
             });
         } catch (error) {
             console.error('Error fetching jobs:', error);
@@ -65,7 +65,14 @@ const JobPortal = () => {
                     limit: 50,
                 };
                 const response = await axios.get('/api/v1/jobs/search', { params });
-                setJobs(response.data.jobs || []);
+                const allJobs = response.data.jobs || [];
+                setJobs(allJobs);
+                setPagination({
+                    page: 1,
+                    limit: pagination.limit,
+                    total: allJobs.length,
+                    total_pages: Math.ceil(allJobs.length / pagination.limit),
+                });
             } catch (fallbackError) {
                 console.error('Fallback search failed:', fallbackError);
                 setJobs([]);
@@ -90,7 +97,7 @@ const JobPortal = () => {
             // For role/field, use as search keywords
             setSearchKeywords(query);
         }
-        fetchJobs(1, query || searchKeywords);
+        fetchJobs(query || searchKeywords);
     };
 
     const handleFilterChange = (key, value) => {
@@ -99,7 +106,7 @@ const JobPortal = () => {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            fetchJobs(1, filters.skills || searchKeywords);
+            fetchJobs(filters.skills || searchKeywords);
         }, 500);
         return () => clearTimeout(timer);
     }, [filters]);
@@ -118,7 +125,7 @@ const JobPortal = () => {
     };
 
     const goToPage = (page) => {
-        fetchJobs(page);
+        setPagination(prev => ({ ...prev, page }));
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -141,6 +148,13 @@ const JobPortal = () => {
                 return sorted; // API default order is by relevance
         }
     }, [jobs, sortBy]);
+
+    // Client-side pagination
+    const paginatedJobs = useMemo(() => {
+        const startIndex = (pagination.page - 1) * pagination.limit;
+        const endIndex = startIndex + pagination.limit;
+        return sortedJobs.slice(startIndex, endIndex);
+    }, [sortedJobs, pagination.page, pagination.limit]);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-primary/5">
@@ -204,7 +218,7 @@ const JobPortal = () => {
                                 {/* Sort Bar */}
                                 <div className="flex items-center justify-between mb-6 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
                                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                                        Showing <span className="font-bold text-gray-900 dark:text-white">{sortedJobs.length}</span> jobs
+                                        Showing <span className="font-bold text-gray-900 dark:text-white">{paginatedJobs.length}</span> of <span className="font-bold text-gray-900 dark:text-white">{pagination.total}</span> jobs
                                     </p>
                                     <div className="flex items-center gap-2">
                                         <ArrowUpDown size={16} className="text-gray-400" />
@@ -223,9 +237,9 @@ const JobPortal = () => {
 
                                 {/* Jobs Grid */}
                                 <div className="space-y-5">
-                                    {sortedJobs.map(job => (
+                                    {paginatedJobs.map(job => (
                                         <JobCard
-                                            key={job.id}
+                                            key={job.id || job.job_id}
                                             job={job}
                                             onClick={(job) => window.open(job.redirect_url || job.apply_url || job.source_url || '#', '_blank')}
                                         />
