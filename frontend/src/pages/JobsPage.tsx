@@ -6,12 +6,12 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { 
-  Briefcase, 
-  Sparkles, 
-  TrendingUp, 
-  Star, 
-  Building2, 
+import {
+  Briefcase,
+  Sparkles,
+  TrendingUp,
+  Star,
+  Building2,
   ArrowRight,
   FileText,
   Zap,
@@ -44,7 +44,7 @@ const JobsPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
   const { toast } = useToast();
-  
+
   const {
     searchResults,
     isSearching,
@@ -67,12 +67,16 @@ const JobsPage = () => {
         });
         setFeaturedJobs(response.jobs.slice(0, 6));
       } catch (error) {
+        // Silently ignore cancelled search errors (happens when user starts a new search)
+        if ((error as Error).message === 'Search cancelled') {
+          return;
+        }
         console.error('Failed to load featured jobs:', error);
       } finally {
         setIsFeaturedLoading(false);
       }
     };
-    
+
     loadFeaturedJobs();
   }, []);
 
@@ -135,7 +139,7 @@ const JobsPage = () => {
             }}
             className="absolute -bottom-1/2 -left-1/2 w-full h-full bg-white/10 rounded-full blur-3xl"
           />
-          
+
           {/* Floating elements */}
           <motion.div
             animate={{ y: [-20, 20, -20], rotate: [0, 5, 0] }}
@@ -225,7 +229,7 @@ const JobsPage = () => {
         {/* Wave divider */}
         <div className="absolute bottom-0 left-0 right-0">
           <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0 120L60 105C120 90 240 60 360 45C480 30 600 30 720 37.5C840 45 960 60 1080 67.5C1200 75 1320 75 1380 75L1440 75V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0V120Z" fill="#f9fafb"/>
+            <path d="M0 120L60 105C120 90 240 60 360 45C480 30 600 30 720 37.5C840 45 960 60 1080 67.5C1200 75 1320 75 1380 75L1440 75V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0V120Z" fill="#f9fafb" />
           </svg>
         </div>
       </section>
@@ -247,7 +251,7 @@ const JobsPage = () => {
                     <JobFilters />
                   </div>
                 </div>
-                
+
                 {/* Results */}
                 <div className="flex-1 min-w-0">
                   {/* Mobile Filters Button */}
@@ -264,7 +268,7 @@ const JobsPage = () => {
                       </SheetContent>
                     </Sheet>
                   </div>
-                  
+
                   <JobList
                     jobs={searchResults}
                     isLoading={isSearching}
@@ -319,7 +323,7 @@ const JobsPage = () => {
                       "absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity duration-500",
                       category.gradient
                     )} />
-                    
+
                     <div className="relative flex items-center gap-4">
                       <div className={cn(
                         "w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 bg-gradient-to-br",
@@ -367,8 +371,8 @@ const JobsPage = () => {
                   Top opportunities from leading companies
                 </p>
               </div>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="hidden md:flex rounded-xl hover:bg-primary hover:text-white hover:border-primary transition-all"
               >
                 View All Jobs
@@ -379,7 +383,7 @@ const JobsPage = () => {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {isFeaturedLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
-                  <motion.div 
+                  <motion.div
                     key={i}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -444,7 +448,7 @@ const JobsPage = () => {
           }}
           className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-white/10 rounded-full blur-3xl"
         />
-        
+
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
             <motion.div
@@ -456,7 +460,7 @@ const JobsPage = () => {
                 <Target className="w-4 h-4 text-[#c7ff6b]" />
                 <span className="text-[#c7ff6b] font-semibold text-sm">AI-Powered Matching</span>
               </div>
-              
+
               <h2 className="text-4xl md:text-5xl font-bold mb-6">
                 Get Personalized Job <br />
                 <span className="text-[#c7ff6b]">Recommendations</span>
@@ -464,9 +468,9 @@ const JobsPage = () => {
               <p className="text-xl text-white/70 mb-10 max-w-2xl mx-auto">
                 Upload your resume and let our AI find the perfect jobs matched to your skills, experience, and career goals.
               </p>
-              
+
               <Link to="/resume-builder">
-                <Button 
+                <Button
                   size="lg"
                   className="bg-[#c7ff6b] hover:bg-[#b8f55a] text-black font-bold text-lg px-10 py-7 rounded-2xl transition-colors duration-200"
                 >
@@ -523,23 +527,23 @@ const JobsPage = () => {
 
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {[
-              { 
-                step: '01', 
-                title: 'Search or Upload', 
+              {
+                step: '01',
+                title: 'Search or Upload',
                 desc: 'Search jobs directly or upload your resume for AI matching',
                 icon: '🔍',
                 gradient: 'from-blue-500 to-indigo-600'
               },
-              { 
-                step: '02', 
-                title: 'Get Matched', 
+              {
+                step: '02',
+                title: 'Get Matched',
                 desc: 'Our AI analyzes your skills and finds the best opportunities',
                 icon: '🎯',
                 gradient: 'from-purple-500 to-pink-600'
               },
-              { 
-                step: '03', 
-                title: 'Apply & Succeed', 
+              {
+                step: '03',
+                title: 'Apply & Succeed',
                 desc: 'Apply with one click and track your applications',
                 icon: '🚀',
                 gradient: 'from-[#c7ff6b] to-[#a8e063]'
@@ -572,7 +576,7 @@ const JobsPage = () => {
                     <p className="text-muted-foreground">{item.desc}</p>
                   </div>
                 </div>
-                
+
                 {/* Connector line */}
                 {index < 2 && (
                   <div className="hidden md:block absolute top-1/2 -right-4 w-8 border-t-2 border-dashed border-primary/20" />
@@ -584,7 +588,7 @@ const JobsPage = () => {
       </section>
 
       <Footer />
-      
+
       {/* Floating Comparison Button */}
       <AnimatePresence>
         {comparedJobs.length > 0 && (
@@ -609,9 +613,9 @@ const JobsPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
-      
+
       {/* Job Comparison Panel */}
-      <JobComparison 
+      <JobComparison
         isOpen={showComparison}
         onClose={() => setShowComparison(false)}
       />
