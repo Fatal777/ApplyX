@@ -97,10 +97,10 @@ _request_patterns: Dict[str, Dict] = defaultdict(lambda: {
     "last_cleanup": datetime.utcnow()
 })
 
-# Thresholds
-REQUESTS_PER_SECOND_THRESHOLD = 10  # Max requests per second from single IP
-ENDPOINT_DIVERSITY_THRESHOLD = 50   # Hitting too many different endpoints quickly
-SUSPICIOUS_SCORE_THRESHOLD = 100    # Block when score exceeds this
+# Thresholds (more lenient to avoid false positives)
+REQUESTS_PER_SECOND_THRESHOLD = 30  # Max requests per second from single IP
+ENDPOINT_DIVERSITY_THRESHOLD = 100  # Hitting too many different endpoints quickly
+SUSPICIOUS_SCORE_THRESHOLD = 200    # Block when score exceeds this
 PATTERN_WINDOW_SECONDS = 60         # Time window for pattern analysis
 
 
@@ -207,12 +207,21 @@ class DDoSProtectionMiddleware(BaseHTTPMiddleware):
     - Automatic IP blocking for suspicious activity
     """
     
-    # Paths to exclude from strict checking (health checks, etc.)
-    EXCLUDED_PATHS = ["/health", "/", "/docs", "/openapi.json"]
+    # Paths to exclude from strict checking (health checks, public APIs, etc.)
+    EXCLUDED_PATHS = [
+        "/health", "/", "/docs", "/openapi.json",
+        "/api/v1/jobs/search", "/api/v1/jobs/fast-search",
+        "/api/v1/jobs/sources", "/api/v1/auth/login", "/api/v1/auth/register"
+    ]
+    
+    # Paths with relaxed checking (still monitored but with higher tolerance)
+    RELAXED_PATHS = ["/api/v1/jobs", "/api/v1/resumes", "/api/v1/interviews"]
     
     async def dispatch(self, request: Request, call_next: Callable):
-        # Skip protection for excluded paths
-        if request.url.path in self.EXCLUDED_PATHS:
+        path = request.url.path
+        
+        # Skip protection for excluded paths (exact match or prefix match)
+        if path in self.EXCLUDED_PATHS or any(path.startswith(p) for p in self.RELAXED_PATHS):
             return await call_next(request)
         
         # Skip for OPTIONS (CORS preflight)
