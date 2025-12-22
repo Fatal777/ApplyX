@@ -21,11 +21,24 @@ const JobCard = ({ job, onClick = () => { } }) => {
     };
 
     const formatExperience = () => {
-        if (job.experience_min !== null && job.experience_max !== null) {
+        // Check for valid numbers (not null, not undefined, not NaN)
+        const hasMin = job.experience_min !== null && job.experience_min !== undefined && !isNaN(job.experience_min);
+        const hasMax = job.experience_max !== null && job.experience_max !== undefined && !isNaN(job.experience_max);
+
+        if (hasMin && hasMax) {
             return `${job.experience_min}-${job.experience_max} years`;
         }
-        if (job.experience_level) {
+        if (hasMin) {
+            return `${job.experience_min}+ years`;
+        }
+        if (hasMax) {
+            return `0-${job.experience_max} years`;
+        }
+        if (job.experience_level && job.experience_level !== 'undefined') {
             return job.experience_level.charAt(0).toUpperCase() + job.experience_level.slice(1);
+        }
+        if (job.experience && job.experience !== 'undefined-undefined years') {
+            return job.experience;
         }
         return null;
     };
@@ -155,7 +168,10 @@ const JobCard = ({ job, onClick = () => { } }) => {
                         className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white text-sm font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:shadow-primary/30 group"
                         onClick={(e) => {
                             e.stopPropagation();
-                            window.open(job.apply_url || job.source_url, '_blank');
+                            const url = job.redirect_url || job.apply_url || job.source_url || job.url;
+                            if (url) {
+                                window.open(url, '_blank');
+                            }
                         }}
                     >
                         Apply Now

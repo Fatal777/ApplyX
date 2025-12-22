@@ -188,18 +188,20 @@ const JobPortal = () => {
 
             {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    {/* Filters Sidebar */}
-                    <div className="lg:col-span-1">
-                        <JobFilters
-                            filters={filters}
-                            onFilterChange={handleFilterChange}
-                            onClearFilters={clearFilters}
-                        />
+                <div className="flex flex-col lg:flex-row gap-6">
+                    {/* Filters Sidebar - Sticky with independent scroll */}
+                    <div className="lg:w-72 flex-shrink-0">
+                        <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                            <JobFilters
+                                filters={filters}
+                                onFilterChange={handleFilterChange}
+                                onClearFilters={clearFilters}
+                            />
+                        </div>
                     </div>
 
-                    {/* Jobs List */}
-                    <div className="lg:col-span-3">
+                    {/* Jobs List - Independent scroll */}
+                    <div className="flex-1 min-w-0">
                         {loading ? (
                             <div className="flex flex-col items-center justify-center h-64 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-primary/10">
                                 <Loader2 className="animate-spin text-primary mb-4" size={48} />
@@ -224,8 +226,11 @@ const JobPortal = () => {
                                         <ArrowUpDown size={16} className="text-gray-400" />
                                         <select
                                             value={sortBy}
-                                            onChange={(e) => setSortBy(e.target.value)}
-                                            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm font-medium bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-primary focus:border-primary"
+                                            onChange={(e) => {
+                                                setSortBy(e.target.value);
+                                                setPagination(prev => ({ ...prev, page: 1 }));
+                                            }}
+                                            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm font-medium bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer"
                                         >
                                             <option value="relevance">Relevance</option>
                                             <option value="newest">Newest First</option>
