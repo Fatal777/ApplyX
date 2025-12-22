@@ -374,4 +374,82 @@ async def trigger_job_fetch(
     }
 
 
+@router.get("/scraped-jobs")
+@limiter.limit("60/minute")
+async def get_scraped_jobs(
+    request: Request,
+    keywords: Optional[str] = Query(None, description="Comma-separated keywords to filter"),
+    location: Optional[str] = Query(None, description="Location to filter"),
+    source: Optional[str] = Query(None, description="Source filter: linkedin, indeed, naukri"),
+    limit: int = Query(50, ge=1, le=100, description="Max results to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+):
+    """
+    Get jobs scraped from LinkedIn, Indeed, Naukri via Zyte Cloud.
+    
+    These are stored in the database after being scraped by our Celery workers.
+    """
+    from app.db.database import SessionLocal
+    from app.models.job import Job
+    from sqlalchemy import or_
+    
+    db = SessionLocal()
+    try:
+        query = db.query(Job).filter(Job.is_active == True)
+        
+        # Filter by source if specified
+        if source:
+            query = query.filter(Job.source == source.lower())
+        else:
+            # By default, get jobs from our scrapers (not external APIs)
+            query = query.filter(Job.source.in_(["linkedin", "indeed", "naukri"]))
+        
+        # Filter by keywords if specified
+        if keywords:
+            keyword_list = [k.strip().lower() for k in keywords.split(",") if k.strip()]
+            keyword_filters = []
+            for kw in keyword_list:
+                keyword_filters.append(Job.title.ilike(f"%{kw}%"))
+                keyword_filters.append(Job.description.ilike(f"%{kw}%"))
+            query = query.filter(or_(*keyword_filters))
+        
+        # Filter by location if specified
+        if location:
+            query = query.filter(
+                or_(
+                    Job.location.ilike(f"%{location}%"),
+                    Job.city.ilike(f"%{location}%"),
+                    Job.state.ilike(f"%{location}%"),
+                )
+            )
+        
+        # Get total count
+        total = query.count()
+        
+        # Order by scraped date (newest first) and paginate
+        jobs = query.order_by(Job.scraped_at.desc()).offset(offset).limit(limit).all()
+        
+        # Convert to response format
+        job_list = []
+        for job in jobs:
+            job_dict = job.to_dict()
+            # Add redirect_url for frontend compatibility
+            job_dict["redirect_url"] = job.apply_url or job.source_url
+            job_dict["portal"] = job.source
+            job_dict["skills"] = job.skills_required or []
+            job_list.append(job_dict)
+        
+        return {
+            "status": "ok",
+            "count": len(job_list),
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "jobs": job_list,
+            "sources": ["linkedin", "indeed", "naukri"],
+        }
+    finally:
+        db.close()
+
+
 __all__ = ["router"]

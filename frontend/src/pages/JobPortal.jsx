@@ -253,39 +253,82 @@ const JobPortal = () => {
 
                                 {/* Premium Pagination */}
                                 {pagination.total_pages > 1 && (
-                                    <div className="mt-10 flex items-center justify-center gap-2">
-                                        <button
-                                            onClick={() => goToPage(pagination.page - 1)}
-                                            disabled={pagination.page === 1}
-                                            className="px-5 py-2.5 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gradient-to-r hover:from-primary hover:to-indigo-600 hover:text-white hover:border-transparent disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-700 dark:disabled:hover:text-gray-200 transition-all duration-200"
-                                        >
-                                            Previous
-                                        </button>
+                                    <div className="mt-10 flex flex-col items-center gap-4">
+                                        {/* Page info */}
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            Page {pagination.page} of {pagination.total_pages}
+                                        </p>
 
-                                        {[...Array(Math.min(5, pagination.total_pages))].map((_, idx) => {
-                                            const pageNum = pagination.page - 2 + idx;
-                                            if (pageNum < 1 || pageNum > pagination.total_pages) return null;
-                                            return (
-                                                <button
-                                                    key={pageNum}
-                                                    onClick={() => goToPage(pageNum)}
-                                                    className={`min-w-[44px] px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${pagination.page === pageNum
-                                                        ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-lg shadow-primary/30'
-                                                        : 'border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:border-primary hover:text-primary'
-                                                        }`}
-                                                >
-                                                    {pageNum}
-                                                </button>
-                                            );
-                                        })}
+                                        <div className="flex items-center gap-2 flex-wrap justify-center">
+                                            <button
+                                                onClick={() => goToPage(pagination.page - 1)}
+                                                disabled={pagination.page === 1}
+                                                className="px-5 py-2.5 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gradient-to-r hover:from-primary hover:to-indigo-600 hover:text-white hover:border-transparent disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-700 dark:disabled:hover:text-gray-200 transition-all duration-200"
+                                            >
+                                                Previous
+                                            </button>
 
-                                        <button
-                                            onClick={() => goToPage(pagination.page + 1)}
-                                            disabled={pagination.page === pagination.total_pages}
-                                            className="px-5 py-2.5 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gradient-to-r hover:from-primary hover:to-indigo-600 hover:text-white hover:border-transparent disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-700 dark:disabled:hover:text-gray-200 transition-all duration-200"
-                                        >
-                                            Next
-                                        </button>
+                                            {/* Generate page numbers */}
+                                            {(() => {
+                                                const pages = [];
+                                                const totalPages = pagination.total_pages;
+                                                const currentPage = pagination.page;
+
+                                                // Always show first page
+                                                pages.push(1);
+
+                                                // Calculate range around current page
+                                                let start = Math.max(2, currentPage - 1);
+                                                let end = Math.min(totalPages - 1, currentPage + 1);
+
+                                                // Add ellipsis after first page if needed
+                                                if (start > 2) {
+                                                    pages.push('...');
+                                                }
+
+                                                // Add pages in range
+                                                for (let i = start; i <= end; i++) {
+                                                    if (!pages.includes(i)) {
+                                                        pages.push(i);
+                                                    }
+                                                }
+
+                                                // Add ellipsis before last page if needed
+                                                if (end < totalPages - 1) {
+                                                    pages.push('...');
+                                                }
+
+                                                // Always show last page
+                                                if (totalPages > 1 && !pages.includes(totalPages)) {
+                                                    pages.push(totalPages);
+                                                }
+
+                                                return pages.map((page, idx) => (
+                                                    page === '...' ? (
+                                                        <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">...</span>
+                                                    ) : (
+                                                        <button
+                                                            key={page}
+                                                            onClick={() => goToPage(page)}
+                                                            className={`min-w-[44px] px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${currentPage === page
+                                                                    ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-lg shadow-primary/30'
+                                                                    : 'border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:border-primary hover:text-primary'
+                                                                }`}
+                                                        >
+                                                            {page}
+                                                        </button>
+                                                    )
+                                                ));
+                                            })()}
+
+                                            <button
+                                                onClick={() => goToPage(pagination.page + 1)}
+                                                disabled={pagination.page === pagination.total_pages}
+                                                className="px-5 py-2.5 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gradient-to-r hover:from-primary hover:to-indigo-600 hover:text-white hover:border-transparent disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-700 dark:disabled:hover:text-gray-200 transition-all duration-200"
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </>
