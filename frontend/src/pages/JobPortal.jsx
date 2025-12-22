@@ -15,6 +15,7 @@ import axios from 'axios';
 const JobPortal = () => {
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [searchKeywords, setSearchKeywords] = useState('software,developer,engineer');
     const [filters, setFilters] = useState({
         city: '',
         state: '',
@@ -33,38 +34,42 @@ const JobPortal = () => {
         total_pages: 0,
     });
 
-    const fetchJobs = async (page = 1) => {
+    const fetchJobs = async (page = 1, searchKeywords = 'software,developer,engineer') => {
         setLoading(true);
         try {
             const params = {
-                page,
-                limit: pagination.limit,
-                ...(filters.city && { city: filters.city }),
-                ...(filters.state && { state: filters.state }),
-                ...(filters.salary_min && { salary_min: filters.salary_min }),
+                keywords: searchKeywords,
+                location: filters.city || filters.state || 'India',
+                limit: pagination.limit * page, // For pagination, get more results
                 ...(filters.experience_level && { experience_level: filters.experience_level }),
-                ...(filters.experience_max && { experience_max: filters.experience_max }),
-                ...(filters.employment_type && { employment_type: filters.employment_type }),
-                ...(filters.work_location && { work_location: filters.work_location }),
-                ...(filters.skills && { skills: filters.skills }),
             };
 
-            Object.keys(params).forEach(key =>
-                (params[key] === '' || params[key] === null) && delete params[key]
-            );
+            // Use fast-search for cached, faster results
+            const response = await axios.get('/api/v1/jobs/fast-search', { params });
 
-            const response = await axios.get('/api/v1/jobs/search', { params });
-
-            setJobs(response.data.jobs || []);
+            const jobs = response.data.jobs || [];
+            setJobs(jobs);
             setPagination({
-                page: response.data.page,
-                limit: response.data.limit,
-                total: response.data.total,
-                total_pages: response.data.total_pages,
+                page: page,
+                limit: pagination.limit,
+                total: response.data.count || jobs.length,
+                total_pages: Math.ceil((response.data.count || jobs.length) / pagination.limit),
             });
         } catch (error) {
             console.error('Error fetching jobs:', error);
-            setJobs([]);
+            // Fallback to regular search if fast-search fails
+            try {
+                const params = {
+                    keywords: searchKeywords,
+                    location: filters.city || 'India',
+                    limit: 50,
+                };
+                const response = await axios.get('/api/v1/jobs/search', { params });
+                setJobs(response.data.jobs || []);
+            } catch (fallbackError) {
+                console.error('Fallback search failed:', fallbackError);
+                setJobs([]);
+            }
         } finally {
             setLoading(false);
         }
@@ -75,22 +80,17 @@ const JobPortal = () => {
     }, []);
 
     const handleAdvancedSearch = ({ category, query }) => {
-        // Map category to appropriate filter
-        const filterMap = {
-            location: 'city',
-            role: 'q',
-            field: 'q',
-            language: 'skills',
-            stack: 'skills',
-        };
-
-        const filterKey = filterMap[category];
-        if (filterKey === 'city') {
+        // Map category to appropriate filter and update search
+        if (category === 'location') {
             setFilters(prev => ({ ...prev, city: query }));
-        } else if (filterKey === 'skills') {
+        } else if (category === 'language' || category === 'stack') {
             setFilters(prev => ({ ...prev, skills: query }));
+            setSearchKeywords(query);
+        } else {
+            // For role/field, use as search keywords
+            setSearchKeywords(query);
         }
-        fetchJobs(1);
+        fetchJobs(1, query || searchKeywords);
     };
 
     const handleFilterChange = (key, value) => {
@@ -99,7 +99,7 @@ const JobPortal = () => {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            fetchJobs(1);
+            fetchJobs(1, filters.skills || searchKeywords);
         }, 500);
         return () => clearTimeout(timer);
     }, [filters]);
@@ -227,7 +227,7 @@ const JobPortal = () => {
                                         <JobCard
                                             key={job.id}
                                             job={job}
-                                            onClick={(job) => window.open(job.source_url, '_blank')}
+                                            onClick={(job) => window.open(job.redirect_url || job.apply_url || job.source_url || '#', '_blank')}
                                         />
                                     ))}
                                 </div>
