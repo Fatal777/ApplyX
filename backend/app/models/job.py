@@ -86,7 +86,7 @@ class Job(Base):
     
     # Timestamps
     created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), on update=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
     def __repr__(self):
         return f"<Job {self.id}: {self.title} at {self.company}>"
