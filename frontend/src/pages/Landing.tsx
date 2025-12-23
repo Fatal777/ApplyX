@@ -1,11 +1,11 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { 
-  ArrowRight, 
-  CheckCircle, 
-  Target, 
-  Zap, 
-  Users, 
+import {
+  ArrowRight,
+  CheckCircle,
+  Target,
+  Zap,
+  Users,
   TrendingUp,
   FileText,
   MessageSquare,
@@ -31,10 +31,11 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ThreeBackground from "@/components/ThreeBackground";
 import { TestimonialCard, testimonials } from "@/components/ui/TestimonialCard";
+import TestimonialsSection from "@/components/ui/testimonials-section";
 import { TrustLogosText } from "@/components/ui/TrustLogos";
-import { 
-  FadeIn, 
-  StaggerContainer, 
+import {
+  FadeIn,
+  StaggerContainer,
   StaggerItem,
   TiltCard,
   TextReveal,
@@ -171,7 +172,7 @@ const Landing = () => {
 
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
                 <Link to="/resume-builder">
-                  <Button 
+                  <Button
                     size="lg"
                     className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7 transition-colors duration-200"
                   >
@@ -327,7 +328,7 @@ const Landing = () => {
                   <Spotlight className="h-full">
                     <Card className="group hover:shadow-md transition-shadow duration-200 border-2 hover:border-primary/50 h-full bg-white">
                       <CardContent className="p-8">
-                        <motion.div 
+                        <motion.div
                           className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors"
                           whileHover={{ rotate: [0, -10, 10, 0], transition: { duration: 0.5 } }}
                         >
@@ -353,9 +354,9 @@ const Landing = () => {
 
       {/* How It Works Section - Black Background */}
       <section id="how-it-works" className="py-24 bg-black text-white">
-        <CursorGlow 
-          className="w-full" 
-          glowColor="rgba(91, 104, 245, 0.15)" 
+        <CursorGlow
+          className="w-full"
+          glowColor="rgba(91, 104, 245, 0.15)"
           glowSize={500}
           glowBlur={100}
         >
@@ -373,7 +374,7 @@ const Landing = () => {
                 { step: "04", title: "Apply", desc: "Get matched with perfect job opportunities" },
               ].map((item, index) => (
                 <StaggerItem key={item.step} className="text-center group">
-                  <motion.div 
+                  <motion.div
                     className="text-6xl font-bold text-accent/20 mb-4 transition-colors duration-300 group-hover:text-accent/40"
                     whileHover={{ scale: 1.1 }}
                     transition={{ type: "spring", stiffness: 300 }}
@@ -389,7 +390,7 @@ const Landing = () => {
             <FadeIn delay={0.4} className="text-center mt-16">
               <Link to="/resume-builder">
                 <MagneticButton strength={0.3}>
-                  <Button 
+                  <Button
                     size="lg"
                     className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7"
                   >
@@ -420,7 +421,7 @@ const Landing = () => {
                     key={benefit}
                     className="flex items-start gap-4 p-4 rounded-xl hover:bg-muted/30 transition-colors cursor-default"
                   >
-                    <motion.div 
+                    <motion.div
                       className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5"
                       whileHover={{ scale: 1.2, rotate: 360 }}
                       transition={{ duration: 0.3 }}
@@ -434,7 +435,7 @@ const Landing = () => {
               <FadeIn delay={0.5}>
                 <Link to="/resume-builder">
                   <MagneticButton className="mt-10">
-                    <Button 
+                    <Button
                       size="lg"
                       className="bg-primary hover:bg-primary/90 text-white text-lg px-8 py-6"
                     >
@@ -450,7 +451,7 @@ const Landing = () => {
               <TiltCard tiltAmount={10} scale={1.02} glare glareOpacity={0.15}>
                 <div className="bg-gradient-to-br from-primary to-primary/80 rounded-3xl p-12 shadow-lg">
                   <div className="space-y-6">
-                    <motion.div 
+                    <motion.div
                       className="bg-white/10 rounded-2xl p-6 border border-white/20"
                       whileHover={{ scale: 1.02 }}
                       transition={{ type: "spring", stiffness: 300 }}
@@ -472,7 +473,7 @@ const Landing = () => {
                       </div>
                     </motion.div>
 
-                    <motion.div 
+                    <motion.div
                       className="bg-white/10 rounded-2xl p-6 border border-white/20"
                       whileHover={{ scale: 1.02 }}
                       transition={{ type: "spring", stiffness: 300 }}
@@ -546,7 +547,7 @@ const Landing = () => {
                         {feature.badge}
                       </Badge>
                     </div>
-                    
+
                     {/* Title and description */}
                     <div className="space-y-2">
                       <h3 className="text-xl font-bold text-black group-hover:text-primary transition-colors">
@@ -556,11 +557,11 @@ const Landing = () => {
                         {feature.description}
                       </p>
                     </div>
-                    
+
                     {/* Action hint */}
                     <div className="pt-2">
                       <span className="text-sm text-primary font-medium group-hover:text-lime-500 transition-colors inline-flex items-center gap-1">
-                        Learn more 
+                        Learn more
                         <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                       </span>
                     </div>
@@ -687,79 +688,14 @@ const Landing = () => {
       <TrustLogosText title="Students placed at top companies" />
 
       {/* Testimonials Section */}
-      <section className="py-24 bg-white relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-[0.02]">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, #5B68F5 1px, transparent 0)`,
-            backgroundSize: '40px 40px'
-          }} />
-        </div>
-
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <FadeIn className="text-center mb-16">
-            <Badge className="mb-6 text-base px-6 py-2 bg-primary/10 text-primary font-bold border-0">
-              <Star className="w-4 h-4 mr-2 fill-primary" />
-              Success Stories
-            </Badge>
-            <h2 className="text-5xl md:text-6xl font-bold mb-6">
-              Real Results from <GradientText colors={['#5B68F5', '#c7ff6b', '#5B68F5']}>Real People</GradientText>
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Join thousands of job seekers who landed their dream roles using ApplyX
-            </p>
-          </FadeIn>
-
-          {/* Featured Testimonial */}
-          <div className="max-w-4xl mx-auto mb-12">
-            <TestimonialCard testimonial={testimonials[0]} variant="featured" />
-          </div>
-
-          {/* Grid of Other Testimonials */}
-          <StaggerContainer className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto" staggerDelay={0.1}>
-            {testimonials.slice(1).map((testimonial, index) => (
-              <StaggerItem key={testimonial.id}>
-                <TestimonialCard testimonial={testimonial} index={index} />
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
-
-          {/* Stats Row */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.4 }}
-            className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto"
-          >
-            {[
-              { value: "15,000+", label: "Resumes Analyzed" },
-              { value: "92%", label: "Success Rate" },
-              { value: "4.9/5", label: "User Rating" },
-              { value: "500+", label: "Companies Hiring" },
-            ].map((stat, index) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1 * index }}
-                className="text-center p-4"
-              >
-                <p className="text-4xl md:text-5xl font-bold text-primary mb-2">{stat.value}</p>
-                <p className="text-gray-500 font-medium">{stat.label}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
+      <TestimonialsSection />
 
       {/* CTA Section */}
       <section className="py-24 bg-gradient-to-br from-primary via-primary to-indigo-700 text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-20">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
         </div>
-        <CursorGlow 
+        <CursorGlow
           className="w-full relative z-10"
           glowColor="rgba(199, 255, 107, 0.2)"
           glowSize={600}
@@ -776,7 +712,7 @@ const Landing = () => {
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link to="/resume-builder">
                   <MagneticButton strength={0.25}>
-                    <Button 
+                    <Button
                       size="lg"
                       className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7 transition-colors duration-200"
                     >
@@ -787,7 +723,7 @@ const Landing = () => {
                 </Link>
                 <Link to="/interview/dashboard">
                   <MagneticButton strength={0.25}>
-                    <Button 
+                    <Button
                       size="lg"
                       variant="outline"
                       className="border-white/30 text-white hover:bg-white/10 font-bold text-lg px-10 py-7 transition-colors duration-200"

@@ -1,149 +1,48 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Sparkles, Zap, Crown, ArrowRight, Loader2 } from "lucide-react";
+import { Check, X, Sparkles, Zap, Crown, ArrowRight, AlertCircle, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  FadeIn,
-  StaggerContainer,
-  StaggerItem,
-  TiltCard,
-  MagneticButton,
-  CursorGlow,
-  Spotlight
-} from "@/components/effects";
+import { FadeIn, StaggerContainer, StaggerItem } from "@/components/effects";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSubscription } from "@/hooks/useSubscription";
-import { paymentService } from "@/services/paymentService";
-import { useToast } from "@/hooks/use-toast";
 
 const Pricing = () => {
   const [isYearly, setIsYearly] = useState(false);
-  const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const { user } = useAuth();
-  const { subscription, isPaid, refetch } = useSubscription();
   const navigate = useNavigate();
-  const { toast } = useToast();
-
-  // Handle plan purchase with Razorpay
-  const handlePurchase = async (planName: string) => {
-    if (!user) {
-      navigate('/login', { state: { from: '/pricing', plan: planName } });
-      return;
-    }
-
-    if (planName === 'Free') {
-      navigate('/dashboard');
-      return;
-    }
-
-    if (planName === 'Enterprise') {
-      // TODO: Contact sales form
-      window.location.href = 'mailto:enterprise@applyx.com?subject=Enterprise Plan Inquiry';
-      return;
-    }
-
-    setIsProcessing(planName);
-    try {
-      const success = await paymentService.initiatePayment(
-        planName.toLowerCase() as 'pro' | 'enterprise',
-        (plan) => {
-          toast({
-            title: "Payment Successful!",
-            description: `You're now on the ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan.`,
-          });
-          refetch();
-          navigate('/dashboard');
-        },
-        (error) => {
-          toast({
-            title: "Payment Failed",
-            description: error,
-            variant: "destructive",
-          });
-        }
-      );
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Something went wrong",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(null);
-    }
-  };
 
   const plans = [
     {
       name: "Free",
       icon: Sparkles,
-      description: "Perfect for getting started",
+      description: "Get started with basic features",
       monthlyPrice: 0,
       yearlyPrice: 0,
-      inrMonthly: 0,
-      inrYearly: 0,
-      features: [
-        "2 resume edits (lifetime)",
-        "Basic ATS scoring",
-        "Standard templates",
-        "Email support",
-        "Job board access"
-      ],
-      limitations: [
-        "No interviews",
-        "Limited edits",
-        "No AI suggestions"
-      ],
-      cta: "Get Started Free",
+      cta: "Get Started",
       popular: false,
       color: "from-gray-500 to-gray-700"
     },
     {
       name: "Basic",
       icon: Sparkles,
-      description: "Great for beginners",
+      description: "Great for active job seekers",
       monthlyPrice: 99,
       yearlyPrice: 990,
-      inrMonthly: 99,
-      inrYearly: 990,
-      features: [
-        "10 resume edits/month",
-        "1 AI interview/month",
-        "AI-powered suggestions",
-        "ATS optimization",
-        "Live PDF editor",
-        "Email support"
-      ],
-      limitations: [],
-      cta: "Upgrade to Basic",
+      cta: "Start Basic",
       popular: false,
       color: "from-blue-400 to-blue-600"
     },
     {
       name: "Pro",
       icon: Zap,
-      description: "For serious job seekers",
+      description: "For serious career growth",
       monthlyPrice: 499,
       yearlyPrice: 4990,
-      inrMonthly: 499,
-      inrYearly: 4990,
-      features: [
-        "Unlimited resume edits",
-        "5 AI interviews/month",
-        "Advanced ATS scoring",
-        "AI-powered suggestions",
-        "Live PDF editor",
-        "50+ premium templates",
-        "Priority support",
-        "Cover letter generator"
-      ],
-      limitations: [],
-      cta: "Upgrade to Pro",
+      cta: "Go Pro",
       popular: true,
       color: "from-lime-400 to-green-500"
     },
@@ -151,53 +50,100 @@ const Pricing = () => {
       name: "Pro+",
       icon: Crown,
       description: "Ultimate career accelerator",
-      monthlyPrice: 5489,
-      yearlyPrice: 54890,
-      inrMonthly: 5489,
-      inrYearly: 54890,
-      features: [
-        "Everything in Pro",
-        "Unlimited AI interviews",
-        "6-month job guarantee",
-        "Resume recommendations",
-        "Referral support",
-        "Premium job postings",
-        "Dedicated career coach",
-        "Priority 24/7 support"
-      ],
-      limitations: [],
+      monthlyPrice: 999,
+      yearlyPrice: 9990,
       cta: "Get Pro+",
       popular: false,
       color: "from-purple-500 to-pink-600"
     }
   ];
 
-  const calculateSavings = (monthly: number, yearly: number) => {
-    if (monthly === 0) return 0;
-    const monthlyCost = monthly * 12;
-    const savings = monthlyCost - yearly;
-    const percentage = Math.round((savings / monthlyCost) * 100);
-    return percentage;
+  // Feature comparison data
+  const featureCategories = [
+    {
+      name: "Resume Features",
+      features: [
+        { name: "Resume Uploads", free: "2 total", basic: "10/month", pro: "Unlimited", proPlus: "Unlimited" },
+        { name: "ATS Score Analysis", free: true, basic: true, pro: true, proPlus: true },
+        { name: "AI Resume Suggestions", free: false, basic: true, pro: true, proPlus: true },
+        { name: "Live PDF Editor", free: false, basic: true, pro: true, proPlus: true },
+        { name: "Premium Templates", free: "3", basic: "15", pro: "50+", proPlus: "50+" },
+        { name: "Cover Letter Generator", free: false, basic: false, pro: true, proPlus: true },
+      ]
+    },
+    {
+      name: "AI Interview Practice",
+      features: [
+        { name: "Mock Interviews", free: false, basic: "1/month", pro: "5/month", proPlus: "Unlimited" },
+        { name: "Interview Feedback", free: false, basic: true, pro: true, proPlus: true },
+        { name: "Custom Interview Topics", free: false, basic: false, pro: true, proPlus: true },
+        { name: "Industry-specific Questions", free: false, basic: false, pro: true, proPlus: true },
+      ]
+    },
+    {
+      name: "Job Search",
+      features: [
+        { name: "Job Board Access", free: true, basic: true, pro: true, proPlus: true },
+        { name: "AI Job Matching", free: "Limited", basic: true, pro: true, proPlus: true },
+        { name: "Application Tracking", free: "5 jobs", basic: "50 jobs", pro: "Unlimited", proPlus: "Unlimited" },
+        { name: "Premium Job Listings", free: false, basic: false, pro: true, proPlus: true },
+        { name: "Referral Support", free: false, basic: false, pro: false, proPlus: true },
+      ]
+    },
+    {
+      name: "Support & Extras",
+      features: [
+        { name: "Email Support", free: true, basic: true, pro: true, proPlus: true },
+        { name: "Priority Support", free: false, basic: false, pro: true, proPlus: true },
+        { name: "24/7 Chat Support", free: false, basic: false, pro: false, proPlus: true },
+        { name: "Career Coach Access", free: false, basic: false, pro: false, proPlus: true },
+        { name: "Job Guarantee", free: false, basic: false, pro: false, proPlus: "6 months" },
+      ]
+    }
+  ];
+
+  const handlePlanClick = (planName: string) => {
+    if (!user) {
+      navigate('/login', { state: { from: '/pricing', plan: planName } });
+      return;
+    }
+    navigate('/dashboard');
+  };
+
+  const renderFeatureValue = (value: boolean | string) => {
+    if (value === true) {
+      return <Check className="w-5 h-5 text-green-500 mx-auto" />;
+    }
+    if (value === false) {
+      return <X className="w-5 h-5 text-gray-300 mx-auto" />;
+    }
+    return <span className="text-sm font-medium text-gray-700">{value}</span>;
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <div className="pt-24 md:pt-28 pb-20">
+      <div className="pt-20 md:pt-28 pb-20">
         <div className="container mx-auto px-4">
           {/* Header */}
-          <FadeIn className="text-center mb-12">
-            <h1 className="text-5xl md:text-6xl font-bold mb-4">
+          <FadeIn className="text-center mb-8 md:mb-12">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
               Simple, Transparent Pricing
             </h1>
-            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-              Choose the perfect plan for your career journey. All plans include a 14-day free trial.
+            <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 md:mb-8 max-w-2xl mx-auto px-4">
+              Choose the perfect plan for your career journey. Upgrade or downgrade anytime.
             </p>
 
+            {/* Payment Notice */}
+            <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-full text-sm mb-6">
+              <AlertCircle className="w-4 h-4" />
+              <span>Payments will be enabled soon. All features currently free during beta!</span>
+            </div>
+
             {/* Billing Toggle */}
-            <div className="flex items-center justify-center gap-4 mb-4">
-              <span className={`text-lg font-medium ${!isYearly ? 'text-black' : 'text-gray-500'}`}>
+            <div className="flex items-center justify-center gap-3 md:gap-4 flex-wrap">
+              <span className={`text-base md:text-lg font-medium ${!isYearly ? 'text-black' : 'text-gray-500'}`}>
                 Monthly
               </span>
               <Switch
@@ -205,195 +151,222 @@ const Pricing = () => {
                 onCheckedChange={setIsYearly}
                 className="data-[state=checked]:bg-lime-400"
               />
-              <span className={`text-lg font-medium ${isYearly ? 'text-black' : 'text-gray-500'}`}>
+              <span className={`text-base md:text-lg font-medium ${isYearly ? 'text-black' : 'text-gray-500'}`}>
                 Yearly
               </span>
               {isYearly && (
                 <motion.span
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="bg-lime-400 text-black px-3 py-1 rounded-full text-sm font-bold"
+                  className="bg-lime-400 text-black px-3 py-1 rounded-full text-xs md:text-sm font-bold"
                 >
-                  Save up to 20%
+                  Save 17%
                 </motion.span>
               )}
             </div>
           </FadeIn>
 
-          {/* Pricing Cards */}
-          <StaggerContainer className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto" staggerDelay={0.15}>
-            {plans.map((plan, index) => {
+          {/* Pricing Cards - Mobile First */}
+          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 max-w-7xl mx-auto mb-16" staggerDelay={0.1}>
+            {plans.map((plan) => {
               const Icon = plan.icon;
               const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
-              const savings = calculateSavings(plan.monthlyPrice, plan.yearlyPrice);
 
               return (
                 <StaggerItem key={plan.name} className="relative">
                   {plan.popular && (
-                    <div className="absolute -top-4 left-0 right-0 flex justify-center z-10">
-                      <span className="bg-gradient-to-r from-lime-400 to-green-500 text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg">
-                        Most Popular
+                    <div className="absolute -top-3 left-0 right-0 flex justify-center z-10">
+                      <span className="bg-gradient-to-r from-lime-400 to-green-500 text-black px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                        <Star className="w-3 h-3" /> Most Popular
                       </span>
                     </div>
                   )}
 
-                  <TiltCard
-                    tiltAmount={plan.popular ? 8 : 5}
-                    scale={plan.popular ? 1.02 : 1.01}
-                    glare
-                    glareOpacity={plan.popular ? 0.15 : 0.08}
-                    className="h-full"
-                  >
-                    <Spotlight>
-                      <Card className={`h-full ${plan.popular ? 'border-4 border-lime-400 shadow-2xl' : 'border-2'} hover:shadow-xl transition-all duration-300`}>
-                        <CardHeader>
-                          <motion.div
-                            className={`w-12 h-12 rounded-lg bg-gradient-to-br ${plan.color} flex items-center justify-center mb-4`}
-                            whileHover={{ rotate: 360 }}
-                            transition={{ duration: 0.5 }}
-                          >
-                            <Icon className="w-6 h-6 text-white" />
-                          </motion.div>
-                          <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                          <CardDescription className="text-base">{plan.description}</CardDescription>
+                  <Card className={`h-full ${plan.popular ? 'border-2 border-lime-400 shadow-xl' : 'border'} hover:shadow-lg transition-all duration-300`}>
+                    <CardHeader className="pb-4">
+                      <div className={`w-10 h-10 md:w-12 md:h-12 rounded-lg bg-gradient-to-br ${plan.color} flex items-center justify-center mb-3`}>
+                        <Icon className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                      </div>
+                      <CardTitle className="text-xl md:text-2xl">{plan.name}</CardTitle>
+                      <CardDescription className="text-sm">{plan.description}</CardDescription>
 
-                          <div className="mt-4">
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-5xl font-bold">₹{price}</span>
-                              <span className="text-gray-500">
-                                /{isYearly ? 'year' : 'month'}
-                              </span>
-                            </div>
-                            {isYearly && savings > 0 && (
-                              <p className="text-sm text-green-600 font-semibold mt-1">
-                                Save {savings}% with yearly billing
-                              </p>
-                            )}
-                            {!isYearly && plan.monthlyPrice > 0 && (
-                              <p className="text-sm text-gray-500 mt-1">
-                                ₹{plan.yearlyPrice}/year if billed annually
-                              </p>
-                            )}
-                          </div>
-                        </CardHeader>
+                      <div className="mt-3">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl md:text-4xl font-bold">₹{price}</span>
+                          <span className="text-gray-500 text-sm">
+                            /{isYearly ? 'year' : 'month'}
+                          </span>
+                        </div>
+                      </div>
+                    </CardHeader>
 
-                        <CardContent className="flex-1">
-                          <div className="space-y-3">
-                            {plan.features.map((feature, i) => (
-                              <motion.div
-                                key={i}
-                                className="flex items-start gap-3"
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: i * 0.05 }}
-                              >
-                                <Check className="w-5 h-5 text-lime-500 flex-shrink-0 mt-0.5" />
-                                <span className="text-sm">{feature}</span>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </CardContent>
-
-                        <CardFooter>
-                          <MagneticButton className="w-full" strength={0.2}>
-                            <Button
-                              className={`w-full ${plan.popular
-                                ? 'bg-gradient-to-r from-lime-400 to-green-500 hover:from-lime-500 hover:to-green-600 text-black'
-                                : 'bg-black hover:bg-gray-800 text-white'
-                                } font-bold py-6 text-lg group`}
-                              onClick={() => handlePurchase(plan.name)}
-                              disabled={isProcessing !== null || (isPaid && plan.name === subscription?.plan)}
-                            >
-                              {isProcessing === plan.name ? (
-                                <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Processing...</>
-                              ) : isPaid && plan.name.toLowerCase() === subscription?.plan ? (
-                                "Current Plan"
-                              ) : (
-                                <>{plan.cta}<ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" /></>
-                              )}
-                            </Button>
-                          </MagneticButton>
-                        </CardFooter>
-                      </Card>
-                    </Spotlight>
-                  </TiltCard>
+                    <CardFooter className="pt-0">
+                      <Button
+                        className={`w-full ${plan.popular
+                          ? 'bg-gradient-to-r from-lime-400 to-green-500 hover:from-lime-500 hover:to-green-600 text-black'
+                          : 'bg-black hover:bg-gray-800 text-white'
+                          } font-bold py-5 text-sm md:text-base group`}
+                        onClick={() => handlePlanClick(plan.name)}
+                      >
+                        {plan.cta}
+                        <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                      </Button>
+                    </CardFooter>
+                  </Card>
                 </StaggerItem>
               );
             })}
           </StaggerContainer>
+
+          {/* Feature Comparison Table */}
+          <FadeIn delay={0.2} className="max-w-7xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-bold text-center mb-8">Compare All Features</h2>
+
+            {/* Desktop Table */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full border-collapse bg-white rounded-2xl shadow-lg overflow-hidden">
+                <thead>
+                  <tr className="bg-gray-50 border-b">
+                    <th className="text-left p-4 font-semibold text-gray-600 w-1/3">Features</th>
+                    {plans.map((plan) => (
+                      <th key={plan.name} className={`p-4 text-center font-bold ${plan.popular ? 'bg-lime-50' : ''}`}>
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={plan.popular ? 'text-green-600' : ''}>{plan.name}</span>
+                          <span className="text-2xl">₹{isYearly ? plan.yearlyPrice : plan.monthlyPrice}</span>
+                          <span className="text-xs text-gray-500 font-normal">/{isYearly ? 'year' : 'month'}</span>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {featureCategories.map((category, catIdx) => (
+                    <>
+                      <tr key={category.name} className="bg-gray-100">
+                        <td colSpan={5} className="p-3 font-bold text-gray-800 text-sm uppercase tracking-wide">
+                          {category.name}
+                        </td>
+                      </tr>
+                      {category.features.map((feature, idx) => (
+                        <tr key={feature.name} className={`border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                          <td className="p-4 text-gray-700">{feature.name}</td>
+                          <td className="p-4 text-center">{renderFeatureValue(feature.free)}</td>
+                          <td className="p-4 text-center">{renderFeatureValue(feature.basic)}</td>
+                          <td className={`p-4 text-center ${plans[2].popular ? 'bg-lime-50/50' : ''}`}>{renderFeatureValue(feature.pro)}</td>
+                          <td className="p-4 text-center">{renderFeatureValue(feature.proPlus)}</td>
+                        </tr>
+                      ))}
+                    </>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-gray-50">
+                    <td className="p-4"></td>
+                    {plans.map((plan) => (
+                      <td key={plan.name} className={`p-4 text-center ${plan.popular ? 'bg-lime-50' : ''}`}>
+                        <Button
+                          className={`${plan.popular
+                            ? 'bg-gradient-to-r from-lime-400 to-green-500 hover:from-lime-500 hover:to-green-600 text-black'
+                            : 'bg-black hover:bg-gray-800 text-white'
+                            } font-bold`}
+                          onClick={() => handlePlanClick(plan.name)}
+                        >
+                          {plan.cta}
+                        </Button>
+                      </td>
+                    ))}
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Mobile Feature Cards */}
+            <div className="lg:hidden space-y-6">
+              {featureCategories.map((category) => (
+                <Card key={category.name} className="overflow-hidden">
+                  <CardHeader className="bg-gray-100 py-3">
+                    <CardTitle className="text-base font-bold uppercase tracking-wide">{category.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {category.features.map((feature, idx) => (
+                      <div key={feature.name} className={`p-4 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} border-b last:border-b-0`}>
+                        <div className="font-medium text-gray-800 mb-3">{feature.name}</div>
+                        <div className="grid grid-cols-4 gap-2 text-center">
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Free</div>
+                            {renderFeatureValue(feature.free)}
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Basic</div>
+                            {renderFeatureValue(feature.basic)}
+                          </div>
+                          <div className="bg-lime-50 rounded-lg py-1">
+                            <div className="text-xs text-green-600 mb-1 font-medium">Pro</div>
+                            {renderFeatureValue(feature.pro)}
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Pro+</div>
+                            {renderFeatureValue(feature.proPlus)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </FadeIn>
 
           {/* FAQ Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="mt-20 max-w-4xl mx-auto"
+            className="mt-16 md:mt-20 max-w-4xl mx-auto"
           >
-            <h2 className="text-3xl font-bold text-center mb-12">Frequently Asked Questions</h2>
+            <h2 className="text-2xl md:text-3xl font-bold text-center mb-8 md:mb-12">Frequently Asked Questions</h2>
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid sm:grid-cols-2 gap-4 md:gap-6">
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Can I switch plans anytime?</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base md:text-lg">Can I switch plans anytime?</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-600">
-                    Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately.
+                  <p className="text-gray-600 text-sm md:text-base">
+                    Yes! Upgrade or downgrade anytime. Changes take effect immediately.
                   </p>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">What payment methods do you accept?</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base md:text-lg">Is there a free trial?</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-600">
-                    We accept all major credit cards, PayPal, and bank transfers for Enterprise plans.
+                  <p className="text-gray-600 text-sm md:text-base">
+                    Yes! All paid plans come with a 14-day free trial. No credit card required.
                   </p>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Is there a free trial?</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base md:text-lg">What payment methods?</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-600">
-                    Yes! All paid plans come with a 14-day free trial. No credit card required to start.
+                  <p className="text-gray-600 text-sm md:text-base">
+                    UPI, credit/debit cards, and net banking via Razorpay.
                   </p>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Can I cancel anytime?</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base md:text-lg">Can I cancel anytime?</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-600">
-                    Absolutely. Cancel anytime with no questions asked. You'll have access until the end of your billing period.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Do you offer refunds?</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600">
-                    Yes, we offer a 30-day money-back guarantee if you're not satisfied with our service.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">What's included in Enterprise?</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600">
-                    Enterprise includes everything in Pro plus custom features, dedicated support, and flexible deployment options.
+                  <p className="text-gray-600 text-sm md:text-base">
+                    Absolutely. Cancel anytime with no questions asked.
                   </p>
                 </CardContent>
               </Card>
@@ -401,37 +374,27 @@ const Pricing = () => {
           </motion.div>
 
           {/* CTA Section */}
-          <FadeIn delay={0.4} className="mt-20 text-center">
-            <CursorGlow
-              glowColor="rgba(199, 255, 107, 0.2)"
-              glowSize={400}
-              className="rounded-2xl"
-            >
-              <Card className="bg-gradient-to-r from-black to-gray-900 text-white border-0 max-w-4xl mx-auto">
-                <CardContent className="p-12">
-                  <h2 className="text-4xl font-bold mb-4">Still have questions?</h2>
-                  <p className="text-xl text-gray-300 mb-8">
-                    Our team is here to help you choose the right plan for your needs.
-                  </p>
-                  <div className="flex gap-4 justify-center flex-wrap">
-                    <Link to="/contact">
-                      <MagneticButton strength={0.25}>
-                        <Button size="lg" className="bg-lime-400 hover:bg-lime-500 text-black font-bold">
-                          Contact Sales
-                        </Button>
-                      </MagneticButton>
-                    </Link>
-                    <Link to="/signup">
-                      <MagneticButton strength={0.25}>
-                        <Button size="lg" variant="outline" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-black">
-                          Start Free Trial
-                        </Button>
-                      </MagneticButton>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            </CursorGlow>
+          <FadeIn delay={0.4} className="mt-16 md:mt-20 text-center">
+            <Card className="bg-gradient-to-r from-black to-gray-900 text-white border-0 max-w-4xl mx-auto">
+              <CardContent className="p-8 md:p-12">
+                <h2 className="text-2xl md:text-4xl font-bold mb-3 md:mb-4">Ready to accelerate your career?</h2>
+                <p className="text-base md:text-xl text-gray-300 mb-6 md:mb-8">
+                  Join thousands of professionals landing their dream jobs with ApplyX.
+                </p>
+                <div className="flex gap-3 md:gap-4 justify-center flex-wrap">
+                  <Link to="/signup">
+                    <Button size="lg" className="bg-lime-400 hover:bg-lime-500 text-black font-bold">
+                      Start Free Trial
+                    </Button>
+                  </Link>
+                  <Link to="/contact">
+                    <Button size="lg" variant="outline" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-black">
+                      Contact Sales
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
           </FadeIn>
         </div>
       </div>

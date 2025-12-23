@@ -42,7 +42,7 @@ const ResumeBuilder = () => {
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       setFile(e.dataTransfer.files[0]);
     }
@@ -78,7 +78,7 @@ const ResumeBuilder = () => {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      
+
       // Redirect to analysis page
       if (result.id) {
         navigate(`/resume/${result.id}`);
@@ -90,7 +90,7 @@ const ResumeBuilder = () => {
         description: errorMessage,
         variant: "destructive",
       });
-      
+
       // If the error is due to authentication, redirect to login
       if (err.response?.status === 401) {
         window.location.href = '/login';
@@ -104,32 +104,35 @@ const ResumeBuilder = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Navigation */}
-      <nav className="border-b border-gray-200 bg-white sticky top-0 z-50 shadow-sm">
+      <nav className="border-b border-gray-800 bg-black sticky top-0 z-50">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between px-4 md:px-8 py-4">
-          <div className="flex items-center gap-3">
-            <img 
+          <div className="flex items-center gap-8">
+            <img
               src="/Dark BG Logo.png"
               alt="ApplyX Logo"
-              className="h-10 md:h-12 w-auto"
+              className="h-10 md:h-12 w-auto cursor-pointer"
+              onClick={() => navigate('/')}
             />
-          </div>
-          
-          <div className="hidden md:flex items-center gap-6">
-            <button onClick={() => navigate('/dashboard')} className="text-sm font-medium text-gray-600 hover:text-black transition-colors">Dashboard</button>
-            <button onClick={() => navigate('/resume-builder')} className="text-sm font-medium text-black">Upload Resume</button>
+
+            <div className="hidden md:flex items-center gap-6">
+              <button onClick={() => navigate('/')} className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Home</button>
+              <button onClick={() => navigate('/jobs')} className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Jobs</button>
+              <button onClick={() => navigate('/dashboard')} className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Dashboard</button>
+              <button onClick={() => navigate('/resume-builder')} className="text-sm font-medium text-white">Upload Resume</button>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <Bell className="w-5 h-5 text-gray-600" />
+            <button className="p-2 hover:bg-gray-800 rounded-lg transition-colors">
+              <Bell className="w-5 h-5 text-gray-400" />
             </button>
-            <div className="w-9 h-9 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center text-white text-sm font-semibold">
+            <div className="w-9 h-9 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center text-white text-sm font-semibold cursor-pointer" onClick={() => navigate('/dashboard')}>
               <User className="w-5 h-5" />
             </div>
           </div>
         </div>
       </nav>
-      
+
       <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-6 md:py-12">
         {/* Header */}
         <div className="mb-8 md:mb-12">
@@ -138,7 +141,7 @@ const ResumeBuilder = () => {
             <span>/</span>
             <span className="text-black font-medium">Upload Resume</span>
           </div>
-          
+
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl md:text-4xl font-bold text-black">Upload Your Resume</h1>
@@ -154,10 +157,9 @@ const ResumeBuilder = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Column - Upload Area */}
           <div className="lg:col-span-8">
-            <Card 
-              className={`border-2 border-dashed rounded-xl md:rounded-2xl transition-all duration-300 ${
-                isDragging ? 'border-black bg-gray-50' : 'border-gray-300 hover:border-gray-400'
-              }`}
+            <Card
+              className={`border-2 border-dashed rounded-xl md:rounded-2xl transition-all duration-300 ${isDragging ? 'border-black bg-gray-50' : 'border-gray-300 hover:border-gray-400'
+                }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
@@ -171,8 +173,8 @@ const ResumeBuilder = () => {
                     {file ? file.name : 'Drop your resume here'}
                   </h3>
                   <p className="text-gray-600 text-sm md:text-base mb-2">
-                    {file 
-                      ? `File size: ${(file.size / 1024).toFixed(2)} KB` 
+                    {file
+                      ? `File size: ${(file.size / 1024).toFixed(2)} KB`
                       : 'or click to browse from your computer'
                     }
                   </p>
@@ -188,9 +190,9 @@ const ResumeBuilder = () => {
                     accept=".pdf,.doc,.docx"
                     className="hidden"
                   />
-                  <Button 
-                    variant="outline" 
-                    size="lg" 
+                  <Button
+                    variant="outline"
+                    size="lg"
                     className="border-gray-300 hover:border-black"
                     onClick={handleButtonClick}
                   >
@@ -198,8 +200,8 @@ const ResumeBuilder = () => {
                     {file ? 'Change File' : 'Choose File'}
                   </Button>
                   {file && (
-                    <Button 
-                      size="lg" 
+                    <Button
+                      size="lg"
                       className="bg-black hover:bg-gray-900 text-white"
                       onClick={handleUpload}
                       disabled={loading}
@@ -243,7 +245,7 @@ const ResumeBuilder = () => {
                     {useJD ? "Enabled" : "Enable"}
                   </Button>
                 </div>
-                
+
                 {useJD && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
@@ -266,7 +268,7 @@ const ResumeBuilder = () => {
                 )}
               </CardContent>
             </Card>
-            
+
             {/* What Happens Next */}
             <Card className="mt-6 rounded-xl md:rounded-2xl bg-blue-50 border-blue-200">
               <CardContent className="p-6 md:p-8">
