@@ -63,13 +63,13 @@ const Navbar = () => {
 
   const handleNavClick = (e: React.MouseEvent, path: string, section?: string | null) => {
     e.preventDefault();
-    
+
     // If it's a direct path (like /pricing), just navigate
     if (!section) {
       navigate(path);
       return;
     }
-    
+
     // Handle section scrolling
     if (section) {
       if (location.pathname === '/') {
@@ -93,17 +93,16 @@ const Navbar = () => {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${
-        isScrolled
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${isScrolled
           ? "bg-white border-b border-gray-200 shadow-lg"
           : "bg-black border-b border-gray-800"
-      }`}
+        }`}
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-18">
           {/* Logo */}
           <Link to="/" className="flex items-center group relative">
-            <img 
+            <img
               src={isScrolled ? "/Light BG Logo.png" : "/Dark BG Logo.png"}
               alt="ApplyX Logo"
               className="h-24 md:h-32 w-auto transition-all duration-500 ease-in-out hover:scale-105"
@@ -122,9 +121,8 @@ const Navbar = () => {
                 <a
                   href={link.path}
                   onClick={(e) => handleNavClick(e, link.path, link.section)}
-                  className={`relative font-medium transition-all duration-300 hover:text-lime-400 ${
-                    isScrolled ? "text-gray-700 hover:text-black" : "text-white"
-                  }`}
+                  className={`relative font-medium transition-all duration-300 hover:text-lime-400 ${isScrolled ? "text-gray-700 hover:text-black" : "text-white"
+                    }`}
                 >
                   {link.name}
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-lime-400 group-hover:w-full transition-all duration-300" />
@@ -137,17 +135,15 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-4">
             {user ? (
               <>
-                <Link to="/dashboard" className={`font-medium transition-all duration-300 ${
-                  isScrolled ? "text-gray-700 hover:text-black" : "text-white hover:text-lime-400"
-                }`}>
+                <Link to="/dashboard" className={`font-medium transition-all duration-300 ${isScrolled ? "text-gray-700 hover:text-black" : "text-white hover:text-lime-400"
+                  }`}>
                   Dashboard
                 </Link>
-                <Link to="/ats-templates" className={`font-medium transition-all duration-300 ${
-                  isScrolled ? "text-gray-700 hover:text-black" : "text-white hover:text-lime-400"
-                }`}>
+                <Link to="/ats-templates" className={`font-medium transition-all duration-300 ${isScrolled ? "text-gray-700 hover:text-black" : "text-white hover:text-lime-400"
+                  }`}>
                   Templates
                 </Link>
-                
+
                 {/* User Avatar with Profile Picture - Clickable for dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -159,6 +155,13 @@ const Navbar = () => {
                     </Avatar>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
+                    {/* User Info Header */}
+                    <div className="px-3 py-2 border-b border-gray-100">
+                      <p className="font-semibold text-gray-900 truncate">
+                        {user.user_metadata?.full_name || user.user_metadata?.name || 'User'}
+                      </p>
+                      <p className="text-sm text-gray-500 truncate">{user.email}</p>
+                    </div>
                     <DropdownMenuItem onClick={() => navigate('/settings')}>
                       <Settings className="mr-2 h-4 w-4" />
                       Settings
@@ -178,11 +181,10 @@ const Navbar = () => {
             ) : (
               <>
                 <Link to="/login">
-                  <Button 
+                  <Button
                     variant="ghost"
-                    className={`transition-all duration-300 ${
-                      isScrolled ? "text-gray-700 hover:text-black hover:bg-gray-100" : "text-white hover:text-lime-400 hover:bg-white/10"
-                    }`}
+                    className={`transition-all duration-300 ${isScrolled ? "text-gray-700 hover:text-black hover:bg-gray-100" : "text-white hover:text-lime-400 hover:bg-white/10"
+                      }`}
                   >
                     Sign In
                   </Button>
@@ -199,9 +201,8 @@ const Navbar = () => {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className={`md:hidden p-2 rounded-lg transition-all duration-300 ${
-              isScrolled ? "text-gray-700 hover:bg-gray-100" : "text-white hover:bg-white/10"
-            }`}
+            className={`md:hidden p-2 rounded-lg transition-all duration-300 ${isScrolled ? "text-gray-700 hover:bg-gray-100" : "text-white hover:bg-white/10"
+              }`}
             aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? (
@@ -261,8 +262,8 @@ const Navbar = () => {
                           Profile
                         </Button>
                       </Link>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         className="w-full justify-start text-red-600"
                         onClick={() => {
                           handleSignOut();

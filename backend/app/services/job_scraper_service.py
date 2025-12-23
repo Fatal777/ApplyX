@@ -58,6 +58,7 @@ class JobScraperService:
     - adzuna: Adzuna API (free tier 250 calls/month, supports India)
     - jsearch: JSearch RapidAPI (200 free/month, aggregates LinkedIn/Indeed/Glassdoor)
     - remotive: Remotive API (free, no auth, remote tech jobs)
+    - arbeitnow: Arbeitnow API (free, no auth, tech/startup jobs)
     """
 
     # Per-minute soft limits
@@ -65,12 +66,14 @@ class JobScraperService:
         "adzuna": 5,      # ~250/month ≈ 8/day, be conservative
         "jsearch": 3,     # 200/month ≈ 6/day
         "remotive": 10,   # Free, generous
+        "arbeitnow": 10,  # Free, no auth required
     }
 
     # API endpoints
     ADZUNA_BASE_URL = "https://api.adzuna.com/v1/api/jobs"
     JSEARCH_BASE_URL = "https://jsearch.p.rapidapi.com/search"
     REMOTIVE_BASE_URL = "https://remotive.com/api/remote-jobs"
+    ARBEITNOW_BASE_URL = "https://www.arbeitnow.com/api/job-board-api"
 
     def __init__(self) -> None:
         self._cache = JobCacheService()
@@ -95,6 +98,7 @@ class JobScraperService:
             "adzuna": self._fetch_adzuna_jobs,
             "jsearch": self._fetch_jsearch_jobs,
             "remotive": self._fetch_remotive_jobs,
+            "arbeitnow": self._fetch_arbeitnow_jobs,
         }.get(portal)
 
         if not dispatcher:
@@ -370,6 +374,70 @@ class JobScraperService:
                 return category
         
         return "software-dev"  # Default for tech jobs
+
+    def _fetch_arbeitnow_jobs(self, keywords: List[str], location: str) -> List[Dict[str, Any]]:
+        """Fetch jobs from Arbeitnow API.
+        
+        Arbeitnow API: Free, no auth required
+        Focused on tech/startup jobs in Europe but has global listings
+        """
+        params = {}
+        if keywords:
+            params["search"] = " ".join(keywords[:3])
+        
+        try:
+            response = self._session.get(
+                self.ARBEITNOW_BASE_URL,
+                params=params,
+                timeout=10
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            jobs = []
+            for item in data.get("data", [])[:20]:  # Limit to 20
+                job = self._normalize_arbeitnow_job(item)
+                if job:
+                    jobs.append(job)
+            
+            return jobs
+        except requests.RequestException as e:
+            logger.error("Arbeitnow API error: %s", str(e))
+            return []
+
+    def _normalize_arbeitnow_job(self, item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Normalize Arbeitnow job response to standard format."""
+        try:
+            description = item.get("description", "")
+            # Strip HTML tags from description
+            clean_desc = re.sub(r'<[^>]+>', '', description)
+            skills = self._extract_skills_from_text(clean_desc)
+            
+            # Parse location
+            location = item.get("location", "Remote")
+            if item.get("remote", False):
+                location = "Remote"
+            
+            return {
+                "title": item.get("title", "Unknown Position"),
+                "company": item.get("company_name", "Unknown Company"),
+                "location": location,
+                "description": clean_desc[:500],
+                "skills": skills,
+                "redirect_url": item.get("url", ""),
+                "portal": "arbeitnow",
+                "posted_date": item.get("created_at", datetime.now().strftime("%Y-%m-%d"))[:10],
+                "salary_min": None,
+                "salary_max": None,
+                "experience": self._infer_experience_level(item.get("title", ""), clean_desc),
+                "job_id": str(item.get("slug", "")),
+                "job_type": "Full-time" if not item.get("remote") else "Remote",
+                "category": ", ".join(item.get("tags", [])),
+                "company_logo": None,
+            }
+        except Exception as e:
+            logger.warning("Failed to normalize Arbeitnow job: %s", str(e))
+            return None
 
     # -------------- Helper Methods --------------
 

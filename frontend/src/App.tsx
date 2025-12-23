@@ -34,6 +34,8 @@ import Pricing from "./pages/Pricing";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminPanel from "./pages/AdminPanel";
 import ScrollToTop from "./components/ScrollToTop";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 
 const queryClient = new QueryClient();
 
@@ -245,6 +247,8 @@ const AppRoutes = () => {
       <Route path="/demo/live-editor" element={<LivePdfEditor />} />
 
       <Route path="/pricing" element={<Pricing />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
 
       {/* Hidden Admin Dashboard - Not linked anywhere */}
       <Route path="/nexus-control" element={<AdminDashboard />} />
