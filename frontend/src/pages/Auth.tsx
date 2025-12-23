@@ -87,7 +87,7 @@ const Auth = () => {
 
     const handleGoogleSignIn = async () => {
         try {
-            await signInWithGoogle();
+            await signInWithGoogle(from);
         } catch (error: any) {
             toast({
                 title: "Google sign in failed",

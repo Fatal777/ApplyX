@@ -138,7 +138,7 @@ const Pricing = () => {
             {/* Payment Notice */}
             <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-full text-sm mb-6">
               <AlertCircle className="w-4 h-4" />
-              <span>Payments will be enabled soon. All features currently free during beta!</span>
+              <span>Payments will be enabled soon.</span>
             </div>
 
             {/* Billing Toggle */}

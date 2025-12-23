@@ -10,7 +10,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName?: string) => Promise<void>;
   signOut: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (returnTo?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,8 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(session.user);
           setIsAuthenticated(true);
           setIsLoading(false);
-          // Clean up URL
-          window.history.replaceState(null, '', '/');
+          // Restore the page user was on before auth
+          const returnTo = sessionStorage.getItem('auth_return_to') || '/';
+          sessionStorage.removeItem('auth_return_to');
+          window.history.replaceState(null, '', returnTo);
           return;
         }
         if (error) {
@@ -117,12 +119,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (returnTo?: string) => {
     try {
+      // Store the return path before OAuth redirect
+      const currentPath = returnTo || window.location.pathname + window.location.search;
+      sessionStorage.setItem('auth_return_to', currentPath);
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/',
+          redirectTo: window.location.origin,
         },
       });
       if (error) throw error;
