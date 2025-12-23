@@ -191,3 +191,110 @@ def fetch_and_store_jobs(job_id: str):
     except Exception as e:
         logger.error(f"Error fetching/storing jobs: {str(e)}")
         return {"status": "error", "message": str(e)}
+
+
+@shared_task(name='app.tasks.scraping_tasks.scrape_and_store_all_jobs')
+def scrape_and_store_all_jobs(keywords: List[str] = None, location: str = "India"):
+    """
+    Daily automated task: Fetch jobs from all free APIs and store engineering jobs in database.
+    Runs at 6 AM IST daily via Celery Beat.
+    """
+    from app.services.job_scraper_service import JobScraperService
+    
+    if keywords is None:
+        keywords = ['software engineer', 'developer', 'data scientist', 'frontend', 'backend']
+    
+    logger.info(f"Starting daily job scrape: keywords={keywords}, location={location}")
+    
+    scraper = JobScraperService()
+    db = SessionLocal()
+    
+    total_fetched = 0
+    total_stored = 0
+    total_filtered = 0
+    total_duplicates = 0
+    
+    # Fetch from all portals
+    all_jobs = scraper.fetch_all_portals(keywords, location)
+    total_fetched = len(all_jobs)
+    
+    logger.info(f"Fetched {total_fetched} jobs from all portals")
+    
+    # Store jobs in database with deduplication
+    for job_data in all_jobs:
+        title = job_data.get('title', '')
+        
+        # Filter: Accept ONLY engineering jobs
+        if not is_engineering_job(title):
+            total_filtered += 1
+            continue
+        
+        # Check for duplicates by URL or title+company combo
+        redirect_url = job_data.get('redirect_url', '')
+        company = job_data.get('company', '')
+        
+        existing = db.query(Job).filter(
+            (Job.source_url == redirect_url) | 
+            ((Job.title == title) & (Job.company == company))
+        ).first()
+        
+        if existing:
+            total_duplicates += 1
+            continue
+        
+        try:
+            # Parse posted date
+            posted_date_str = job_data.get('posted_date', '')
+            posted_date = None
+            if posted_date_str:
+                try:
+                    posted_date = datetime.strptime(posted_date_str[:10], '%Y-%m-%d')
+                except:
+                    pass
+            
+            job = Job(
+                title=title,
+                company=company,
+                location=job_data.get('location', location),
+                description=job_data.get('description', ''),
+                requirements=None,
+                salary_min=job_data.get('salary_min'),
+                salary_max=job_data.get('salary_max'),
+                salary_currency='INR',
+                employment_type=job_data.get('job_type'),
+                skills_required=job_data.get('skills', []),
+                source=job_data.get('portal', 'api'),
+                source_url=redirect_url,
+                apply_url=redirect_url,
+                posted_date=posted_date,
+                scraped_at=datetime.utcnow(),
+                is_active=True
+            )
+            
+            db.add(job)
+            total_stored += 1
+        except Exception as e:
+            logger.error(f"Error storing job '{title}': {str(e)}")
+            continue
+    
+    try:
+        db.commit()
+    except Exception as e:
+        logger.error(f"Error committing jobs: {str(e)}")
+        db.rollback()
+    finally:
+        db.close()
+    
+    result = {
+        "status": "success",
+        "fetched": total_fetched,
+        "stored": total_stored,
+        "filtered": total_filtered,
+        "duplicates": total_duplicates,
+        "keywords": keywords,
+        "location": location,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    
+    logger.info(f"Daily scrape complete: {result}")
+    return result

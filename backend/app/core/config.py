@@ -79,6 +79,9 @@ class Settings(BaseSettings):
     # Zyte Scrapy Cloud API Key (for scheduling and fetching scraped jobs)
     ZYTE_API_KEY: Optional[str] = None
     
+    # SerpAPI Key for Google Jobs search (100 free searches/month)
+    SERPAPI_KEY: Optional[str] = None
+    
     # Celery Configuration for Automated Scraping
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"

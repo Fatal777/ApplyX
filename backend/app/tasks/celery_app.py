@@ -1,6 +1,7 @@
 """Celery application configuration"""
 
 from celery import Celery
+from celery.schedules import crontab
 from app.core.config import settings
 
 # Create Celery app
@@ -12,6 +13,7 @@ celery_app = Celery(
         'app.tasks.resume_tasks',
         'app.tasks.interview_tasks',
         'app.tasks.job_tasks',
+        'app.tasks.scraping_tasks',
     ]
 )
 
@@ -20,11 +22,29 @@ celery_app.conf.update(
     task_serializer='json',
     accept_content=['json'],
     result_serializer='json',
-    timezone='UTC',
-    enable_utc=True,
+    timezone='Asia/Kolkata',  # IST timezone
+    enable_utc=False,  # Use local time
     task_track_started=True,
     task_time_limit=300,  # 5 minutes max per task
     task_soft_time_limit=240,  # 4 minutes soft limit
     worker_prefetch_multiplier=1,
     worker_max_tasks_per_child=1000,
 )
+
+# Celery Beat schedule for automated tasks
+celery_app.conf.beat_schedule = {
+    # Scrape jobs daily at 6 AM IST
+    'scrape-and-store-jobs-daily': {
+        'task': 'app.tasks.scraping_tasks.scrape_and_store_all_jobs',
+        'schedule': crontab(hour=6, minute=0),
+        'kwargs': {
+            'keywords': ['software engineer', 'developer', 'data scientist', 'frontend', 'backend'],
+            'location': 'India'
+        },
+    },
+    # Warm job cache every 4 hours
+    'warm-job-cache': {
+        'task': 'app.tasks.job_tasks.warm_job_cache',
+        'schedule': crontab(minute=0, hour='*/4'),
+    },
+}

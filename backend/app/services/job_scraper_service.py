@@ -59,6 +59,7 @@ class JobScraperService:
     - jsearch: JSearch RapidAPI (200 free/month, aggregates LinkedIn/Indeed/Glassdoor)
     - remotive: Remotive API (free, no auth, remote tech jobs)
     - arbeitnow: Arbeitnow API (free, no auth, tech/startup jobs)
+    - serpapi: SerpAPI Google Jobs (100 free/month, aggregates Google Jobs)
     """
 
     # Per-minute soft limits
@@ -67,6 +68,7 @@ class JobScraperService:
         "jsearch": 3,     # 200/month ≈ 6/day
         "remotive": 10,   # Free, generous
         "arbeitnow": 10,  # Free, no auth required
+        "serpapi": 3,     # 100/month ≈ 3/day, be conservative
     }
 
     # API endpoints
@@ -74,6 +76,7 @@ class JobScraperService:
     JSEARCH_BASE_URL = "https://jsearch.p.rapidapi.com/search"
     REMOTIVE_BASE_URL = "https://remotive.com/api/remote-jobs"
     ARBEITNOW_BASE_URL = "https://www.arbeitnow.com/api/job-board-api"
+    SERPAPI_BASE_URL = "https://serpapi.com/search"
 
     def __init__(self) -> None:
         self._cache = JobCacheService()
@@ -99,6 +102,7 @@ class JobScraperService:
             "jsearch": self._fetch_jsearch_jobs,
             "remotive": self._fetch_remotive_jobs,
             "arbeitnow": self._fetch_arbeitnow_jobs,
+            "serpapi": self._fetch_serpapi_jobs,
         }.get(portal)
 
         if not dispatcher:
@@ -188,7 +192,8 @@ class JobScraperService:
                 "location": location,
                 "description": description[:500],  # Truncate for storage
                 "skills": skills,
-                "redirect_url": item.get("redirect_url", ""),
+                # Resolve Adzuna tracking URL to get actual job page
+                "redirect_url": self._resolve_redirect_url(item.get("redirect_url", "")),
                 "portal": "adzuna",
                 "posted_date": item.get("created", datetime.now().isoformat())[:10],
                 "salary_min": item.get("salary_min"),
@@ -438,6 +443,91 @@ class JobScraperService:
         except Exception as e:
             logger.warning("Failed to normalize Arbeitnow job: %s", str(e))
             return None
+
+    def _fetch_serpapi_jobs(self, keywords: List[str], location: str) -> List[Dict[str, Any]]:
+        """Fetch jobs from SerpAPI Google Jobs.
+        
+        SerpAPI: 100 free searches/month
+        Aggregates Google Jobs results from multiple sources
+        """
+        if not settings.SERPAPI_KEY:
+            logger.warning("SERPAPI_KEY not configured, skipping")
+            return []
+        
+        params = {
+            "engine": "google_jobs",
+            "q": " ".join(keywords[:5]),
+            "location": location,
+            "api_key": settings.SERPAPI_KEY,
+            "hl": "en",
+        }
+        
+        try:
+            response = self._session.get(
+                self.SERPAPI_BASE_URL,
+                params=params,
+                timeout=15
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            jobs = []
+            for item in data.get("jobs_results", [])[:20]:  # Limit to 20
+                job = self._normalize_serpapi_job(item)
+                if job:
+                    jobs.append(job)
+            
+            return jobs
+        except requests.RequestException as e:
+            logger.error("SerpAPI error: %s", str(e))
+            return []
+
+    def _normalize_serpapi_job(self, item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Normalize SerpAPI Google Jobs response to standard format."""
+        try:
+            description = item.get("description", "")
+            skills = self._extract_skills_from_text(description)
+            
+            # Extract salary if available
+            salary_info = item.get("detected_extensions", {})
+            
+            # Get apply link - prefer share_link, fallback to related_links
+            apply_url = item.get("share_link", "")
+            if not apply_url:
+                apply_options = item.get("apply_options", [])
+                if apply_options:
+                    apply_url = apply_options[0].get("link", "")
+            
+            return {
+                "title": item.get("title", "Unknown Position"),
+                "company": item.get("company_name", "Unknown Company"),
+                "location": item.get("location", location if 'location' in dir() else "India"),
+                "description": description[:500],
+                "skills": skills,
+                "redirect_url": apply_url,
+                "portal": "google_jobs",
+                "posted_date": item.get("detected_extensions", {}).get("posted_at", ""),
+                "salary_min": None,
+                "salary_max": None,
+                "experience": self._infer_experience_level(item.get("title", ""), description),
+                "job_id": item.get("job_id", ""),
+                "job_type": salary_info.get("schedule_type", ""),
+                "category": "",
+                "company_logo": item.get("thumbnail"),
+            }
+        except Exception as e:
+            logger.warning("Failed to normalize SerpAPI job: %s", str(e))
+            return None
+
+    def _resolve_redirect_url(self, url: str) -> str:
+        """Resolve redirect URL to get final destination (for Adzuna, etc.)."""
+        if not url:
+            return url
+        try:
+            response = self._session.head(url, allow_redirects=True, timeout=5)
+            return response.url
+        except Exception:
+            return url  # Return original if resolution fails
 
     # -------------- Helper Methods --------------
 
