@@ -413,31 +413,50 @@ class JobScraperService:
     def _normalize_arbeitnow_job(self, item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Normalize Arbeitnow job response to standard format."""
         try:
-            description = item.get("description", "")
+            description = item.get("description", "") or ""
             # Strip HTML tags from description
-            clean_desc = re.sub(r'<[^>]+>', '', description)
+            clean_desc = re.sub(r'<[^>]+>', '', str(description))
             skills = self._extract_skills_from_text(clean_desc)
             
             # Parse location
-            location = item.get("location", "Remote")
+            location = item.get("location", "Remote") or "Remote"
             if item.get("remote", False):
                 location = "Remote"
             
+            # Handle created_at - could be string or Unix timestamp
+            created_at = item.get("created_at", "")
+            if isinstance(created_at, int):
+                # Unix timestamp
+                posted_date = datetime.fromtimestamp(created_at).strftime("%Y-%m-%d")
+            elif isinstance(created_at, str) and created_at:
+                posted_date = created_at[:10]
+            else:
+                posted_date = datetime.now().strftime("%Y-%m-%d")
+            
+            # Handle tags - could be list, string, or None
+            tags = item.get("tags", [])
+            if isinstance(tags, list):
+                category = ", ".join(str(t) for t in tags)
+            elif tags:
+                category = str(tags)
+            else:
+                category = ""
+            
             return {
-                "title": item.get("title", "Unknown Position"),
-                "company": item.get("company_name", "Unknown Company"),
+                "title": item.get("title", "Unknown Position") or "Unknown Position",
+                "company": item.get("company_name", "Unknown Company") or "Unknown Company",
                 "location": location,
                 "description": clean_desc[:500],
                 "skills": skills,
-                "redirect_url": item.get("url", ""),
+                "redirect_url": item.get("url", "") or "",
                 "portal": "arbeitnow",
-                "posted_date": item.get("created_at", datetime.now().strftime("%Y-%m-%d"))[:10],
+                "posted_date": posted_date,
                 "salary_min": None,
                 "salary_max": None,
-                "experience": self._infer_experience_level(item.get("title", ""), clean_desc),
-                "job_id": str(item.get("slug", "")),
+                "experience": self._infer_experience_level(item.get("title", "") or "", clean_desc),
+                "job_id": str(item.get("slug", "") or ""),
                 "job_type": "Full-time" if not item.get("remote") else "Remote",
-                "category": ", ".join(item.get("tags", [])),
+                "category": category,
                 "company_logo": None,
             }
         except Exception as e:
