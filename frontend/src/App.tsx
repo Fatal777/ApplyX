@@ -10,8 +10,7 @@ import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { useEffect } from "react";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
-import Signup from "./pages/Signup";
-import Login from "./pages/Login";
+import Auth from "./pages/Auth";
 import ResumeBuilder from "./pages/ResumeBuilder";
 import ResumeAnalysis from "./pages/ResumeAnalysis";
 import NotFound from "./pages/NotFound";
@@ -117,8 +116,8 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/landing" element={<Landing />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Auth />} />
+      <Route path="/login" element={<Auth />} />
 
       {/* Protected Routes */}
       <Route path="/resume-builder" element={
