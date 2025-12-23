@@ -122,6 +122,27 @@ services:
       - applyx-network
     restart: unless-stopped
 
+  # Celery Beat (scheduled tasks)
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.celery
+    container_name: applyx-celery-beat
+    command: celery -A app.tasks.celery_app beat --loglevel=info
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://applyx:${DB_PASSWORD:-changeme}@postgres:5432/applyx
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      - redis
+      - celery-worker
+    networks:
+      - applyx-network
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
