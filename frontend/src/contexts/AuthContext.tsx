@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsAuthenticated(true);
           setIsLoading(false);
           // Clean up URL
-          window.history.replaceState(null, '', '/resume-builder');
+          window.history.replaceState(null, '', '/');
           return;
         }
         if (error) {
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/resume-builder',
+          redirectTo: window.location.origin + '/',
         },
       });
       if (error) throw error;

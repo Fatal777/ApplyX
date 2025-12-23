@@ -55,7 +55,7 @@ export function useAuth() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + '/resume-builder',
+        redirectTo: window.location.origin + '/',
       },
     });
     if (error) throw error;

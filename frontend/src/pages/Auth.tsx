@@ -4,7 +4,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, Lock, User, ArrowRight, Loader2 } from "lucide-react";
+import { Mail, Lock, User, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -14,11 +14,12 @@ const Auth = () => {
     const [password, setPassword] = useState("");
     const [fullName, setFullName] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const { user, signIn, signUp, signInWithGoogle, isLoading: isAuthLoading } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
-    const from = location.state?.from?.pathname || "/resume-builder";
+    const from = location.state?.from?.pathname || "/";
     const { toast } = useToast();
 
     // Check if we came from signup route
@@ -120,8 +121,8 @@ const Auth = () => {
                         <button
                             onClick={() => setIsLogin(true)}
                             className={`flex-1 py-4 text-center font-semibold transition-all ${isLogin
-                                    ? "text-black border-b-2 border-accent bg-gray-50"
-                                    : "text-gray-500 hover:text-gray-700"
+                                ? "text-black border-b-2 border-accent bg-gray-50"
+                                : "text-gray-500 hover:text-gray-700"
                                 }`}
                         >
                             Sign In
@@ -129,8 +130,8 @@ const Auth = () => {
                         <button
                             onClick={() => setIsLogin(false)}
                             className={`flex-1 py-4 text-center font-semibold transition-all ${!isLogin
-                                    ? "text-black border-b-2 border-accent bg-gray-50"
-                                    : "text-gray-500 hover:text-gray-700"
+                                ? "text-black border-b-2 border-accent bg-gray-50"
+                                : "text-gray-500 hover:text-gray-700"
                                 }`}
                         >
                             Sign Up
@@ -192,14 +193,21 @@ const Auth = () => {
                                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                         <Input
                                             id="password"
-                                            type="password"
+                                            type={showPassword ? "text" : "password"}
                                             placeholder="••••••••"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                             required
                                             minLength={isLogin ? undefined : 8}
-                                            className="pl-10 h-11"
+                                            className="pl-10 pr-10 h-11"
                                         />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                        >
+                                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
                                     </div>
                                     {!isLogin && (
                                         <p className="text-xs text-gray-500">Min 8 characters</p>
