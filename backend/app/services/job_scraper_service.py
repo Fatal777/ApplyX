@@ -148,7 +148,7 @@ class JobScraperService:
             "app_key": app_key,
             "what": query,
             "where": where,
-            "results_per_page": 20,
+            "results_per_page": 50,
             "sort_by": "relevance",
         }
         
@@ -317,7 +317,7 @@ class JobScraperService:
             data = response.json()
             
             jobs = []
-            for item in data.get("jobs", [])[:20]:  # Limit to 20
+            for item in data.get("jobs", [])[:50]:  # Limit to 50
                 job = self._normalize_remotive_job(item)
                 if job:
                     jobs.append(job)
@@ -396,7 +396,7 @@ class JobScraperService:
             data = response.json()
             
             jobs = []
-            for item in data.get("data", [])[:20]:  # Limit to 20
+            for item in data.get("data", [])[:50]:  # Limit to 50
                 job = self._normalize_arbeitnow_job(item)
                 if job:
                     jobs.append(job)
