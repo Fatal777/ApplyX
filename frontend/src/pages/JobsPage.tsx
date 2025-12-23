@@ -39,10 +39,12 @@ import { cn } from '@/lib/utils';
 
 const JobsPage = () => {
   const [activeTab, setActiveTab] = useState<'search' | 'trending'>('search');
-  const [featuredJobs, setFeaturedJobs] = useState<Job[]>([]);
-  const [isFeaturedLoading, setIsFeaturedLoading] = useState(true);
+  const [allJobs, setAllJobs] = useState<Job[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
+  const jobsPerPage = 25;
   const { toast } = useToast();
 
   const {
@@ -55,31 +57,42 @@ const JobsPage = () => {
     comparedJobs,
   } = useJobStore();
 
-  // Load featured jobs on mount
+  // Load all jobs on mount
   useEffect(() => {
-    const loadFeaturedJobs = async () => {
+    const loadAllJobs = async () => {
       try {
-        setIsFeaturedLoading(true);
+        setIsInitialLoading(true);
         const response = await jobService.searchJobs({
-          keywords: 'software developer',
+          keywords: '',  // Empty to get all jobs
           location: 'India',
-          limit: 6,
-          skipAbort: true,  // Don't cancel this when user starts new search
+          limit: 100,  // Load 100 jobs
+          skipAbort: true,
         });
-        setFeaturedJobs(response.jobs.slice(0, 6));
+        setAllJobs(response.jobs);
       } catch (error) {
-        // Silently ignore cancelled search errors (happens when user starts a new search)
         if ((error as Error).message === 'Search cancelled') {
           return;
         }
-        console.error('Failed to load featured jobs:', error);
+        console.error('Failed to load jobs:', error);
+        toast({
+          title: "Failed to load jobs",
+          description: "Please refresh the page",
+          variant: "destructive",
+        });
       } finally {
-        setIsFeaturedLoading(false);
+        setIsInitialLoading(false);
       }
     };
 
-    loadFeaturedJobs();
+    loadAllJobs();
   }, []);
+
+  // Pagination logic
+  const totalPages = Math.ceil(allJobs.length / jobsPerPage);
+  const paginatedJobs = allJobs.slice(
+    (currentPage - 1) * jobsPerPage,
+    currentPage * jobsPerPage
+  );
 
   const stats = [
     { value: '500+', label: 'Active Jobs', icon: Briefcase },
@@ -349,7 +362,7 @@ const JobsPage = () => {
         </section>
       )}
 
-      {/* Featured Jobs - Only show when no search results */}
+      {/* All Jobs Section - Show when no search results */}
       {!hasSearchResults && (
         <section className="py-20 bg-white">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -357,39 +370,40 @@ const JobsPage = () => {
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="flex items-center justify-between mb-12"
+              className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-12 gap-4"
             >
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#c7ff6b] to-[#a8e063] flex items-center justify-center">
-                    <Star className="w-6 h-6 text-black" />
+                    <Briefcase className="w-6 h-6 text-black" />
                   </div>
-                  <h2 className="text-4xl md:text-5xl font-bold text-foreground">
-                    Featured Jobs
+                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground">
+                    All Jobs
                   </h2>
                 </div>
-                <p className="text-xl text-muted-foreground mt-2">
-                  Top opportunities from leading companies
+                <p className="text-lg md:text-xl text-muted-foreground mt-2">
+                  {allJobs.length} opportunities available
                 </p>
               </div>
-              <Button
-                variant="outline"
-                className="hidden md:flex rounded-xl hover:bg-primary hover:text-white hover:border-primary transition-all"
-              >
-                View All Jobs
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
+
+              {/* Pagination Info */}
+              {allJobs.length > 0 && (
+                <div className="text-sm text-muted-foreground">
+                  Showing {((currentPage - 1) * jobsPerPage) + 1}-{Math.min(currentPage * jobsPerPage, allJobs.length)} of {allJobs.length}
+                </div>
+              )}
             </motion.div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {isFeaturedLoading ? (
+            {/* Jobs Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+              {isInitialLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: i * 0.1 }}
-                    className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 animate-pulse"
+                    className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 animate-pulse border"
                   >
                     <div className="w-16 h-16 bg-gray-200 rounded-2xl mb-5" />
                     <div className="h-6 bg-gray-200 rounded-lg w-3/4 mb-3" />
@@ -407,20 +421,72 @@ const JobsPage = () => {
                     </div>
                   </motion.div>
                 ))
-              ) : (
-                featuredJobs.map((job, index) => (
+              ) : paginatedJobs.length > 0 ? (
+                paginatedJobs.map((job, index) => (
                   <motion.div
                     key={job.job_id || index}
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
+                    transition={{ delay: index * 0.05 }}
                   >
                     <JobCard job={job} index={index} variant="featured" />
                   </motion.div>
                 ))
+              ) : (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-xl text-muted-foreground">No jobs found. Check back later!</p>
+                </div>
               )}
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-xl"
+                >
+                  Previous
+                </Button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(page => {
+                    // Show first, last, and pages around current
+                    return page === 1 || page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1);
+                  })
+                  .map((page, idx, arr) => (
+                    <div key={page} className="flex items-center">
+                      {idx > 0 && arr[idx - 1] !== page - 1 && (
+                        <span className="px-2 text-muted-foreground">...</span>
+                      )}
+                      <Button
+                        variant={currentPage === page ? "default" : "outline"}
+                        onClick={() => setCurrentPage(page)}
+                        className={cn(
+                          "rounded-xl min-w-[44px]",
+                          currentPage === page && "bg-primary text-white"
+                        )}
+                      >
+                        {page}
+                      </Button>
+                    </div>
+                  ))
+                }
+
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="rounded-xl"
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </div>
         </section>
       )}
