@@ -273,14 +273,25 @@ def scrape_and_store_all_jobs(keywords: List[str] = None, location: str = "India
             
             db.add(job)
             total_stored += 1
+            
+            # Commit in batches of 25 to avoid SQLAlchemy parameter limit
+            if total_stored % 25 == 0:
+                try:
+                    db.commit()
+                    logger.info(f"Committed batch of 25 jobs (total: {total_stored})")
+                except Exception as e:
+                    logger.error(f"Error committing batch: {str(e)}")
+                    db.rollback()
         except Exception as e:
             logger.error(f"Error storing job '{title}': {str(e)}")
             continue
     
+    # Final commit for remaining jobs
     try:
         db.commit()
+        logger.info(f"Final commit completed (total stored: {total_stored})")
     except Exception as e:
-        logger.error(f"Error committing jobs: {str(e)}")
+        logger.error(f"Error in final commit: {str(e)}")
         db.rollback()
     finally:
         db.close()
