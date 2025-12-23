@@ -38,7 +38,7 @@ celery_app.conf.beat_schedule = {
         'task': 'app.tasks.scraping_tasks.scrape_and_store_all_jobs',
         'schedule': crontab(hour=6, minute=0),
         'kwargs': {
-            'keywords': ['software engineer', 'developer', 'data scientist', 'frontend', 'backend'],
+            'keywords': ['software engineer', 'developer', 'data scientist', 'frontend', 'backend', 'marketing', 'sales', 'product manager'],
             'location': 'India'
         },
     },
@@ -46,10 +46,5 @@ celery_app.conf.beat_schedule = {
     'fetch-zyte-jobs-hourly': {
         'task': 'app.tasks.scraping_tasks.fetch_all_zyte_completed_jobs',
         'schedule': crontab(minute=30),  # Run at :30 every hour
-    },
-    # Warm job cache every 4 hours
-    'warm-job-cache': {
-        'task': 'app.tasks.job_tasks.warm_job_cache',
-        'schedule': crontab(minute=0, hour='*/4'),
     },
 }
