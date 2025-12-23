@@ -5,11 +5,11 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Search, 
-  MapPin, 
-  X, 
-  Clock, 
+import {
+  Search,
+  MapPin,
+  X,
+  Clock,
   Sparkles,
   ChevronDown,
   Briefcase,
@@ -44,16 +44,16 @@ interface JobSearchProps {
 }
 
 const popularSearches = [
-  { label: 'Python Developer', icon: '🐍' },
-  { label: 'React Frontend', icon: '⚛️' },
-  { label: 'Data Scientist', icon: '📊' },
-  { label: 'Full Stack', icon: '💻' },
-  { label: 'Machine Learning', icon: '🤖' },
-  { label: 'DevOps Engineer', icon: '⚙️' },
+  { label: 'Python Developer', icon: 'PY' },
+  { label: 'React Frontend', icon: 'RE' },
+  { label: 'Data Scientist', icon: 'DS' },
+  { label: 'Full Stack', icon: 'FS' },
+  { label: 'Machine Learning', icon: 'ML' },
+  { label: 'DevOps Engineer', icon: 'DO' },
 ];
 
 const jobSuggestions = [
-  'Software Engineer', 'Senior Software Engineer', 'Frontend Developer', 
+  'Software Engineer', 'Senior Software Engineer', 'Frontend Developer',
   'Backend Developer', 'Full Stack Developer', 'React Developer', 'Node.js Developer',
   'Data Scientist', 'Data Analyst', 'Machine Learning Engineer', 'AI Engineer',
   'Product Manager', 'Senior Product Manager', 'Technical Product Manager',
@@ -66,18 +66,18 @@ const jobSuggestions = [
 ];
 
 const locations = [
-  { value: 'India', label: 'India', flag: '🇮🇳' },
-  { value: 'Bangalore', label: 'Bangalore', flag: '🏙️' },
-  { value: 'Mumbai', label: 'Mumbai', flag: '🏙️' },
-  { value: 'Delhi', label: 'Delhi NCR', flag: '🏙️' },
-  { value: 'Hyderabad', label: 'Hyderabad', flag: '🏙️' },
-  { value: 'Chennai', label: 'Chennai', flag: '🏙️' },
-  { value: 'Pune', label: 'Pune', flag: '🏙️' },
-  { value: 'Remote', label: 'Remote Only', flag: '🌍' },
+  { value: 'India', label: 'India' },
+  { value: 'Bangalore', label: 'Bangalore' },
+  { value: 'Mumbai', label: 'Mumbai' },
+  { value: 'Delhi', label: 'Delhi NCR' },
+  { value: 'Hyderabad', label: 'Hyderabad' },
+  { value: 'Chennai', label: 'Chennai' },
+  { value: 'Pune', label: 'Pune' },
+  { value: 'Remote', label: 'Remote Only' },
 ];
 
-const JobSearch = ({ 
-  variant = 'hero', 
+const JobSearch = ({
+  variant = 'hero',
   onSearch,
   showFilters = true,
   placeholder = 'Job title, skills, or company...',
@@ -89,10 +89,10 @@ const JobSearch = ({
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  const { 
-    searchQuery, 
-    setSearchQuery, 
+
+  const {
+    searchQuery,
+    setSearchQuery,
     searchJobs,
     isSearching,
     filters,
@@ -160,7 +160,7 @@ const JobSearch = ({
     return (
       <div ref={containerRef} className={cn("w-full max-w-4xl mx-auto", className)}>
         {/* Main Search Container */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -172,7 +172,7 @@ const JobSearch = ({
             "bg-gradient-to-r from-[#c7ff6b]/40 via-primary/30 to-[#c7ff6b]/40",
             isFocused && "opacity-100"
           )} />
-          
+
           {/* Search bar */}
           <div className={cn(
             "relative rounded-2xl transition-all duration-500",
@@ -200,7 +200,7 @@ const JobSearch = ({
                     className="flex-1 bg-transparent text-lg font-medium text-foreground placeholder:text-gray-400 focus:outline-none"
                   />
                   {searchQuery && (
-                    <button 
+                    <button
                       onClick={() => setSearchQuery('')}
                       className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                     >
@@ -209,10 +209,10 @@ const JobSearch = ({
                   )}
                 </div>
               </div>
-              
+
               {/* Divider */}
               <div className="hidden md:block w-px bg-gray-200 dark:bg-gray-700 my-4" />
-              
+
               {/* Location Select */}
               <div className="flex-shrink-0 p-2 md:p-3 border-t md:border-t-0 border-gray-100 dark:border-gray-800">
                 <Select
@@ -227,21 +227,18 @@ const JobSearch = ({
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
                     {locations.map((loc) => (
-                      <SelectItem 
-                        key={loc.value} 
+                      <SelectItem
+                        key={loc.value}
                         value={loc.value}
                         className="py-3 cursor-pointer"
                       >
-                        <span className="flex items-center gap-2">
-                          <span>{loc.flag}</span>
-                          <span>{loc.label}</span>
-                        </span>
+                        <span>{loc.label}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {/* Search Button */}
               <div className="p-2 md:p-3">
                 <Button
@@ -267,7 +264,7 @@ const JobSearch = ({
               </div>
             </div>
           </div>
-          
+
           {/* Suggestions dropdown */}
           <AnimatePresence>
             {showSuggestions && (
@@ -302,7 +299,7 @@ const JobSearch = ({
                     </div>
                   </div>
                 )}
-                
+
                 {/* Recent Searches */}
                 {!searchQuery && recentSearches.length > 0 && (
                   <div className="mb-5">
@@ -311,7 +308,7 @@ const JobSearch = ({
                         <Clock className="w-3.5 h-3.5" />
                         Recent Searches
                       </span>
-                      <button 
+                      <button
                         onClick={clearRecentSearches}
                         className="text-xs text-muted-foreground hover:text-primary transition-colors"
                       >
@@ -331,7 +328,7 @@ const JobSearch = ({
                     </div>
                   </div>
                 )}
-                
+
                 {/* Popular Searches */}
                 {!searchQuery && (
                   <div>
@@ -346,7 +343,7 @@ const JobSearch = ({
                           onClick={() => handleSuggestionClick(item.label)}
                           className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-primary/10 transition-all duration-300 group"
                         >
-                          <span className="text-xl">{item.icon}</span>
+                          <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">{item.icon}</span>
                           <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
                             {item.label}
                           </span>
@@ -359,10 +356,10 @@ const JobSearch = ({
             )}
           </AnimatePresence>
         </motion.div>
-        
+
         {/* Filter Pills */}
         {showFilters && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
@@ -389,7 +386,7 @@ const JobSearch = ({
                 <SelectItem value="senior">Senior (5+ yrs)</SelectItem>
               </SelectContent>
             </Select>
-            
+
             {/* Portal Filter */}
             <Select
               value={filters.portal}
@@ -406,17 +403,17 @@ const JobSearch = ({
               </SelectTrigger>
               <SelectContent className="rounded-xl">
                 <SelectItem value="all">All Sources</SelectItem>
-                <SelectItem value="adzuna">🌍 Adzuna</SelectItem>
-                <SelectItem value="jsearch">💼 JSearch</SelectItem>
-                <SelectItem value="remotive">🏠 Remotive</SelectItem>
-                <SelectItem value="greenhouse">🌱 Greenhouse</SelectItem>
-                <SelectItem value="lever">⚡ Lever</SelectItem>
-                <SelectItem value="workday">💎 Workday</SelectItem>
-                <SelectItem value="smartrecruiters">🎯 SmartRecruiters</SelectItem>
-                <SelectItem value="ashby">🚀 Ashby</SelectItem>
+                <SelectItem value="adzuna">Adzuna</SelectItem>
+                <SelectItem value="jsearch">JSearch</SelectItem>
+                <SelectItem value="remotive">Remotive</SelectItem>
+                <SelectItem value="greenhouse">Greenhouse</SelectItem>
+                <SelectItem value="lever">Lever</SelectItem>
+                <SelectItem value="workday">Workday</SelectItem>
+                <SelectItem value="smartrecruiters">SmartRecruiters</SelectItem>
+                <SelectItem value="ashby">Ashby</SelectItem>
               </SelectContent>
             </Select>
-            
+
             {/* Remote Toggle */}
             <button
               onClick={() => setFilters({ remoteOnly: !filters.remoteOnly })}
@@ -430,7 +427,7 @@ const JobSearch = ({
               <Globe className="w-4 h-4" />
               <span className="text-sm font-medium">Remote Only</span>
             </button>
-            
+
             {/* Reset Filters */}
             {activeFiltersCount > 0 && (
               <button
@@ -470,7 +467,7 @@ const JobSearch = ({
           {isSearching ? (
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
           ) : searchQuery && (
-            <button 
+            <button
               onClick={() => setSearchQuery('')}
               className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
             >
@@ -513,7 +510,7 @@ const JobSearch = ({
             </button>
           )}
         </div>
-        
+
         {/* Location Select */}
         <Select
           value={filters.location}
@@ -528,14 +525,12 @@ const JobSearch = ({
           <SelectContent>
             {locations.map((loc) => (
               <SelectItem key={loc.value} value={loc.value}>
-                <span className="flex items-center gap-2">
-                  {loc.flag} {loc.label}
-                </span>
+                <span>{loc.label}</span>
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        
+
         {/* More Filters Toggle */}
         <Button
           variant="outline"
@@ -553,7 +548,7 @@ const JobSearch = ({
             </span>
           )}
         </Button>
-        
+
         {/* Search Button */}
         <Button
           onClick={handleSearch}
@@ -570,7 +565,7 @@ const JobSearch = ({
           )}
         </Button>
       </div>
-      
+
       {/* Advanced Filters Panel */}
       <AnimatePresence>
         {showAdvancedFilters && (
@@ -600,7 +595,7 @@ const JobSearch = ({
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {/* Portal */}
               <div className="flex items-center gap-3">
                 <span className="text-sm text-muted-foreground">Source:</span>
@@ -613,18 +608,18 @@ const JobSearch = ({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Sources</SelectItem>
-                    <SelectItem value="adzuna">🌍 Adzuna</SelectItem>
-                    <SelectItem value="jsearch">💼 JSearch</SelectItem>
-                    <SelectItem value="remotive">🏠 Remotive</SelectItem>
-                    <SelectItem value="greenhouse">🌱 Greenhouse</SelectItem>
-                    <SelectItem value="lever">⚡ Lever</SelectItem>
-                    <SelectItem value="workday">💎 Workday</SelectItem>
-                    <SelectItem value="smartrecruiters">🎯 SmartRecruiters</SelectItem>
-                    <SelectItem value="ashby">🚀 Ashby</SelectItem>
+                    <SelectItem value="adzuna">Adzuna</SelectItem>
+                    <SelectItem value="jsearch">JSearch</SelectItem>
+                    <SelectItem value="remotive">Remotive</SelectItem>
+                    <SelectItem value="greenhouse">Greenhouse</SelectItem>
+                    <SelectItem value="lever">Lever</SelectItem>
+                    <SelectItem value="workday">Workday</SelectItem>
+                    <SelectItem value="smartrecruiters">SmartRecruiters</SelectItem>
+                    <SelectItem value="ashby">Ashby</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {/* Remote Toggle */}
               <div className="flex items-center gap-3">
                 <Switch
@@ -636,7 +631,7 @@ const JobSearch = ({
                   Remote Only
                 </Label>
               </div>
-              
+
               {/* Reset */}
               {activeFiltersCount > 0 && (
                 <Button

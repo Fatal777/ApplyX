@@ -82,10 +82,10 @@ const JobsPage = () => {
   }, []);
 
   const stats = [
-    { value: '20K+', label: 'Active Jobs', icon: Briefcase },
-    { value: '500+', label: 'Companies', icon: Building2 },
-    { value: '3', label: 'Job Sources', icon: Globe },
-    { value: '15K+', label: 'Hired', icon: Users },
+    { value: '500+', label: 'Active Jobs', icon: Briefcase },
+    { value: '50+', label: 'Companies', icon: Building2 },
+    { value: '5', label: 'Job Sources', icon: Globe },
+    { value: '120+', label: 'Hired', icon: Users },
   ];
 
   const jobCategories = [
@@ -228,9 +228,9 @@ const JobsPage = () => {
         </div>
 
         {/* Wave divider */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0 120L60 105C120 90 240 60 360 45C480 30 600 30 720 37.5C840 45 960 60 1080 67.5C1200 75 1320 75 1380 75L1440 75V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0V120Z" fill="#f9fafb" />
+        <div className="absolute -bottom-1 left-0 right-0">
+          <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-16">
+            <path d="M0 80L60 70C120 60 240 40 360 30C480 20 600 20 720 25C840 30 960 40 1080 45C1200 50 1320 50 1380 50L1440 50V80H1380C1320 80 1200 80 1080 80C960 80 840 80 720 80C600 80 480 80 360 80C240 80 120 80 60 80H0V80Z" fill="#f9fafb" />
           </svg>
         </div>
       </section>
@@ -532,21 +532,21 @@ const JobsPage = () => {
                 step: '01',
                 title: 'Search or Upload',
                 desc: 'Search jobs directly or upload your resume for AI matching',
-                icon: '🔍',
+                icon: '1',
                 gradient: 'from-blue-500 to-indigo-600'
               },
               {
                 step: '02',
                 title: 'Get Matched',
                 desc: 'Our AI analyzes your skills and finds the best opportunities',
-                icon: '🎯',
+                icon: '2',
                 gradient: 'from-purple-500 to-pink-600'
               },
               {
                 step: '03',
                 title: 'Apply & Succeed',
                 desc: 'Apply with one click and track your applications',
-                icon: '🚀',
+                icon: '3',
                 gradient: 'from-[#c7ff6b] to-[#a8e063]'
               },
             ].map((item, index) => (
@@ -566,7 +566,10 @@ const JobsPage = () => {
                   "hover:-translate-y-2"
                 )}>
                   <div className="text-center">
-                    <div className="text-5xl mb-6">{item.icon}</div>
+                    <div className={cn(
+                      "w-14 h-14 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-2xl font-bold mx-auto mb-6",
+                      item.gradient
+                    )}>{item.icon}</div>
                     <div className={cn(
                       "inline-block bg-gradient-to-r text-white font-bold text-sm px-4 py-1.5 rounded-full mb-4",
                       item.gradient
