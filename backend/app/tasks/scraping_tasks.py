@@ -224,11 +224,6 @@ def scrape_and_store_all_jobs(keywords: List[str] = None, location: str = "India
     for job_data in all_jobs:
         title = job_data.get('title', '')
         
-        # Filter: Accept ONLY engineering jobs
-        if not is_engineering_job(title):
-            total_filtered += 1
-            continue
-        
         # Check for duplicates by URL or title+company combo
         redirect_url = job_data.get('redirect_url', '')
         company = job_data.get('company', '')
