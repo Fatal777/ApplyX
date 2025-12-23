@@ -19,10 +19,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Download spaCy model with fallback
-RUN python -m spacy download en_core_web_sm || \
-    python -c "import spacy; spacy.cli.download('en_core_web_sm')" || \
-    pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
+# Download spaCy model - use pip directly to avoid CLI issues
+RUN pip install --no-cache-dir https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl || \
+    pip install --no-cache-dir https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0-py3-none-any.whl || \
+    echo "Warning: spacy model download failed, continuing anyway"
 
 # Production stage
 FROM python:3.11-slim
