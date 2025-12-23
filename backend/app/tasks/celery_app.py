@@ -37,14 +37,11 @@ celery_app.conf.beat_schedule = {
     'scrape-and-store-jobs-daily': {
         'task': 'app.tasks.scraping_tasks.scrape_and_store_all_jobs',
         'schedule': crontab(hour=6, minute=0),
-        'kwargs': {
-            'keywords': ['software engineer', 'developer', 'data scientist', 'frontend', 'backend', 'marketing', 'sales', 'product manager'],
-            'location': 'India'
-        },
+        'args': (['software engineer', 'developer', 'data scientist', 'marketing', 'sales'], 'India'),
     },
     # Fetch Zyte spider results hourly and store in DB
     'fetch-zyte-jobs-hourly': {
         'task': 'app.tasks.scraping_tasks.fetch_all_zyte_completed_jobs',
-        'schedule': crontab(minute=30),  # Run at :30 every hour
+        'schedule': crontab(minute=30),
     },
 }
