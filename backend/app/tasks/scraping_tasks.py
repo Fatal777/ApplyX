@@ -298,3 +298,135 @@ def scrape_and_store_all_jobs(keywords: List[str] = None, location: str = "India
     
     logger.info(f"Daily scrape complete: {result}")
     return result
+
+
+@shared_task(name='app.tasks.scraping_tasks.fetch_all_zyte_completed_jobs')
+def fetch_all_zyte_completed_jobs():
+    """
+    Periodic task: Fetch ALL completed spider jobs from Zyte Cloud and store in database.
+    Runs hourly via Celery Beat to pick up results from periodic Zyte jobs.
+    """
+    if not settings.ZYTE_API_KEY:
+        logger.warning("ZYTE_API_KEY not configured, skipping Zyte fetch")
+        return {"status": "error", "message": "ZYTE_API_KEY not configured"}
+    
+    logger.info("Fetching completed jobs from Zyte Cloud...")
+    
+    # Zyte project ID - update this if different
+    project_id = "840796"
+    
+    # Get list of recent jobs from Zyte
+    list_url = f"https://app.zyte.com/api/jobs/list.json?project={project_id}&state=finished&count=20"
+    
+    try:
+        response = requests.get(list_url, auth=(settings.ZYTE_API_KEY, ""))
+        
+        if response.status_code != 200:
+            logger.error(f"Failed to list Zyte jobs: {response.status_code} - {response.text}")
+            return {"status": "error", "message": response.text}
+        
+        jobs_list = response.json().get("jobs", [])
+        logger.info(f"Found {len(jobs_list)} completed Zyte jobs")
+        
+        total_stored = 0
+        total_filtered = 0
+        processed_jobs = []
+        
+        db = SessionLocal()
+        
+        for zyte_job in jobs_list:
+            job_key = zyte_job.get("key")
+            spider = zyte_job.get("spider", "")
+            
+            if not job_key:
+                continue
+            
+            # Check if we already processed this job (by checking if we have jobs with this source)
+            # Skip if job was scraped more than 24 hours ago to avoid reprocessing old data
+            close_time = zyte_job.get("close_time", "")
+            
+            logger.info(f"Processing Zyte job: {job_key} (spider: {spider})")
+            
+            # Fetch items from this job
+            items_url = f"https://storage.scrapinghub.com/items/{job_key}"
+            
+            try:
+                items_response = requests.get(items_url, auth=(settings.ZYTE_API_KEY, ""))
+                
+                if items_response.status_code != 200:
+                    logger.warning(f"Could not fetch items for {job_key}: {items_response.status_code}")
+                    continue
+                
+                items = items_response.json() if items_response.text else []
+                
+                for item in items:
+                    title = item.get('title', '')
+                    
+                    # Filter: engineering jobs only
+                    if not is_engineering_job(title):
+                        total_filtered += 1
+                        continue
+                    
+                    # Deduplication: check by source_url
+                    source_url = item.get('source_url', '') or item.get('url', '') or item.get('apply_url', '')
+                    company = item.get('company', '')
+                    
+                    existing = db.query(Job).filter(
+                        (Job.source_url == source_url) | 
+                        ((Job.title == title) & (Job.company == company))
+                    ).first()
+                    
+                    if existing:
+                        continue
+                    
+                    try:
+                        job = Job(
+                            title=title,
+                            company=company,
+                            location=item.get('location', 'India'),
+                            description=item.get('description', '')[:2000] if item.get('description') else '',
+                            requirements=item.get('requirements'),
+                            salary_min=item.get('salary_min'),
+                            salary_max=item.get('salary_max'),
+                            salary_currency=item.get('salary_currency', 'INR'),
+                            employment_type=item.get('employment_type'),
+                            skills_required=item.get('skills_required', []) or [],
+                            source=spider or item.get('source', 'zyte'),
+                            source_url=source_url,
+                            apply_url=item.get('apply_url', source_url),
+                            posted_date=item.get('posted_date'),
+                            scraped_at=datetime.utcnow(),
+                            is_active=True
+                        )
+                        db.add(job)
+                        total_stored += 1
+                    except Exception as e:
+                        logger.error(f"Error storing Zyte job: {str(e)}")
+                
+                processed_jobs.append(job_key)
+                
+            except Exception as e:
+                logger.error(f"Error fetching items for {job_key}: {str(e)}")
+        
+        try:
+            db.commit()
+        except Exception as e:
+            logger.error(f"Error committing Zyte jobs: {str(e)}")
+            db.rollback()
+        finally:
+            db.close()
+        
+        result = {
+            "status": "success",
+            "zyte_jobs_processed": len(processed_jobs),
+            "stored": total_stored,
+            "filtered": total_filtered,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        logger.info(f"Zyte fetch complete: {result}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error fetching Zyte jobs: {str(e)}")
+        return {"status": "error", "message": str(e)}

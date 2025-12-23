@@ -33,7 +33,7 @@ celery_app.conf.update(
 
 # Celery Beat schedule for automated tasks
 celery_app.conf.beat_schedule = {
-    # Scrape jobs daily at 6 AM IST
+    # Scrape jobs daily at 6 AM IST (from free APIs)
     'scrape-and-store-jobs-daily': {
         'task': 'app.tasks.scraping_tasks.scrape_and_store_all_jobs',
         'schedule': crontab(hour=6, minute=0),
@@ -41,6 +41,11 @@ celery_app.conf.beat_schedule = {
             'keywords': ['software engineer', 'developer', 'data scientist', 'frontend', 'backend'],
             'location': 'India'
         },
+    },
+    # Fetch Zyte spider results hourly and store in DB
+    'fetch-zyte-jobs-hourly': {
+        'task': 'app.tasks.scraping_tasks.fetch_all_zyte_completed_jobs',
+        'schedule': crontab(minute=30),  # Run at :30 every hour
     },
     # Warm job cache every 4 hours
     'warm-job-cache': {
