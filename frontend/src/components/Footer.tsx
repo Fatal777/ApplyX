@@ -35,14 +35,14 @@ const Footer = () => {
   return (
     <footer className="relative bg-black">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        
+
         {/* Main Grid - 5 columns on large screens */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 lg:gap-6">
-          
+
           {/* Brand Column - Takes 2 cols on lg */}
           <div className="col-span-2 md:col-span-3 lg:col-span-2">
             <Link to="/" className="inline-block group">
-              <img 
+              <img
                 src="/Dark BG Logo.png"
                 alt="ApplyX Logo"
                 className="h-20 md:h-44 w-auto transition-all duration-300 hover:scale-105"
@@ -51,16 +51,16 @@ const Footer = () => {
             <p className="text-gray-400 mt-4 text-base md:text-lg leading-relaxed max-w-sm">
               AI-powered career platform for resume analysis, interview preparation, and personalized job matching.
             </p>
-            
+
             {/* Newsletter / CTA */}
             <div className="mt-6">
               <p className="text-white text-base font-medium mb-2">Stay updated</p>
-              <a 
-                href="mailto:support@applyx.com" 
+              <a
+                href="mailto:contact@applyx.in"
                 className="inline-flex items-center gap-2 text-gray-400 text-base hover:text-white transition-colors group"
               >
                 <Mail className="w-5 h-5" />
-                support@applyx.com
+                contact@applyx.in
                 <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
               </a>
             </div>
