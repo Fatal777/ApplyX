@@ -175,17 +175,17 @@ const JobSearch = ({
 
           {/* Search bar */}
           <div className={cn(
-            "relative rounded-2xl transition-all duration-500",
-            "bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl",
-            "shadow-[0_8px_40px_-8px_rgba(0,0,0,0.15)]",
-            isFocused && "shadow-[0_20px_60px_-15px_rgba(99,102,241,0.3)]"
+            "relative rounded-2xl transition-all duration-300",
+            "bg-white dark:bg-gray-900",
+            "shadow-lg",
+            isFocused && "shadow-xl ring-2 ring-primary/20"
           )}>
             <div className="flex flex-col md:flex-row">
               {/* Job Search Input */}
               <div className="flex-1 p-2 md:p-3">
                 <div className="flex items-center gap-3 px-4 py-3">
                   <Search className={cn(
-                    "w-5 h-5 transition-colors duration-300",
+                    "w-5 h-5 flex-shrink-0 transition-colors",
                     isFocused ? "text-primary" : "text-gray-400"
                   )} />
                   <input
@@ -197,7 +197,7 @@ const JobSearch = ({
                     onFocus={() => { setIsFocused(true); setShowSuggestions(true); }}
                     onBlur={() => setIsFocused(false)}
                     onKeyDown={handleKeyDown}
-                    className="flex-1 bg-transparent text-lg font-medium text-foreground placeholder:text-gray-400 focus:outline-none"
+                    className="flex-1 bg-transparent text-base text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none"
                   />
                   {searchQuery && (
                     <button
@@ -219,7 +219,7 @@ const JobSearch = ({
                   value={filters.location}
                   onValueChange={(value) => setFilters({ location: value })}
                 >
-                  <SelectTrigger className="w-full md:w-[200px] h-[52px] border-0 bg-transparent shadow-none focus:ring-0 text-base font-medium">
+                  <SelectTrigger className="w-full md:w-[200px] h-[52px] border-0 bg-transparent shadow-none focus:ring-0 text-base text-gray-900 dark:text-white">
                     <div className="flex items-center gap-3">
                       <MapPin className="w-5 h-5 text-primary" />
                       <SelectValue placeholder="Location" />

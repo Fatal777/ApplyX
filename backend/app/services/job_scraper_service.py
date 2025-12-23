@@ -59,7 +59,6 @@ class JobScraperService:
     - jsearch: JSearch RapidAPI (200 free/month, aggregates LinkedIn/Indeed/Glassdoor)
     - remotive: Remotive API (free, no auth, remote tech jobs)
     - arbeitnow: Arbeitnow API (free, no auth, tech/startup jobs)
-    - serpapi: SerpAPI Google Jobs (100 free/month, aggregates Google Jobs)
     """
 
     # Per-minute soft limits
@@ -68,7 +67,6 @@ class JobScraperService:
         "jsearch": 3,     # 200/month ≈ 6/day
         "remotive": 10,   # Free, generous
         "arbeitnow": 10,  # Free, no auth required
-        "serpapi": 3,     # 100/month ≈ 3/day, be conservative
     }
 
     # API endpoints
@@ -76,7 +74,6 @@ class JobScraperService:
     JSEARCH_BASE_URL = "https://jsearch.p.rapidapi.com/search"
     REMOTIVE_BASE_URL = "https://remotive.com/api/remote-jobs"
     ARBEITNOW_BASE_URL = "https://www.arbeitnow.com/api/job-board-api"
-    SERPAPI_BASE_URL = "https://serpapi.com/search"
 
     def __init__(self) -> None:
         self._cache = JobCacheService()
@@ -102,7 +99,6 @@ class JobScraperService:
             "jsearch": self._fetch_jsearch_jobs,
             "remotive": self._fetch_remotive_jobs,
             "arbeitnow": self._fetch_arbeitnow_jobs,
-            "serpapi": self._fetch_serpapi_jobs,
         }.get(portal)
 
         if not dispatcher:
