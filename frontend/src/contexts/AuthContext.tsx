@@ -24,9 +24,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
         if (session) {
           setUser(session.user);
           setIsAuthenticated(true);
+          // Clear hash from URL after OAuth callback
+          if (window.location.hash.includes('access_token')) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
         } else {
           setUser(null);
           setIsAuthenticated(false);
@@ -35,9 +40,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
+    // Handle OAuth callback - detect access_token in URL hash
+    const handleOAuthCallback = async () => {
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        console.log('Detected OAuth callback, processing...');
+        // Supabase will automatically pick up the token from the hash
+        // Just wait for onAuthStateChange to fire
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (session) {
+          setUser(session.user);
+          setIsAuthenticated(true);
+          setIsLoading(false);
+          // Clean up URL
+          window.history.replaceState(null, '', '/resume-builder');
+          return;
+        }
+        if (error) {
+          console.error('OAuth callback error:', error);
+        }
+      }
+    };
+
     // Get the initial session
     const getInitialSession = async () => {
       try {
+        // First check for OAuth callback
+        await handleOAuthCallback();
+
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           setUser(session.user);
