@@ -26,34 +26,31 @@ async def test_stt():
         return False
     
     try:
-        # Try v3 SDK first
-        from deepgram import DeepgramClient
+        from deepgram import DeepgramClient, PrerecordedOptions
         
-        client = DeepgramClient(DEEPGRAM_API_KEY)
+        # v5 SDK: pass API key as keyword argument
+        client = DeepgramClient(api_key=DEEPGRAM_API_KEY)
         
         AUDIO_URL = {"url": "https://static.deepgram.com/examples/Bueller-Life-moves-702a3dbe.wav"}
         
-        # Try different API methods based on SDK version
+        options = PrerecordedOptions(
+            model="nova-2",
+            smart_format=True,
+        )
+        
         print(f"📡 Transcribing sample audio...")
         
-        try:
-            # v3 SDK method
-            response = client.listen.prerecorded.v("1").transcribe_url(
-                AUDIO_URL, 
-                {"model": "nova-2", "smart_format": True}
-            )
-        except AttributeError:
-            # Older SDK method
-            response = client.transcription.prerecorded(
-                AUDIO_URL, 
-                {"model": "nova-2", "smart_format": True}
-            )
+        response = client.listen.rest.v("1").transcribe_url(AUDIO_URL, options)
         
         transcript = response.results.channels[0].alternatives[0].transcript
         print(f"✅ STT Working!")
         print(f"📝 Transcript: \"{transcript}\"")
         return True
         
+    except ImportError as e:
+        print(f"❌ Import Error: {e}")
+        print("   Try: pip3 install --upgrade deepgram-sdk")
+        return False
     except Exception as e:
         print(f"❌ STT Error: {e}")
         print("   Try: pip3 install --upgrade deepgram-sdk")
