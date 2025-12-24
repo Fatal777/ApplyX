@@ -35,7 +35,7 @@ async def test_stt():
         
         # v5 SDK: uses keyword arguments only
         response = client.listen.v1.media.transcribe_url(
-            url="https://static.deepgram.com/examples/Bueller-Life-moves-702a3dbe.wav",
+            url="https://dpgr.am/spacewalk.wav",
             model="nova-2",
             smart_format=True
         )
