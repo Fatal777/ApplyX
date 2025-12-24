@@ -100,6 +100,48 @@ services:
     networks:
       - applyx-network
 
+  # Celery Beat (scheduled tasks)
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.celery
+    container_name: applyx-celery-beat
+    restart: always
+    command: celery -A app.tasks.celery_app beat --loglevel=info
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-applyx}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-applyx}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      - redis
+      - celery-worker
+    networks:
+      - applyx-network
+
+  # Celery Flower (monitoring)
+  celery-flower:
+    build:
+      context: .
+      dockerfile: Dockerfile.celery
+    container_name: applyx-celery-flower
+    restart: always
+    command: celery -A app.tasks.celery_app flower --port=5555
+    env_file:
+      - .env.production
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - celery-worker
+    networks:
+      - applyx-network
+
   # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
