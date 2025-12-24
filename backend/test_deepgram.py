@@ -26,17 +26,15 @@ async def test_stt():
         return False
     
     try:
-        from deepgram import DeepgramClient, PrerecordedOptions
+        from deepgram import DeepgramClient
         
         # v5 SDK: pass API key as keyword argument
         client = DeepgramClient(api_key=DEEPGRAM_API_KEY)
         
         AUDIO_URL = {"url": "https://static.deepgram.com/examples/Bueller-Life-moves-702a3dbe.wav"}
         
-        options = PrerecordedOptions(
-            model="nova-2",
-            smart_format=True,
-        )
+        # Use dict for options (works with all SDK versions)
+        options = {"model": "nova-2", "smart_format": True}
         
         print(f"📡 Transcribing sample audio...")
         
