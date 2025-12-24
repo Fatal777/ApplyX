@@ -63,7 +63,7 @@ const JobsPage = () => {
       try {
         setIsInitialLoading(true);
         const response = await jobService.searchJobs({
-          keywords: '',  // Empty to get all jobs
+          keywords: 'software developer',  // Default search to get jobs
           location: 'India',
           limit: 100,  // Load 100 jobs
           skipAbort: true,

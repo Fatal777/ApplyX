@@ -38,7 +38,7 @@ const AuthCallback = () => {
                         // Redirect to the stored return path or home
                         const returnTo = sessionStorage.getItem('auth_return_to') || '/';
                         sessionStorage.removeItem('auth_return_to');
-                        window.location.href = returnTo;
+                        navigate(returnTo, { replace: true });
                         return;
                     }
                 }
@@ -61,7 +61,7 @@ const AuthCallback = () => {
                         console.log('Session from code exchange:', data.session.user?.email);
                         const returnTo = sessionStorage.getItem('auth_return_to') || '/';
                         sessionStorage.removeItem('auth_return_to');
-                        window.location.href = returnTo;
+                        navigate(returnTo, { replace: true });
                         return;
                     }
                 }
