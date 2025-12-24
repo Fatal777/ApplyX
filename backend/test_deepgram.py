@@ -33,13 +33,13 @@ async def test_stt():
         
         AUDIO_URL = {"url": "https://static.deepgram.com/examples/Bueller-Life-moves-702a3dbe.wav"}
         
-        # Use dict for options (works with all SDK versions)
+        # Use dict for options
         options = {"model": "nova-2", "smart_format": True}
         
         print(f"📡 Transcribing sample audio...")
         
-        # v5 SDK uses listen.prerecorded.v() 
-        response = client.listen.prerecorded.v("1").transcribe_url(AUDIO_URL, options)
+        # v5 SDK: listen.v1.media.transcribe_url()
+        response = client.listen.v1.media.transcribe_url(AUDIO_URL, options)
         
         transcript = response.results.channels[0].alternatives[0].transcript
         print(f"✅ STT Working!")
