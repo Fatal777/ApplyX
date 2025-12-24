@@ -38,7 +38,8 @@ async def test_stt():
         
         print(f"📡 Transcribing sample audio...")
         
-        response = client.listen.rest.v("1").transcribe_url(AUDIO_URL, options)
+        # v5 SDK uses listen.prerecorded.v() 
+        response = client.listen.prerecorded.v("1").transcribe_url(AUDIO_URL, options)
         
         transcript = response.results.channels[0].alternatives[0].transcript
         print(f"✅ STT Working!")
