@@ -57,6 +57,12 @@ aiohttp>=3.9.0
 deepgram-sdk>=3.0.0  # Deepgram Nova-2 STT (50 concurrent streams)
 edge-tts>=6.0.0  # Microsoft neural voices TTS (free, high-quality)
 
+# LiveKit Real-time Communication
+livekit>=0.11.0  # LiveKit Python SDK
+livekit-agents>=0.8.0  # LiveKit Agents framework for AI
+livekit-plugins-deepgram>=0.6.0  # Deepgram STT plugin
+livekit-plugins-openai>=0.8.0  # OpenAI TTS plugin
+
 # Cloud Storage
 boto3==1.34.10
 cloudinary==1.36.0

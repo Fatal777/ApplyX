@@ -40,7 +40,7 @@ from app.core.telemetry import (
 # Phase 4: Infrastructure imports
 from app.core.logging_config import setup_logging
 from app.middleware.performance import PerformanceMiddleware
-from app.api.routes import auth, resumes, pdf_edit, jobs, interview, profile, applications, ats, payment, phone, admin
+from app.api.routes import auth, resumes, pdf_edit, jobs, interview, profile, applications, ats, payment, phone, admin, livekit
 from app.api.routes import interview_ws  # WebSocket routes
 from app.api.routes import health, metrics  # Phase 4: Health & Metrics
 from app.middleware.security import (
@@ -450,6 +450,7 @@ app.include_router(applications.router, prefix="/api/v1")
 app.include_router(payment.router, prefix="/api/v1")  # Payment & Subscription
 app.include_router(phone.router, prefix="/api/v1")  # Phone Verification
 app.include_router(admin.router, prefix="/api/v1")  # Admin Dashboard (hidden)
+app.include_router(livekit.router, prefix="/api/v1")  # LiveKit Real-time Interview
 
 # Phase 4: Health & Metrics endpoints
 app.include_router(health.router, prefix="/api/v1")

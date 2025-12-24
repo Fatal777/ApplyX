@@ -146,6 +146,11 @@ class Settings(BaseSettings):
     ELEVENLABS_API_KEY: Optional[str] = None
     ELEVENLABS_VOICE_ID: str = "21m00Tcm4TlvDq8ikWAM"  # Rachel - professional voice
 
+    # LiveKit Real-time Communication (for AI Interview)
+    LIVEKIT_URL: Optional[str] = None  # e.g., wss://your-project.livekit.cloud
+    LIVEKIT_API_KEY: Optional[str] = None
+    LIVEKIT_API_SECRET: Optional[str] = None
+
     # Razorpay Payment Gateway
     RAZORPAY_KEY_ID: Optional[str] = None
     RAZORPAY_KEY_SECRET: Optional[str] = None
