@@ -5,10 +5,13 @@ Run: python3 test_deepgram.py
 
 import asyncio
 import os
-from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv(".env.production")
+try:
+    from dotenv import load_dotenv
+    load_dotenv(".env.production")
+except ImportError:
+    pass
 
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
 
@@ -18,37 +21,42 @@ async def test_stt():
     print("Testing Deepgram STT (Speech-to-Text)")
     print("="*50)
     
+    if not DEEPGRAM_API_KEY:
+        print("❌ DEEPGRAM_API_KEY not set!")
+        return False
+    
     try:
-        from deepgram import DeepgramClient, PrerecordedOptions, FileSource
-        
-        if not DEEPGRAM_API_KEY:
-            print("❌ DEEPGRAM_API_KEY not set!")
-            return False
+        # Try v3 SDK first
+        from deepgram import DeepgramClient
         
         client = DeepgramClient(DEEPGRAM_API_KEY)
         
-        # Test with a sample audio URL
         AUDIO_URL = {"url": "https://static.deepgram.com/examples/Bueller-Life-moves-702a3dbe.wav"}
         
-        options = PrerecordedOptions(
-            model="nova-2",
-            smart_format=True,
-        )
-        
+        # Try different API methods based on SDK version
         print(f"📡 Transcribing sample audio...")
-        response = client.listen.prerecorded.v("1").transcribe_url(AUDIO_URL, options)
+        
+        try:
+            # v3 SDK method
+            response = client.listen.prerecorded.v("1").transcribe_url(
+                AUDIO_URL, 
+                {"model": "nova-2", "smart_format": True}
+            )
+        except AttributeError:
+            # Older SDK method
+            response = client.transcription.prerecorded(
+                AUDIO_URL, 
+                {"model": "nova-2", "smart_format": True}
+            )
         
         transcript = response.results.channels[0].alternatives[0].transcript
         print(f"✅ STT Working!")
         print(f"📝 Transcript: \"{transcript}\"")
         return True
         
-    except ImportError as e:
-        print(f"❌ Import Error: {e}")
-        print("   Run: pip3 install --upgrade deepgram-sdk")
-        return False
     except Exception as e:
         print(f"❌ STT Error: {e}")
+        print("   Try: pip3 install --upgrade deepgram-sdk")
         return False
 
 
@@ -62,7 +70,7 @@ async def test_tts():
         import edge_tts
         
         text = "Hello! I am your AI interviewer. Let's begin the mock interview."
-        voice = "en-US-AriaNeural"  # Professional female voice
+        voice = "en-US-AriaNeural"
         
         print(f"🎤 Generating speech for: \"{text}\"")
         
@@ -71,7 +79,6 @@ async def test_tts():
         
         await communicate.save(output_file)
         
-        # Check file size
         file_size = os.path.getsize(output_file)
         print(f"✅ TTS Working!")
         print(f"📁 Audio saved: {output_file} ({file_size} bytes)")
@@ -107,31 +114,40 @@ async def test_livekit():
     else:
         print("❌ LIVEKIT_API_SECRET not set!")
     
-    # Test token generation
-    if all([livekit_url, livekit_api_key, livekit_api_secret]):
+    if not all([livekit_url, livekit_api_key, livekit_api_secret]):
+        return False
+    
+    # Test token generation with multiple SDK versions
+    try:
+        # Try livekit-api package first
         try:
             from livekit.api import AccessToken, VideoGrants
             
             token = AccessToken(livekit_api_key, livekit_api_secret)
-            token.identity = "test-user"
-            token.name = "Test User"
-            token.add_grant(VideoGrants(
-                room_join=True,
-                room="test-room",
-            ))
-            
+            token.with_identity("test-user").with_name("Test User")
+            token.with_grants(VideoGrants(room_join=True, room="test-room"))
             jwt_token = token.to_jwt()
-            print(f"✅ Token generation working! Token length: {len(jwt_token)}")
-            return True
-        except ImportError as e:
-            print(f"❌ Import Error: {e}")
-            print("   Run: pip3 install livekit-api")
-            return False
-        except Exception as e:
-            print(f"❌ Token generation error: {e}")
-            return False
-    
-    return False
+            
+        except (ImportError, AttributeError):
+            # Try livekit package with api module
+            from livekit import api
+            
+            token = api.AccessToken(livekit_api_key, livekit_api_secret)
+            token.with_identity("test-user")
+            token.with_name("Test User")
+            token.with_grants(api.VideoGrants(room_join=True, room="test-room"))
+            jwt_token = token.to_jwt()
+        
+        print(f"✅ Token generation working! Token length: {len(jwt_token)}")
+        return True
+        
+    except ImportError as e:
+        print(f"❌ Import Error: {e}")
+        print("   Try: pip3 install livekit-api")
+        return False
+    except Exception as e:
+        print(f"❌ Token generation error: {e}")
+        return False
 
 
 async def main():
