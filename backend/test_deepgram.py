@@ -31,15 +31,14 @@ async def test_stt():
         # v5 SDK: pass API key as keyword argument
         client = DeepgramClient(api_key=DEEPGRAM_API_KEY)
         
-        AUDIO_URL = {"url": "https://static.deepgram.com/examples/Bueller-Life-moves-702a3dbe.wav"}
-        
-        # Use dict for options
-        options = {"model": "nova-2", "smart_format": True}
-        
         print(f"📡 Transcribing sample audio...")
         
-        # v5 SDK: listen.v1.media.transcribe_url()
-        response = client.listen.v1.media.transcribe_url(AUDIO_URL, options)
+        # v5 SDK: uses keyword arguments only
+        response = client.listen.v1.media.transcribe_url(
+            url="https://static.deepgram.com/examples/Bueller-Life-moves-702a3dbe.wav",
+            model="nova-2",
+            smart_format=True
+        )
         
         transcript = response.results.channels[0].alternatives[0].transcript
         print(f"✅ STT Working!")
