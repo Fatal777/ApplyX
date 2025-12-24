@@ -35,6 +35,7 @@ import AdminPanel from "./pages/AdminPanel";
 import ScrollToTop from "./components/ScrollToTop";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import AuthCallback from "./pages/AuthCallback";
 
 const queryClient = new QueryClient();
 
@@ -118,6 +119,7 @@ const AppRoutes = () => {
       <Route path="/landing" element={<Landing />} />
       <Route path="/signup" element={<Auth />} />
       <Route path="/login" element={<Auth />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
 
       {/* Protected Routes */}
       <Route path="/resume-builder" element={
