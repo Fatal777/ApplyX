@@ -1,6 +1,6 @@
 """
 Test Deepgram STT and TTS
-Run: python test_deepgram.py
+Run: python3 test_deepgram.py
 """
 
 import asyncio
@@ -19,7 +19,7 @@ async def test_stt():
     print("="*50)
     
     try:
-        from deepgram import DeepgramClient, PrerecordedOptions
+        from deepgram import DeepgramClient, PrerecordedOptions, FileSource
         
         if not DEEPGRAM_API_KEY:
             print("❌ DEEPGRAM_API_KEY not set!")
@@ -28,7 +28,7 @@ async def test_stt():
         client = DeepgramClient(DEEPGRAM_API_KEY)
         
         # Test with a sample audio URL
-        AUDIO_URL = "https://static.deepgram.com/examples/Bueller-Life-moves-702a3dbe.wav"
+        AUDIO_URL = {"url": "https://static.deepgram.com/examples/Bueller-Life-moves-702a3dbe.wav"}
         
         options = PrerecordedOptions(
             model="nova-2",
@@ -36,18 +36,17 @@ async def test_stt():
         )
         
         print(f"📡 Transcribing sample audio...")
-        response = await asyncio.to_thread(
-            lambda: client.listen.rest.v("1").transcribe_url(
-                {"url": AUDIO_URL},
-                options
-            )
-        )
+        response = client.listen.prerecorded.v("1").transcribe_url(AUDIO_URL, options)
         
         transcript = response.results.channels[0].alternatives[0].transcript
         print(f"✅ STT Working!")
         print(f"📝 Transcript: \"{transcript}\"")
         return True
         
+    except ImportError as e:
+        print(f"❌ Import Error: {e}")
+        print("   Run: pip3 install --upgrade deepgram-sdk")
+        return False
     except Exception as e:
         print(f"❌ STT Error: {e}")
         return False
@@ -111,14 +110,12 @@ async def test_livekit():
     # Test token generation
     if all([livekit_url, livekit_api_key, livekit_api_secret]):
         try:
-            from livekit import api
-            from datetime import timedelta
+            from livekit.api import AccessToken, VideoGrants
             
-            token = api.AccessToken(livekit_api_key, livekit_api_secret)
-            token.with_identity("test-user")
-            token.with_name("Test User")
-            token.with_ttl(timedelta(hours=1))
-            token.with_grants(api.VideoGrants(
+            token = AccessToken(livekit_api_key, livekit_api_secret)
+            token.identity = "test-user"
+            token.name = "Test User"
+            token.add_grant(VideoGrants(
                 room_join=True,
                 room="test-room",
             ))
@@ -126,6 +123,10 @@ async def test_livekit():
             jwt_token = token.to_jwt()
             print(f"✅ Token generation working! Token length: {len(jwt_token)}")
             return True
+        except ImportError as e:
+            print(f"❌ Import Error: {e}")
+            print("   Run: pip3 install livekit-api")
+            return False
         except Exception as e:
             print(f"❌ Token generation error: {e}")
             return False
