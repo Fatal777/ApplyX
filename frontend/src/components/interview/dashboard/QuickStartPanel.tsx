@@ -120,27 +120,27 @@ const difficultyLevels = [
 
 // Persona options with human photos
 const personas = [
-  { 
-    id: 'friendly', 
-    label: 'Friendly', 
+  {
+    id: 'friendly',
+    label: 'Friendly',
     emoji: '😊',
     name: 'Emily Parker',
     role: 'Career Coach',
     photo: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop&crop=face',
     description: 'Supportive and encouraging approach'
   },
-  { 
-    id: 'professional', 
-    label: 'Professional', 
+  {
+    id: 'professional',
+    label: 'Professional',
     emoji: '👔',
     name: 'Michael Chen',
     role: 'Senior Recruiter',
     photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
     description: 'Corporate and structured style'
   },
-  { 
-    id: 'challenging', 
-    label: 'Challenging', 
+  {
+    id: 'challenging',
+    label: 'Challenging',
     emoji: '🔥',
     name: 'Sarah Kim',
     role: 'Tech Lead',
@@ -150,12 +150,12 @@ const personas = [
 ];
 
 // Interview Type Card Component - Light Theme
-const TypeCard = ({ 
-  type, 
-  isSelected, 
-  onClick 
-}: { 
-  type: typeof interviewTypes[0]; 
+const TypeCard = ({
+  type,
+  isSelected,
+  onClick
+}: {
+  type: typeof interviewTypes[0];
   isSelected: boolean;
   onClick: () => void;
 }) => {
@@ -170,8 +170,8 @@ const TypeCard = ({
         relative p-5 rounded-xl text-left w-full
         transition-all duration-200
         border-2 bg-white
-        ${isSelected 
-          ? `${type.selectedBorder} shadow-md` 
+        ${isSelected
+          ? `${type.selectedBorder} shadow-md`
           : `border-gray-200 hover:border-gray-300 hover:shadow-sm`
         }
       `}
@@ -197,7 +197,7 @@ const TypeCard = ({
       {/* Features */}
       <div className="flex flex-wrap gap-1.5">
         {type.features.map((feature) => (
-          <span 
+          <span
             key={feature}
             className="px-2 py-0.5 rounded-md text-[11px] bg-gray-100 text-gray-600"
           >
@@ -283,7 +283,7 @@ const QuickStartPanel = ({ onStartInterview, fullWidth = false }: QuickStartPane
 
       {/* Configuration Modal - Light Theme */}
       <Dialog open={showConfigModal} onOpenChange={setShowConfigModal}>
-        <DialogContent className="bg-white border-gray-200 text-gray-900 max-w-lg">
+        <DialogContent className="bg-white border-gray-200 text-gray-900 max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-gray-900">Configure Interview</DialogTitle>
             <DialogDescription className="text-gray-500">
@@ -312,9 +312,9 @@ const QuickStartPanel = ({ onStartInterview, fullWidth = false }: QuickStartPane
                 <Label className="text-gray-700">Use Resume (Optional)</Label>
                 <Select
                   value={config.resumeId?.toString() || 'none'}
-                  onValueChange={(val) => setConfig(prev => ({ 
-                    ...prev, 
-                    resumeId: val === 'none' ? undefined : parseInt(val) 
+                  onValueChange={(val) => setConfig(prev => ({
+                    ...prev,
+                    resumeId: val === 'none' ? undefined : parseInt(val)
                   }))}
                 >
                   <SelectTrigger className="border-gray-200 text-gray-900">
@@ -340,8 +340,8 @@ const QuickStartPanel = ({ onStartInterview, fullWidth = false }: QuickStartPane
                 {difficultyLevels.map((level) => (
                   <button
                     key={level.id}
-                    onClick={() => setConfig(prev => ({ 
-                      ...prev, 
+                    onClick={() => setConfig(prev => ({
+                      ...prev,
                       difficulty: level.id as InterviewConfig['difficulty']
                     }))}
                     className={`
@@ -365,8 +365,8 @@ const QuickStartPanel = ({ onStartInterview, fullWidth = false }: QuickStartPane
                 {personas.map((persona) => (
                   <motion.button
                     key={persona.id}
-                    onClick={() => setConfig(prev => ({ 
-                      ...prev, 
+                    onClick={() => setConfig(prev => ({
+                      ...prev,
                       persona: persona.id as InterviewConfig['persona']
                     }))}
                     whileHover={{ scale: 1.02 }}
@@ -387,8 +387,8 @@ const QuickStartPanel = ({ onStartInterview, fullWidth = false }: QuickStartPane
                         className={`
                           w-full h-full rounded-full object-cover
                           transition-all duration-300
-                          ${config.persona === persona.id 
-                            ? 'ring-2 ring-lime-500 ring-offset-2' 
+                          ${config.persona === persona.id
+                            ? 'ring-2 ring-lime-500 ring-offset-2'
                             : 'grayscale-[20%] hover:grayscale-0'
                           }
                         `}
@@ -403,20 +403,19 @@ const QuickStartPanel = ({ onStartInterview, fullWidth = false }: QuickStartPane
                         </motion.div>
                       )}
                     </div>
-                    
+
                     {/* Name & Role */}
-                    <p className={`text-xs font-semibold truncate ${
-                      config.persona === persona.id ? 'text-gray-900' : 'text-gray-700'
-                    }`}>
+                    <p className={`text-xs font-semibold truncate ${config.persona === persona.id ? 'text-gray-900' : 'text-gray-700'
+                      }`}>
                       {persona.name}
                     </p>
                     <p className="text-[10px] text-gray-500 truncate">{persona.role}</p>
-                    
+
                     {/* Style Badge */}
                     <span className={`
                       inline-block mt-2 px-2 py-0.5 rounded-full text-[10px] font-medium
-                      ${config.persona === persona.id 
-                        ? 'bg-lime-200 text-lime-700' 
+                      ${config.persona === persona.id
+                        ? 'bg-lime-200 text-lime-700'
                         : 'bg-gray-100 text-gray-500'
                       }
                     `}>
@@ -425,7 +424,7 @@ const QuickStartPanel = ({ onStartInterview, fullWidth = false }: QuickStartPane
                   </motion.button>
                 ))}
               </div>
-              
+
               {/* Selected Persona Description */}
               <AnimatePresence mode="wait">
                 {config.persona && (
