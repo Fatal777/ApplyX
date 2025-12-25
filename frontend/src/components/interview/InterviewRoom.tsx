@@ -84,6 +84,7 @@ export function InterviewRoom() {
   // Recording refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const audioStreamRef = useRef<MediaStream | null>(null);
 
   // Interview config from URL params or defaults
   const [config] = useState<InterviewConfig>(() => ({
@@ -100,9 +101,23 @@ export function InterviewRoom() {
   const cleanupMedia = useCallback(() => {
     // Stop recording if active
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (e) {
+        console.log('MediaRecorder already stopped');
+      }
     }
+    mediaRecorderRef.current = null;
     setIsListening(false);
+
+    // Stop audio stream tracks (mic)
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log('Stopped audio track:', track.kind);
+      });
+      audioStreamRef.current = null;
+    }
 
     // Turn off webcam
     setWebcamActive(false);
@@ -225,6 +240,8 @@ export function InterviewRoom() {
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream; // Store stream ref for cleanup
+
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
       });
@@ -240,7 +257,11 @@ export function InterviewRoom() {
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         await processRecording(audioBlob);
-        stream.getTracks().forEach(track => track.stop());
+        // Stop stream tracks after processing
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach(track => track.stop());
+          audioStreamRef.current = null;
+        }
       };
 
       mediaRecorderRef.current = mediaRecorder;
