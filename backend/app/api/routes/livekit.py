@@ -13,7 +13,7 @@ from app.core.livekit_config import (
     is_livekit_configured,
     LIVEKIT_URL
 )
-from app.api.deps import get_current_user
+from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/livekit", tags=["livekit"])
 
