@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRealtimeTranscription } from '@/hooks/useRealtimeTranscription';
 
 import WebcamDisplay from './WebcamDisplay';
 import VoiceAgent from './VoiceAgent';
@@ -79,7 +80,25 @@ export function InterviewRoom() {
   const [webcamActive, setWebcamActive] = useState(true);
   const [currentAudio, setCurrentAudio] = useState<string | undefined>();
   const [transcript, setTranscript] = useState('');
+  const [liveTranscript, setLiveTranscript] = useState('');  // Real-time transcription
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+
+  // Real-time transcription hook
+  const {
+    isRecording: isLiveTranscribing,
+    interimText,
+    finalText,
+    startRecording: startLiveTranscription,
+    stopRecording: stopLiveTranscription,
+    clearTranscript: clearLiveTranscript,
+  } = useRealtimeTranscription({
+    onTranscript: (result) => {
+      // Update live transcript display
+      if (result.isFinal) {
+        setLiveTranscript(prev => prev + (prev ? ' ' : '') + result.text);
+      }
+    },
+  });
 
   // Recording refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -239,6 +258,11 @@ export function InterviewRoom() {
 
   const startRecording = useCallback(async () => {
     try {
+      // Start live transcription first
+      await startLiveTranscription();
+      clearLiveTranscript();
+      setLiveTranscript('');
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioStreamRef.current = stream; // Store stream ref for cleanup
 
@@ -256,6 +280,11 @@ export function InterviewRoom() {
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+
+        // Use live transcript instead of processing audio for STT
+        const finalTranscript = liveTranscript + (interimText ? ' ' + interimText : '');
+        setTranscript(finalTranscript.trim());
+
         await processRecording(audioBlob);
         // Stop stream tracks after processing
         if (audioStreamRef.current) {
@@ -276,14 +305,17 @@ export function InterviewRoom() {
         variant: "destructive",
       });
     }
-  }, []);
+  }, [startLiveTranscription, clearLiveTranscript, liveTranscript, interimText]);
 
   const stopRecording = useCallback(() => {
+    // Stop live transcription
+    stopLiveTranscription();
+
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
       setIsListening(false);
     }
-  }, []);
+  }, [stopLiveTranscription]);
 
   const processRecording = async (audioBlob: Blob) => {
     if (!sessionId) return;
@@ -608,7 +640,10 @@ export function InterviewRoom() {
                   {/* Live Transcription Display */}
                   <TranscriptionDisplay
                     aiText={questions[currentQuestionIndex]?.question}
-                    userText={transcript}
+                    userText={isListening
+                      ? (liveTranscript + (interimText ? ' ' + interimText : '')).trim() || 'Listening...'
+                      : transcript
+                    }
                     isAiSpeaking={isSpeaking}
                     isUserSpeaking={isListening}
                     className="mt-6"
