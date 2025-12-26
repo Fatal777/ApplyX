@@ -56,6 +56,7 @@ aiohttp>=3.9.0
 # Speech Processing (Interview Platform)
 deepgram-sdk>=3.0.0  # Deepgram Nova-2 STT (50 concurrent streams)
 edge-tts>=6.0.0  # Microsoft neural voices TTS (free, high-quality)
+websockets>=12.0  # WebSocket client for real-time transcription
 
 # LiveKit Real-time Communication
 livekit>=0.11.0  # LiveKit Python SDK
