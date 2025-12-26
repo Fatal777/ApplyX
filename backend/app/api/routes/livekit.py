@@ -7,13 +7,13 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
 
-from ..core.livekit_config import (
+from app.core.livekit_config import (
     generate_room_token,
     generate_agent_token,
     is_livekit_configured,
     LIVEKIT_URL
 )
-from ..api.deps import get_current_user
+from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/livekit", tags=["livekit"])
 
