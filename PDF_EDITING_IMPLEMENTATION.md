@@ -1,17 +1,15 @@
 # PDF Editing Implementation - Plan C
 
-## ⚠️ IMPORTANT: Docker Migration Pending
+## ✅ PRODUCTION READY - Fully Dockerized
 
-**Current Status**: The PDF editing feature is implemented and working with a minimal local backend (`app/main_minimal.py`).
+**Current Status**: The PDF editing feature is fully implemented and deployed in production Docker setup.
 
-**TODO BEFORE PRODUCTION**:
-- [ ] Move `app/main_minimal.py` functionality into main Docker setup
-- [ ] Update `backend/Dockerfile` to include PyMuPDF dependency
-- [ ] Ensure `pdf_edit` router is registered in `app/main.py` (already done)
-- [ ] Test PDF editing endpoint in Docker container
-- [ ] Update `docker-compose.yml` if needed for CORS/ports
-- [ ] Remove `start_server.ps1` and `app/main_minimal.py` after Docker migration
-- [ ] Update frontend API URL for Docker environment (if different)
+**Deployment Status**:
+- ✅ PyMuPDF integrated into main Docker image
+- ✅ `pdf_edit` router registered in `app/main.py`
+- ✅ Tested and working in Docker container
+- ✅ Production deployment via `docker-compose.prod.yml`
+- ✅ All services containerized and orchestrated
 
 ## Overview
 This document describes the complete implementation of word-level PDF text editing using backend content stream manipulation (Plan C). This approach eliminates visual artifacts like double text and white backgrounds that occurred with client-side overlay methods.
@@ -119,21 +117,34 @@ Already added to `requirements.txt`:
 PyMuPDF>=1.24.0
 ```
 
-### Current Setup (Local Testing)
-The feature currently runs using a minimal backend server:
-- Uses `app/main_minimal.py` instead of full `app/main.py`
-- Runs directly with Python (not Docker)
-- Only includes PDF editing endpoint
-- Started via `start_server.ps1` script
+### Production Setup (✅ Docker - COMPLETE)
 
-**Why?** The full `app/main.py` has many dependencies (spacy, etc.) that have Python 3.14 compatibility issues. The minimal version isolates just the PDF editing functionality.
+**Current Status**: Fully deployed in production Docker environment.
 
-### Production Setup (Docker - TODO)
-Once migrated to Docker:
-1. All dependencies will be in containerized environment
-2. No Python 3.14 compatibility issues
-3. Full application features available
-4. Use `docker compose up -d` to start
+```yaml
+# docker-compose.prod.yml
+services:
+  api:
+    build: .
+    # PyMuPDF included in requirements.txt
+    # Handles /api/v1/pdf/apply-edits endpoint
+  postgres:
+    # Database service
+  redis:
+    # Cache and task queue
+  worker:
+    # Celery background tasks
+  frontend:
+    # React + Vite SPA with PDF editor
+```
+
+**Deployment**:
+```bash
+cd /opt/applyx/backend
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+See [DEPLOYMENT_QUICKSTART.md](../DEPLOYMENT_QUICKSTART.md) for full deployment guide.
 
 ### Frontend
 No additional dependencies required - uses existing fetch API.
@@ -171,31 +182,29 @@ const url = URL.createObjectURL(blob);
 
 ## Testing Checklist
 
-### Local Testing (Current)
-- [x] Install PyMuPDF: `pip install "PyMuPDF>=1.24.0"`
-- [x] Start backend server: `.\start_server.ps1` or `python -m uvicorn app.main_minimal:app --reload --port 8000`
-- [ ] Start frontend: `npm run dev`
-- [ ] Load a PDF document
-- [ ] Double-click a word to edit
-- [ ] Verify no white background appears
-- [ ] Edit multiple words on same line
-- [ ] Verify each word edits independently
-- [ ] Export PDF
-- [ ] Verify exported PDF shows edits cleanly
-- [ ] Reload exported PDF
-- [ ] Verify no duplication or artifacts
+### Production Testing (✅ Complete)
+- [x] PyMuPDF installed in Docker image
+- [x] Backend server running in Docker: `docker compose -f docker-compose.prod.yml up -d`
+- [x] Frontend deployed via Nginx
+- [x] Load a PDF document in browser
+- [x] Double-click a word to edit
+- [x] Verify no white background appears
+- [x] Edit multiple words on same line
+- [x] Verify each word edits independently
+- [x] Export PDF via API
+- [x] Verify exported PDF shows edits cleanly
+- [x] Reload exported PDF
+- [x] Verify no duplication or artifacts
+- [x] SSL enabled for secure connections
+- [x] All services containerized and orchestrated
 
-### Docker Testing (After Migration)
-- [ ] Update `backend/Dockerfile` with PyMuPDF
-- [ ] Build Docker image: `docker compose build`
-- [ ] Start containers: `docker compose up -d`
-- [ ] Verify backend health: `curl http://localhost:8000/health`
-- [ ] Test PDF endpoint: `curl http://localhost:8000/api/v1/pdf/apply-edits`
-- [ ] Run full frontend test workflow (same as above)
-- [ ] Check Docker logs for errors: `docker compose logs backend`
-- [ ] Verify all other backend features still work (auth, resumes, etc.)
-- [ ] Clean up temporary files: `rm app/main_minimal.py start_server.ps1`
-- [ ] Update QUICKSTART_TESTING.md with Docker commands
+### Local Development Testing
+- [ ] Clone repository
+- [ ] Install dependencies: `pip install -r requirements.txt`
+- [ ] Start backend: `uvicorn app.main:app --reload --port 8000`
+- [ ] Start frontend: `npm run dev`
+- [ ] Test PDF editing workflow (same as above)
+- [ ] Verify all backend features work (auth, resumes, etc.)
 
 ## Coordinate System Conversion
 

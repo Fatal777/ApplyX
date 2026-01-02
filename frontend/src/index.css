@@ -159,3 +159,17 @@ All colors MUST be HSL.
     will-change: transform;
   }
 }
+
+/* Resume Editor Scroll Fix */
+.resume-editor-scroll {
+  overflow-y: scroll !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin;
+}
+
+.resume-preview-scroll {
+  overflow: scroll !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin;
+}

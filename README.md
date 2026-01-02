@@ -1,73 +1,235 @@
-# Welcome to your Lovable project
+# ApplyX - AI-Powered Career Platform
 
-## Project info
+Complete AI-powered career platform with resume analysis, job matching, mock interviews, and PDF editing tools.
 
-**URL**: https://lovable.dev/projects/ebc507a9-93e5-43f4-832d-3f026b323d87
+---
 
-## How can I edit this code?
+## 🚀 Features
 
-There are several ways of editing your application.
+- **Resume Analysis & ATS Scoring** - Upload resumes, get AI feedback and ATS compatibility scores
+- **AI Mock Interviews** - Real-time voice interviews with AI using Deepgram STT + Gemini AI
+- **Job Portal Integration** - Search jobs across multiple platforms (Indeed, LinkedIn, Glassdoor)
+- **PDF Resume Editor** - Sejda-like word-level PDF editing with zero artifacts
+- **Payment Integration** - Razorpay, Cashfree, and PayPal support
+- **High-Performance Search** - Redis-backed inverted index with sub-10ms response times
+- **Production-Ready** - Full Docker deployment with monitoring and observability
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/ebc507a9-93e5-43f4-832d-3f026b323d87) and start prompting.
+## 📦 Quick Deployment
 
-Changes made via Lovable will be committed automatically to this repo.
+**Deploy to production in 5 minutes:**
 
-**Use your preferred IDE**
+See [DEPLOYMENT_QUICKSTART.md](./DEPLOYMENT_QUICKSTART.md) for complete deployment instructions.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+**Quick commands:**
+```bash
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+# Clone and deploy
+git clone https://github.com/Fatal777/ApplyX.git /opt/applyx
+cd /opt/applyx/backend
+cp .env.production.template .env
+nano .env  # Configure environment variables
 
-Follow these steps:
+# Build and start all services
+docker compose -f docker-compose.prod.yml up -d --build
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Run migrations
+docker compose -f docker-compose.prod.yml exec api python -m alembic upgrade head
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+---
 
-# Step 3: Install the necessary dependencies.
-npm i
+## 🛠️ Local Development
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Prerequisites
+
+- Node.js 18+ and npm
+- Python 3.11+
+- PostgreSQL 15+
+- Redis 7+
+- Docker & Docker Compose (optional)
+
+### Backend Setup
+
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+
+# Configure environment
+cp .env.example .env
+nano .env
+
+# Start services
+uvicorn app.main:app --reload --port 8000
+celery -A app.tasks.celery_app worker --loglevel=info  # In another terminal
+```
+
+### Frontend Setup
+
+```bash
+cd frontend
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Frontend will be available at `http://localhost:5173`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+---
 
-**Use GitHub Codespaces**
+## 🏗️ Architecture
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Tech Stack
 
-## What technologies are used for this project?
+**Backend:**
+- FastAPI (Python 3.11+)
+- PostgreSQL + Redis
+- Celery for background tasks
+- Deepgram Nova-2 (Speech-to-Text)
+- Gemini 2.5 Flash (AI Interview Engine)
+- edge-tts (Text-to-Speech - Free)
 
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
+**Frontend:**
+- React + TypeScript
+- Vite build tool
+- shadcn/ui components
 - Tailwind CSS
 
-## How can I deploy this project?
+**Infrastructure:**
+- Docker + Docker Compose
+- Nginx reverse proxy
+- Let's Encrypt SSL
+- OpenTelemetry + Prometheus + Sentry
 
-Simply open [Lovable](https://lovable.dev/projects/ebc507a9-93e5-43f4-832d-3f026b323d87) and click on Share -> Publish.
+### Services
 
-## Can I connect a custom domain to my Lovable project?
+| Service | Port | Description |
+|---------|------|-------------|
+| Frontend | 80/443 | React SPA served by Nginx |
+| Backend API | 8000 | FastAPI application |
+| PostgreSQL | 5432 | Database |
+| Redis | 6379 | Cache + Task Queue |
+| Celery Worker | - | Background jobs |
+| Celery Beat | - | Scheduled tasks |
 
-Yes, you can!
+---
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 📚 Documentation
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- **[Deployment Guide](./DEPLOYMENT_QUICKSTART.md)** - Complete production deployment
+- **[Backend README](./backend/README.md)** - Backend API documentation
+- **[PDF Editing](./PDF_EDITING_IMPLEMENTATION.md)** - PDF editor implementation details
+- **[Tools Implementation](./TOOLS_IMPLEMENTATION.md)** - Annotation tools documentation
+- **[PRD](./PRD.md)** - Product requirements document
+
+---
+
+## 🔑 Environment Variables
+
+Key environment variables needed (see `.env.example` for complete list):
+
+```env
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/applyx
+
+# Security
+SECRET_KEY=your-secret-key
+JWT_SECRET_KEY=your-jwt-secret
+ENCRYPTION_KEY=your-encryption-key
+
+# Supabase Authentication
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your-anon-key
+SUPABASE_JWT_SECRET=your-jwt-secret
+
+# AI Services (Budget-optimized)
+GEMINI_API_KEY=your-gemini-key  # ~₹800/month
+DEEPGRAM_API_KEY=your-deepgram-key  # ~₹1,500/month
+# edge-tts is free, no API key needed
+
+# Payment Gateways
+RAZORPAY_KEY_ID=your-razorpay-id
+RAZORPAY_KEY_SECRET=your-razorpay-secret
+```
+
+---
+
+## 💰 Monthly Cost Estimate
+
+| Service | Cost |
+|---------|------|
+| DigitalOcean Droplet (4GB RAM) | $24 (~₹2,000) |
+| Deepgram STT (500 interviews) | ~$17 (~₹1,500) |
+| Gemini AI (500 interviews) | ~$10 (~₹800) |
+| edge-tts | Free |
+| **Total** | **~₹4,300/month** |
+
+---
+
+## 🛡️ Security Features
+
+- JWT-based authentication with refresh tokens
+- Password hashing with bcrypt
+- Data encryption at rest (AES-256)
+- Rate limiting and DDoS protection
+- Security headers middleware
+- Malware scanning for uploads
+- Audit logging
+- Circuit breakers for external services
+
+---
+
+## 📊 Monitoring & Observability
+
+- **OpenTelemetry**: Distributed tracing
+- **Prometheus**: Metrics collection
+- **Sentry**: Error tracking and performance monitoring
+- **Structured Logging**: JSON logs with request context
+- **Health Checks**: `/health` and `/metrics` endpoints
+
+---
+
+## 🧪 Testing
+
+```bash
+# Backend tests
+cd backend
+pytest tests/
+
+# Frontend tests
+cd frontend
+npm run test
+```
+
+---
+
+## 🤝 Contributing
+
+See [CONTRIBUTING.md](./backend/CONTRIBUTING.md) for development guidelines.
+
+---
+
+## 📝 License
+
+This project is proprietary software. All rights reserved.
+
+---
+
+## 🆘 Support
+
+For deployment issues, see [DEPLOYMENT_QUICKSTART.md](./DEPLOYMENT_QUICKSTART.md) troubleshooting section.
+
+For other questions, check:
+- Backend API docs: `http://localhost:8000/docs`
+- Health check: `http://localhost:8000/health`
+
+---
+
+**Production Status**: ✅ Fully deployed and operational
+
+**Server**: `ssh root@139.59.95.13`

@@ -132,3 +132,11 @@ SECURITY.md
 # Scrapy sensitive files
 # Note: settings.py is now tracked (uses env vars for API keys)
 backend/app/services/scrapingbee_service.py
+
+# Session summary files (keep these)
+!SESSION_SUMMARY.txt
+!SESSION_SUMMARY.md
+
+# Documentation files to keep
+!SCROLL_ISSUE_FIX.md
+!frontend/docs/*.md

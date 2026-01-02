@@ -52,10 +52,10 @@ async def upload_resume(
         )
     
     file_ext = file.filename.rsplit('.', 1)[-1].lower()
-    if file_ext not in settings.allowed_extensions_list:
+    if file_ext not in settings.ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File type not allowed. Allowed types: {settings.ALLOWED_EXTENSIONS}"
+            detail=f"File type not allowed. Allowed types: {', '.join(settings.ALLOWED_EXTENSIONS)}"
         )
     
     # Read file content

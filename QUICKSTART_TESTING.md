@@ -2,26 +2,54 @@
 
 ## Implementation Complete ✅
 
-The word-level PDF editing system is fully implemented using backend content stream manipulation (Plan C). This eliminates all visual artifacts (double text, white backgrounds) that occurred with overlay approaches.
+The word-level PDF editing system is fully implemented and deployed in production Docker environment. This eliminates all visual artifacts (double text, white backgrounds) using backend content stream manipulation.
 
-## How to Test
+## Production Deployment (Docker)
+
+### 1. Start All Services
+
+```bash
+cd /opt/applyx/backend
+docker compose -f docker-compose.prod.yml up -d
+```
+
+This starts:
+- PostgreSQL database
+- Redis cache
+- FastAPI backend (with PDF editing)
+- Celery workers
+- Frontend (React + Vite)
+- Nginx reverse proxy
+
+Backend will be available at: `http://localhost:8000`  
+Frontend will be available at: `http://localhost` (or your domain)
+
+PDF editing endpoint: `POST http://localhost:8000/api/v1/pdf/apply-edits`
+
+### 2. Verify Services
+
+```bash
+# Check all containers are running
+docker compose -f docker-compose.prod.yml ps
+
+# Test health endpoint
+curl http://localhost:8000/health
+
+# View logs
+docker compose -f docker-compose.prod.yml logs -f api
+```
+
+## Local Development (Without Docker)
 
 ### 1. Start Backend Server
 
-```powershell
+```bash
 cd backend
-.\start_server.ps1
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
 ```
-
-Or manually:
-```powershell
-cd backend
-C:/Python314/python.exe -m uvicorn app.main_minimal:app --reload --port 8000
-```
-
-Backend will be available at: `http://localhost:8000`
-
-API endpoint: `POST http://localhost:8000/api/v1/pdf/apply-edits`
 
 ### 2. Start Frontend Server
 

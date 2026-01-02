@@ -12,6 +12,7 @@ import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResumeBuilder from "./pages/ResumeBuilder";
+import ResumeEditor from "./pages/ResumeEditor";
 import ResumeAnalysis from "./pages/ResumeAnalysis";
 import NotFound from "./pages/NotFound";
 import MockInterview from "./pages/MockInterview";
@@ -127,6 +128,9 @@ const AppRoutes = () => {
           <ResumeBuilder />
         </ProtectedRoute>
       } />
+
+      <Route path="/resume-editor" element={<ResumeEditor />} />
+      <Route path="/resume-editor/:id" element={<ResumeEditor />} />
 
       <Route path="/resume/:id" element={
         <ProtectedRoute>

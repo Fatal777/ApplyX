@@ -1,0 +1,131 @@
+# ApplyX Project Session Summary
+Last Updated: December 27, 2025
+
+================================================================================
+PROJECT OVERVIEW
+================================================================================
+
+ApplyX is a job application platform with an AI interview feature.
+- Frontend: React + Vite + TypeScript + TailwindCSS + shadcn/ui
+- Backend: FastAPI + PostgreSQL + Redis + Celery
+- Deployment: Docker Compose on DigitalOcean (139.59.95.13)
+- Domain: applyx.in (frontend), api.applyx.in (backend)
+- GitHub: https://github.com/Fatal777/ApplyX
+
+================================================================================
+SERVER DETAILS
+================================================================================
+
+- IP: 139.59.95.13
+- SSH: ssh root@139.59.95.13
+- Project Path: /opt/applyx/backend
+- Docker Compose File: docker-compose.prod.yml
+- Env File: .env.production
+
+================================================================================
+CURRENT STATE
+================================================================================
+
+WORKING:
+✅ User authentication (Supabase OAuth)
+✅ Resume upload and parsing
+✅ Job search and scraping
+✅ AI interview with fallback questions
+✅ TTS (edge-tts - free)
+✅ STT (Deepgram Nova-2)
+
+PENDING DEPLOYMENT:
+⏳ Live transcription feature (WebSocket streaming)
+⏳ websockets package needs --no-cache rebuild
+
+KNOWN ISSUES:
+❌ Gemini API quota exceeded (free tier) - interviews use fallback questions
+
+================================================================================
+RECENT CHANGES MADE
+================================================================================
+
+1. FRONTEND FIXES:
+   - QuickStartPanel.tsx: Added max-h-[90vh] overflow-y-auto for modal scroll
+   - InterviewRoom.tsx: Added audioStreamRef for proper mic cleanup, integrated live transcription
+
+2. BACKEND NEW FILES:
+   - app/api/routes/transcription.py: WebSocket endpoint for Deepgram real-time STT
+
+3. FRONTEND NEW FILES:
+   - src/hooks/useRealtimeTranscription.ts: Hook for WebSocket transcription
+
+4. CONFIGURATION CHANGES:
+   - requirements.txt: Added websockets>=12.0
+   - nginx/conf.d/applyx.conf: Added WebSocket location for /api/v1/transcription/
+   - app/api/routes/livekit.py: Fixed imports to app.api.dependencies
+
+================================================================================
+GIT COMMITS (THIS SESSION)
+================================================================================
+
+19dc592 - Fix interview config modal scroll on small screens
+2e39a5f - Fix camera and mic not turning off after interview exit
+d2352df - Add real-time live transcription with Deepgram WebSocket streaming
+b1d08c5 - Fix WebSocket proxy for live transcription
+930b2a0 - Fix import paths in livekit.py
+302f4d3 - Fix import: deps to dependencies
+4b19515 - Add websockets package for live transcription
+
+================================================================================
+COMMANDS TO DEPLOY
+================================================================================
+
+ssh root@139.59.95.13
+cd /opt/applyx/backend
+git pull
+docker compose -f docker-compose.prod.yml build --no-cache api
+docker compose -f docker-compose.prod.yml build frontend
+docker compose -f docker-compose.prod.yml up -d api frontend
+docker compose -f docker-compose.prod.yml restart nginx
+docker compose -f docker-compose.prod.yml ps
+curl -k https://api.applyx.in/health
+curl -k https://api.applyx.in/api/v1/transcription/status
+
+================================================================================
+TASKS TO COMPLETE
+================================================================================
+
+1. Deploy Live Transcription - Run --no-cache rebuild on server
+2. Fix Gemini Quota - Upgrade to paid tier or add OpenAI fallback
+3. Test Full Interview Flow - Verify real-time captions appear
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+# Check container status
+docker compose -f docker-compose.prod.yml ps
+
+# View API logs
+docker compose -f docker-compose.prod.yml logs api --tail 100
+
+# View errors
+docker compose -f docker-compose.prod.yml logs api --tail 100 | grep -i error
+
+# Restart API
+docker compose -f docker-compose.prod.yml restart api
+
+================================================================================
+ENVIRONMENT VARIABLES REQUIRED
+================================================================================
+
+Backend (.env.production):
+- DEEPGRAM_API_KEY
+- GOOGLE_API_KEY (Gemini)
+- OPENAI_API_KEY
+- SUPABASE_URL
+- SUPABASE_ANON_KEY
+- DATABASE_URL
+- SECRET_KEY
+- JWT_SECRET_KEY
+
+Frontend (.env):
+- VITE_API_URL=https://api.applyx.in
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY
