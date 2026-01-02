@@ -1,11 +1,12 @@
 """
 Mock Interview Agent - DigitalOcean Serverless Function
 AI-powered interviewer for practice interviews
+Uses DigitalOcean GenAI (GPT-oss-120b)
 """
 
 import os
 import json
-from openai import OpenAI
+import httpx
 
 
 # Interview personas with different styles
@@ -33,6 +34,26 @@ PERSONAS = {
 }
 
 
+def call_do_genai(api_key, messages, max_tokens=400):
+    """Call DO GenAI API"""
+    response = httpx.post(
+        "https://api.digitalocean.com/v2/gen-ai/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": "gpt-oss-120b",
+            "messages": messages,
+            "temperature": 0.8,
+            "max_tokens": max_tokens,
+        },
+        timeout=60.0
+    )
+    result = response.json()
+    return result["choices"][0]["message"]["content"]
+
+
 def main(args):
     """
     Process interview interaction.
@@ -44,9 +65,6 @@ def main(args):
         resume_text: (Optional) Candidate's resume for context
         conversation_history: List of previous messages
         user_message: User's response to process
-    
-    Returns:
-        next_question or feedback depending on action
     """
     
     action = args.get("action", "respond")
@@ -59,22 +77,20 @@ def main(args):
     # Get persona
     persona = PERSONAS.get(persona_key, PERSONAS["friendly"])
     
-    # Initialize OpenAI client
-    api_key = os.environ.get("OPENAI_API_KEY")
+    # DO GenAI API key
+    api_key = os.environ.get("DO_GENAI_API_KEY")
     if not api_key:
         return {
             "statusCode": 500,
-            "body": {"error": "OpenAI API key not configured"}
+            "body": {"error": "DO_GENAI_API_KEY not configured"}
         }
     
-    client = OpenAI(api_key=api_key)
-    
     if action == "start":
-        return start_interview(client, persona, job_role, resume_text)
+        return start_interview(api_key, persona, job_role, resume_text)
     elif action == "respond":
-        return process_response(client, persona, job_role, history, user_message)
+        return process_response(api_key, persona, job_role, history, user_message)
     elif action == "feedback":
-        return generate_feedback(client, persona, job_role, history)
+        return generate_feedback(api_key, persona, job_role, history)
     else:
         return {
             "statusCode": 400,
@@ -82,7 +98,7 @@ def main(args):
         }
 
 
-def start_interview(client, persona, job_role, resume_text):
+def start_interview(api_key, persona, job_role, resume_text):
     """Start a new interview session"""
     
     resume_context = f"\n\nCandidate's Resume:\n{resume_text[:2000]}" if resume_text else ""
@@ -99,14 +115,7 @@ Start the interview with:
 Keep it conversational and under 100 words."""
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.8,
-            max_tokens=300,
-        )
-        
-        opening = response.choices[0].message.content
+        opening = call_do_genai(api_key, [{"role": "user", "content": prompt}], max_tokens=300)
         
         return {
             "statusCode": 200,
@@ -125,10 +134,9 @@ Keep it conversational and under 100 words."""
         }
 
 
-def process_response(client, persona, job_role, history, user_message):
+def process_response(api_key, persona, job_role, history, user_message):
     """Process user's response and generate next question"""
     
-    # Build conversation
     messages = [
         {
             "role": "system",
@@ -145,31 +153,18 @@ Guidelines:
         }
     ]
     
-    # Add conversation history
     for msg in history:
         messages.append({
             "role": msg.get("role", "user"),
             "content": msg.get("content", "")
         })
     
-    # Add current message
-    messages.append({
-        "role": "user",
-        "content": user_message
-    })
+    messages.append({"role": "user", "content": user_message})
     
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            temperature=0.8,
-            max_tokens=400,
-        )
-        
-        interviewer_response = response.choices[0].message.content
+        interviewer_response = call_do_genai(api_key, messages, max_tokens=400)
         question_count = len([m for m in history if m.get("role") == "assistant"]) + 1
         
-        # Determine phase
         phase = "warmup" if question_count <= 1 else "main" if question_count <= 7 else "closing"
         
         return {
@@ -188,10 +183,9 @@ Guidelines:
         }
 
 
-def generate_feedback(client, persona, job_role, history):
+def generate_feedback(api_key, persona, job_role, history):
     """Generate comprehensive feedback on the interview"""
     
-    # Format conversation for analysis
     conversation = "\n".join([
         f"{'Interviewer' if m.get('role') == 'assistant' else 'Candidate'}: {m.get('content', '')}"
         for m in history
@@ -205,44 +199,26 @@ Interview Transcript:
 Provide feedback in this JSON format:
 {{
   "overall_score": 0-100,
-  "communication": {{
-    "score": 0-100,
-    "feedback": "specific feedback on communication skills"
-  }},
-  "content_quality": {{
-    "score": 0-100,
-    "feedback": "feedback on the substance of answers"
-  }},
-  "structure": {{
-    "score": 0-100,
-    "feedback": "feedback on answer organization (STAR method usage, etc)"
-  }},
-  "confidence": {{
-    "score": 0-100,
-    "feedback": "feedback on confidence and delivery"
-  }},
-  "strengths": ["strength 1", "strength 2", "strength 3"],
-  "improvements": ["area 1", "area 2", "area 3"],
+  "communication": {{"score": 0-100, "feedback": "specific feedback"}},
+  "content_quality": {{"score": 0-100, "feedback": "feedback on substance"}},
+  "structure": {{"score": 0-100, "feedback": "feedback on organization"}},
+  "confidence": {{"score": 0-100, "feedback": "feedback on delivery"}},
+  "strengths": ["strength 1", "strength 2"],
+  "improvements": ["area 1", "area 2"],
   "sample_improved_answer": {{
     "question": "one question they could improve on",
-    "their_answer_summary": "brief summary of what they said",
     "improved_answer": "example of a stronger answer"
   }}
 }}"""
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are an expert interview coach. Provide specific, actionable feedback."},
-                {"role": "user", "content": prompt}
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.7,
-            max_tokens=1500,
-        )
+        messages = [
+            {"role": "system", "content": "You are an expert interview coach. Provide specific, actionable feedback. Respond with valid JSON only."},
+            {"role": "user", "content": prompt}
+        ]
         
-        feedback = json.loads(response.choices[0].message.content)
+        response = call_do_genai(api_key, messages, max_tokens=1500)
+        feedback = json.loads(response)
         
         return {
             "statusCode": 200,

@@ -51,8 +51,8 @@ doctl serverless connect
 ```bash
 cd /opt/applyx/serverless
 
-# Create .env with your OpenAI key
-echo "OPENAI_API_KEY=sk-your-key-here" > .env
+# Create .env with your DO GenAI API key
+echo "DO_GENAI_API_KEY=your-do-genai-api-key" > .env
 
 # Deploy
 doctl serverless deploy . --env .env

@@ -1,11 +1,12 @@
 """
 Resume AI Suggestions - DigitalOcean Serverless Function
 Generates AI-powered improvement suggestions for resumes
+Uses DigitalOcean GenAI (GPT-oss-120b)
 """
 
 import os
 import json
-from openai import OpenAI
+import httpx
 
 
 def main(args):
@@ -32,15 +33,13 @@ def main(args):
             "body": {"error": "resume_text is required"}
         }
     
-    # Initialize OpenAI client
-    api_key = os.environ.get("OPENAI_API_KEY")
+    # DO GenAI endpoint
+    api_key = os.environ.get("DO_GENAI_API_KEY")
     if not api_key:
         return {
             "statusCode": 500,
-            "body": {"error": "OpenAI API key not configured"}
+            "body": {"error": "DO_GENAI_API_KEY not configured"}
         }
-    
-    client = OpenAI(api_key=api_key)
     
     # Build the prompt
     focus_section = f"Focus especially on the {section} section." if section != "all" else ""
@@ -86,21 +85,31 @@ Respond with valid JSON only:
 }}"""
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system", 
-                    "content": "You are an expert career coach and resume writer. Provide specific, actionable feedback that helps candidates stand out. Always respond with valid JSON."
-                },
-                {"role": "user", "content": prompt}
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.7,
-            max_tokens=2000,
+        # Call DO GenAI API
+        response = httpx.post(
+            "https://api.digitalocean.com/v2/gen-ai/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "gpt-oss-120b",
+                "messages": [
+                    {
+                        "role": "system", 
+                        "content": "You are an expert career coach and resume writer. Provide specific, actionable feedback that helps candidates stand out. Always respond with valid JSON."
+                    },
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 2000,
+            },
+            timeout=30.0
         )
         
-        result = json.loads(response.choices[0].message.content)
+        result = response.json()
+        content = result["choices"][0]["message"]["content"]
+        suggestions = json.loads(content)
         
         return {
             "statusCode": 200,

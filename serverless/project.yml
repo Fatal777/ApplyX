@@ -3,7 +3,7 @@ parameters: {}
 packages:
   - name: ai
     environment:
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      DO_GENAI_API_KEY: ${DO_GENAI_API_KEY}
     actions:
       - name: resume-suggestions
         runtime: python:3.11
