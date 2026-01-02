@@ -1,86 +1,54 @@
-"""
-Resume AI Suggestions - DigitalOcean Serverless Function
-Uses DigitalOcean GenAI (inference.do-ai.run)
-"""
+"""Resume AI Suggestions - DigitalOcean Serverless Function"""
 
 import os
 import json
-import httpx
-
 
 def main(args):
-    resume_text = args.get("resume_text", "")
-    job_description = args.get("job_description", "")
-    section = args.get("section", "all")
+    try:
+        import httpx
+    except ImportError:
+        return {"statusCode": 500, "body": {"error": "httpx not installed"}}
     
+    resume_text = args.get("resume_text", "")
     if not resume_text:
-        return {
-            "statusCode": 400,
-            "body": {"error": "resume_text is required"}
-        }
+        return {"statusCode": 400, "body": {"error": "resume_text is required"}}
     
     api_key = os.environ.get("DO_GENAI_API_KEY")
     if not api_key:
-        return {
-            "statusCode": 500,
-            "body": {"error": "DO_GENAI_API_KEY not configured"}
-        }
+        return {"statusCode": 500, "body": {"error": "API key not configured"}}
     
-    focus_section = f"Focus especially on the {section} section." if section != "all" else ""
-    jd_context = f"\n\nTarget Job Description:\n{job_description}" if job_description else ""
-    
-    prompt = f"""Analyze this resume and provide specific improvement suggestions.
+    prompt = f"""Analyze this resume and provide improvement suggestions in JSON format:
+Resume: {resume_text[:4000]}
 
-Resume:
-{resume_text[:6000]}
-{jd_context}
-
-{focus_section}
-
-Provide 5-8 suggestions in JSON format:
-{{
-  "suggestions": [
-    {{"section": "experience", "type": "improve", "original": "...", "suggested": "...", "reason": "..."}}
-  ],
-  "overall_score": 75,
-  "top_strengths": ["strength 1"],
-  "priority_improvements": ["improvement 1"]
-}}"""
+Return ONLY valid JSON:
+{{"suggestions": [{{"section": "experience", "suggestion": "...", "reason": "..."}}], "overall_score": 75}}"""
 
     try:
         response = httpx.post(
             "https://inference.do-ai.run/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            },
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
                 "model": "llama3.3-70b-instruct",
-                "messages": [
-                    {"role": "system", "content": "You are an expert resume writer. Respond with valid JSON only."},
-                    {"role": "user", "content": prompt}
-                ],
+                "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.7,
-                "max_tokens": 2000,
+                "max_tokens": 1500,
             },
-            timeout=30.0
+            timeout=25.0
         )
         
         result = response.json()
         
         if "error" in result:
-            return {"statusCode": 500, "body": {"error": result["error"]}}
+            return {"statusCode": 500, "body": {"error": str(result["error"])}}
         
         content = result["choices"][0]["message"]["content"]
-        suggestions = json.loads(content)
         
-        return {
-            "statusCode": 200,
-            "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-            "body": suggestions
-        }
+        # Try to parse as JSON, return raw if fails
+        try:
+            parsed = json.loads(content)
+            return {"statusCode": 200, "body": parsed}
+        except:
+            return {"statusCode": 200, "body": {"raw_response": content}}
         
-    except json.JSONDecodeError as e:
-        return {"statusCode": 500, "body": {"error": f"JSON parse error: {str(e)}", "raw": content[:500]}}
     except Exception as e:
-        return {"statusCode": 500, "body": {"error": f"Request failed: {str(e)}"}}
+        return {"statusCode": 500, "body": {"error": str(e)}}
