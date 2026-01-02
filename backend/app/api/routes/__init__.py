@@ -1,6 +1,6 @@
 """API route modules"""
 
-from app.api.routes import auth, resumes, pdf_edit, jobs, interview, profile, applications, ats, payment, phone, admin, livekit, transcription
+from app.api.routes import auth, resumes, pdf_edit, jobs, interview, profile, applications, ats, payment, phone, admin, livekit, transcription, resume_builder
 
 __all__ = [
     "auth",
@@ -16,6 +16,7 @@ __all__ = [
     "admin",
     "livekit",
     "transcription",
+    "resume_builder",
 ]
 
 

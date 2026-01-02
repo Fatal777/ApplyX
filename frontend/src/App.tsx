@@ -129,8 +129,16 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
 
-      <Route path="/resume-editor" element={<ResumeEditor />} />
-      <Route path="/resume-editor/:id" element={<ResumeEditor />} />
+      <Route path="/resume-editor" element={
+        <ProtectedRoute>
+          <ResumeEditor />
+        </ProtectedRoute>
+      } />
+      <Route path="/resume-editor/:id" element={
+        <ProtectedRoute>
+          <ResumeEditor />
+        </ProtectedRoute>
+      } />
 
       <Route path="/resume/:id" element={
         <ProtectedRoute>

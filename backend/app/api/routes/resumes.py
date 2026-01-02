@@ -395,3 +395,91 @@ async def download_resume(
         media_type="application/pdf",
         filename=resume.original_filename
     )
+
+
+@router.post("/{resume_id}/convert-to-builder")
+@limiter.limit("5/minute")
+async def convert_to_builder(
+    request: Request,
+    resume_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Convert a parsed resume into ResumeBuilder format for editing.
+    Uses LLM-based structured extraction for accurate parsing.
+    """
+    from app.services.resume_parsing_service import resume_parsing_service
+    from app.core.security import decrypt_sensitive_data
+    from app.models.resume_builder import ResumeBuilderDocument
+    
+    # Get the resume
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+    
+    if not resume.extracted_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Resume has not been processed yet. Please wait for processing to complete."
+        )
+    
+    try:
+        # Decrypt the resume text
+        resume_text = decrypt_sensitive_data(resume.extracted_text)
+        
+        if not resume_text or len(resume_text.strip()) < 50:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Resume text extraction failed or insufficient content."
+            )
+        
+        # Parse using LLM service
+        parsed = resume_parsing_service.parse_with_llm(resume_text)
+        
+        if not parsed:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to parse resume content"
+            )
+        
+        # Convert to builder format
+        builder_content = resume_parsing_service.to_resume_builder_format(parsed)
+        
+        # Create a new ResumeBuilderDocument
+        builder_doc = ResumeBuilderDocument(
+            user_id=current_user.id,
+            title=builder_content.get("title", "Imported Resume"),
+            template_id="classic",
+            content=builder_content,
+            version=1,
+        )
+        
+        db.add(builder_doc)
+        db.commit()
+        db.refresh(builder_doc)
+        
+        logger.info(f"Converted resume {resume_id} to builder document {builder_doc.id}")
+        
+        return {
+            "success": True,
+            "builder_document_id": builder_doc.id,
+            "message": "Resume converted successfully. You can now edit it in the Resume Builder.",
+            "content": builder_content,
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error converting resume to builder: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to convert resume: {str(e)}"
+        )

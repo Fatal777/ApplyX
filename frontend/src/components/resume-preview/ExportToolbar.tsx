@@ -1,21 +1,24 @@
 /**
  * ExportToolbar Component
- * Toolbar with PDF export and other actions for the resume preview
+ * Toolbar with PDF export, template selection, and zoom controls
  */
 
 import { useState } from "react";
-import { Download, FileText, Loader2, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { Download, FileText, Loader2, ZoomIn, ZoomOut, RotateCcw, Layout } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuSeparator,
+    DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { useResumeBuilderStore } from "@/store/resumeBuilderStore";
 import { exportResumeToPdf } from "@/utils/pdfExport";
 import { cn } from "@/lib/utils";
+import { TEMPLATES } from "./templates";
 
 interface ExportToolbarProps {
     onZoomIn?: () => void;
@@ -30,8 +33,11 @@ const ExportToolbar = ({
     onResetZoom,
     zoom = 100,
 }: ExportToolbarProps) => {
-    const { activeDocument } = useResumeBuilderStore();
+    const { activeDocument, setTemplate } = useResumeBuilderStore();
     const [isExporting, setIsExporting] = useState(false);
+
+    const currentTemplateId = activeDocument?.templateId || "classic";
+    const currentTemplate = TEMPLATES.find(t => t.id === currentTemplateId) || TEMPLATES[0];
 
     const handleExportPdf = async () => {
         if (!activeDocument) {
@@ -51,6 +57,11 @@ const ExportToolbar = ({
         }
     };
 
+    const handleTemplateChange = (templateId: string) => {
+        setTemplate(templateId);
+        toast.success(`Switched to ${TEMPLATES.find(t => t.id === templateId)?.name} template`);
+    };
+
     return (
         <div
             className={cn(
@@ -60,8 +71,43 @@ const ExportToolbar = ({
                 "shadow-lg border border-gray-200 dark:border-neutral-800"
             )}
         >
+            {/* Template Selection */}
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-2 px-3"
+                        title="Change Template"
+                    >
+                        <Layout className="h-4 w-4" />
+                        {currentTemplate.name}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center">
+                    <DropdownMenuLabel>Templates</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {TEMPLATES.map((template) => (
+                        <DropdownMenuItem
+                            key={template.id}
+                            onClick={() => handleTemplateChange(template.id)}
+                            className={cn(
+                                currentTemplateId === template.id && "bg-primary/10"
+                            )}
+                        >
+                            <span className="flex-1">{template.name}</span>
+                            {currentTemplateId === template.id && (
+                                <span className="text-primary">✓</span>
+                            )}
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="w-px h-6 bg-gray-200 dark:bg-neutral-800" />
+
             {/* Zoom Controls */}
-            <div className="flex items-center gap-1 px-2 border-r border-gray-200 dark:border-neutral-800">
+            <div className="flex items-center gap-1 px-2">
                 <Button
                     variant="ghost"
                     size="sm"
@@ -94,6 +140,8 @@ const ExportToolbar = ({
                 </Button>
             </div>
 
+            <div className="w-px h-6 bg-gray-200 dark:bg-neutral-800" />
+
             {/* Export Button */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -123,3 +171,4 @@ const ExportToolbar = ({
 };
 
 export default ExportToolbar;
+

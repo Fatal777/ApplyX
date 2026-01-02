@@ -18,6 +18,14 @@ from app.schemas.resume import (
     ResumeDetailResponse,
     ResumeListResponse
 )
+from app.schemas.resume_builder import (
+    ResumeBuilderCreate,
+    ResumeBuilderUpdate,
+    ResumeBuilderPatch,
+    ResumeBuilderDocumentResponse,
+    ResumeBuilderListItem,
+    ResumeBuilderListResponse,
+)
 from app.schemas.interview import (
     InterviewPersona,
     StartInterviewRequest,
@@ -47,6 +55,13 @@ __all__ = [
     "ResumeResponse",
     "ResumeDetailResponse",
     "ResumeListResponse",
+    # Resume Builder schemas
+    "ResumeBuilderCreate",
+    "ResumeBuilderUpdate",
+    "ResumeBuilderPatch",
+    "ResumeBuilderDocumentResponse",
+    "ResumeBuilderListItem",
+    "ResumeBuilderListResponse",
     # Interview schemas
     "InterviewPersona",
     "StartInterviewRequest",

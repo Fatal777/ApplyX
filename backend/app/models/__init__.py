@@ -2,6 +2,7 @@
 
 from app.models.user import User
 from app.models.resume import Resume
+from app.models.resume_builder import ResumeBuilderDocument
 from app.models.interview import (
     InterviewSession,
     InterviewQuestion,
@@ -37,6 +38,7 @@ from app.models.payment_audit import (
 __all__ = [
     "User",
     "Resume",
+    "ResumeBuilderDocument",
     "InterviewSession",
     "InterviewQuestion", 
     "InterviewResponse",
