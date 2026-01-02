@@ -1,23 +1,17 @@
 # DigitalOcean Serverless Setup
 
-## Which Models to Use
+You've done git pull. Now follow these steps:
 
-For DO GenAI models:
-- **Interview Agent**: GPT-oss-120b (~$0.003/session) - best conversational ability
-- **Resume Parsing**: GPT-oss-20b (~$0.0008/resume) - cheaper, still good
-- **AI Suggestions**: GPT-oss-120b (~$0.001/request) - needs good analysis
+## Which Models We're Using
 
-Monthly cost estimate for 1000 users: ~$2-5
+- **Interview Agent**: GPT-oss-120b (~$0.003/session)
+- **Resume Suggestions**: GPT-oss-120b (~$0.001/request)
+
+Monthly cost for 1000 users: ~$2-5
 
 ---
 
-## Setup Steps (SSH into your droplet)
-
-```bash
-ssh root@139.59.95.13
-```
-
-### 1. Install doctl
+## Step 1: Install doctl (already done)
 
 ```bash
 cd /tmp
@@ -26,69 +20,92 @@ mv doctl /usr/local/bin/
 doctl version
 ```
 
-### 2. Login to DigitalOcean
+## Step 2: Login to DigitalOcean
 
 ```bash
 doctl auth init
 ```
-Enter your API token from: https://cloud.digitalocean.com/account/api/tokens
 
-### 3. Install Serverless Plugin
+Go to https://cloud.digitalocean.com/account/api/tokens and create a token, then paste it.
+
+## Step 3: Install Serverless Plugin
 
 ```bash
 doctl serverless install
 ```
 
-### 4. Create Namespace (first time only)
+## Step 4: Create Namespace
 
 ```bash
 doctl serverless namespaces create --label "applyx-ai" --region blr1
 doctl serverless connect
 ```
 
-### 5. Deploy Functions
+## Step 5: Get DO GenAI API Key
+
+1. Go to: https://cloud.digitalocean.com/gen-ai
+2. Click "API Keys" or "Create API Key"
+3. Copy the key
+
+## Step 6: Create .env and Deploy
 
 ```bash
 cd /opt/applyx/serverless
 
-# Create .env with your DO GenAI API key
-echo "DO_GENAI_API_KEY=your-do-genai-api-key" > .env
+# Create .env file with your DO GenAI key
+echo "DO_GENAI_API_KEY=paste-your-key-here" > .env
 
-# Deploy
+# Deploy both functions
 doctl serverless deploy . --env .env
 ```
 
-### 6. Get Function URLs
+## Step 7: Get Function URLs
 
 ```bash
 doctl serverless functions get ai/resume-suggestions --url
 doctl serverless functions get ai/interview-agent --url
 ```
 
-### 7. Add URLs to Backend .env
+Save these URLs!
+
+## Step 8: Add URLs to Backend
+
+```bash
+nano /opt/applyx/backend/.env
+```
+
+Add these two lines at the bottom:
+```
+DO_RESUME_SUGGESTIONS_URL=paste-resume-suggestions-url-here
+DO_INTERVIEW_AGENT_URL=paste-interview-agent-url-here
+```
+
+Save: Ctrl+O, Enter, Ctrl+X
+
+## Step 9: Rebuild Backend and Run Migration
 
 ```bash
 cd /opt/applyx/backend
-nano .env
+
+# Rebuild backend with new code
+docker compose -f docker-compose.prod.yml build api
+docker compose -f docker-compose.prod.yml up -d api
+
+# Run migration for new resume_builder table
+docker compose -f docker-compose.prod.yml exec api alembic upgrade head
 ```
 
-Add these lines:
-```
-DO_RESUME_SUGGESTIONS_URL=https://faas-blr1-xxx.doserverless.co/api/v1/web/xxx/ai/resume-suggestions
-DO_INTERVIEW_AGENT_URL=https://faas-blr1-xxx.doserverless.co/api/v1/web/xxx/ai/interview-agent
-```
-
-### 8. Restart Backend
+## Step 10: Rebuild Frontend (optional - for template selection)
 
 ```bash
-docker compose -f docker-compose.prod.yml restart api
+/opt/applyx/rebuild-frontend.sh
 ```
 
 ---
 
 ## Quick Redeploy Script
 
-Create `/opt/applyx/redeploy-functions.sh`:
+Create this script for future updates:
 
 ```bash
 cat > /opt/applyx/redeploy-functions.sh << 'EOF'
@@ -102,20 +119,15 @@ EOF
 chmod +x /opt/applyx/redeploy-functions.sh
 ```
 
-Run it anytime with:
-```bash
-/opt/applyx/redeploy-functions.sh
-```
-
 ---
 
-## Test Functions
+## Test the Functions
 
 ```bash
 # Test resume suggestions
 curl -X POST "YOUR_RESUME_SUGGESTIONS_URL" \
   -H "Content-Type: application/json" \
-  -d '{"resume_text": "John Doe, Software Engineer..."}'
+  -d '{"resume_text": "John Doe, Software Engineer with 5 years experience at Google..."}'
 
 # Test interview agent
 curl -X POST "YOUR_INTERVIEW_AGENT_URL" \
@@ -125,34 +137,30 @@ curl -X POST "YOUR_INTERVIEW_AGENT_URL" \
 
 ---
 
-## Logs
+## View Logs
 
 ```bash
-# See recent function calls
 doctl serverless activations list --limit 10
-
-# Stream logs
 doctl serverless activations logs --follow
 ```
 
 ---
 
-## If Using DO GenAI Instead of OpenAI
+## Directory Structure
 
-Update the functions to use DO's API:
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    api_key=os.environ.get("DO_GENAI_API_KEY"),
-    base_url="https://cloud.digitalocean.com/gen-ai/api/v1"
-)
-
-# Use "gpt-oss-120b" or "gpt-oss-20b" as model name
 ```
-
-And in .env:
-```
-DO_GENAI_API_KEY=your-do-genai-key
+/opt/applyx/
+├── serverless/
+│   ├── project.yml          # Function config
+│   ├── .env                  # Your DO_GENAI_API_KEY
+│   └── packages/
+│       └── ai/
+│           ├── resume-suggestions/
+│           │   ├── __main__.py
+│           │   └── requirements.txt
+│           └── interview-agent/
+│               ├── __main__.py
+│               └── requirements.txt
+└── backend/
+    └── .env                  # Add function URLs here
 ```
