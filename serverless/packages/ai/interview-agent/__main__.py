@@ -24,7 +24,7 @@ def call_llm(api_key, messages, max_tokens=400):
             "Content-Type": "application/json"
         },
         json={
-            "model": "openai-gpt-oss-120b",
+            "model": "llama3.3-70b-instruct",
             "messages": messages,
             "temperature": 0.8,
             "max_tokens": max_tokens,

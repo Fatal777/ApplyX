@@ -55,7 +55,7 @@ Provide 5-8 suggestions in JSON format:
                 "Content-Type": "application/json"
             },
             json={
-                "model": "openai-gpt-oss-120b",
+                "model": "llama3.3-70b-instruct",
                 "messages": [
                     {"role": "system", "content": "You are an expert resume writer. Respond with valid JSON only."},
                     {"role": "user", "content": prompt}
