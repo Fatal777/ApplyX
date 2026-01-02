@@ -59,12 +59,12 @@ const SectionTitle = ({
 
 const ClassicTemplate = ({ data }: TemplateProps) => {
     const { personal, education, experience, projects, skillsContent, styleSettings } = data;
-    const themeColor = styleSettings?.themeColor || "#1e40af";
+    const themeColor = styleSettings?.themeColor || "#000000";
     const sectionSpacing = styleSettings?.sectionSpacing || 16;
     const customFields = personal.customFields || [];
 
     return (
-        <div className="text-gray-800">
+        <div style={{ color: "#1f2937" }}>
             {/* Header / Personal Info */}
             <div className="text-center mb-4">
                 <h1
@@ -74,13 +74,13 @@ const ClassicTemplate = ({ data }: TemplateProps) => {
                     {personal.name || "Your Name"}
                 </h1>
                 {personal.title && (
-                    <p className="text-lg text-gray-600 mt-1">
+                    <p className="text-lg mt-1" style={{ color: "#4b5563" }}>
                         {personal.title}
                     </p>
                 )}
 
                 {/* Contact Info - All in one line */}
-                <div className="flex flex-wrap justify-center items-center text-sm text-gray-600 mt-2">
+                <div className="flex flex-wrap justify-center items-center text-sm mt-2" style={{ color: "#4b5563" }}>
                     {personal.phone && (
                         <span>{personal.phone}</span>
                     )}
@@ -124,9 +124,9 @@ const ClassicTemplate = ({ data }: TemplateProps) => {
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <h3 className="font-semibold">{exp.position}</h3>
-                                        <p className="text-gray-600">{exp.company}</p>
+                                        <p style={{ color: "#4b5563" }}>{exp.company}</p>
                                     </div>
-                                    <span className="text-sm text-gray-500">{exp.date}</span>
+                                    <span className="text-sm" style={{ color: "#6b7280" }}>{exp.date}</span>
                                 </div>
                                 {exp.details && (
                                     <div
@@ -149,15 +149,15 @@ const ClassicTemplate = ({ data }: TemplateProps) => {
                             <div key={edu.id} className="flex justify-between items-start">
                                 <div>
                                     <h3 className="font-semibold">{edu.school}</h3>
-                                    <p className="text-gray-600">
+                                    <p style={{ color: "#4b5563" }}>
                                         {edu.degree} {edu.major ? `in ${edu.major}` : ""}
                                         {edu.gpa ? ` • GPA: ${edu.gpa}` : ""}
                                     </p>
                                     {edu.description && (
-                                        <p className="text-sm text-gray-500 mt-1">{edu.description}</p>
+                                        <p className="text-sm mt-1" style={{ color: "#6b7280" }}>{edu.description}</p>
                                     )}
                                 </div>
-                                <span className="text-sm text-gray-500">
+                                <span className="text-sm" style={{ color: "#6b7280" }}>
                                     {edu.startDate && new Date(edu.startDate).getFullYear()} - {" "}
                                     {edu.endDate ? new Date(edu.endDate).getFullYear() : "Present"}
                                 </span>
@@ -190,9 +190,9 @@ const ClassicTemplate = ({ data }: TemplateProps) => {
                                                 </a>
                                             )}
                                         </h3>
-                                        <p className="text-gray-600">{project.role}</p>
+                                        <p style={{ color: "#4b5563" }}>{project.role}</p>
                                     </div>
-                                    <span className="text-sm text-gray-500">{project.date}</span>
+                                    <span className="text-sm" style={{ color: "#6b7280" }}>{project.date}</span>
                                 </div>
                                 {project.description && (
                                     <div

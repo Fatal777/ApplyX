@@ -13,7 +13,7 @@ interface TemplateProps {
 
 const ModernTemplate = ({ data }: TemplateProps) => {
     const { personal, education, experience, projects, skillsContent, styleSettings } = data;
-    const themeColor = styleSettings?.themeColor || "#1e40af";
+    const themeColor = styleSettings?.themeColor || "#1e40af"; // Blue theme
 
     return (
         <div className="flex min-h-full">
@@ -22,12 +22,20 @@ const ModernTemplate = ({ data }: TemplateProps) => {
                 className="w-1/3 text-white p-6"
                 style={{ backgroundColor: themeColor }}
             >
-                {/* Photo placeholder */}
-                <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center">
-                    <span className="text-3xl font-bold">
-                        {personal.name?.charAt(0) || "?"}
-                    </span>
-                </div>
+                {/* Photo - actual or placeholder */}
+                {personal.photo ? (
+                    <img
+                        src={personal.photo}
+                        alt={personal.name || "Profile"}
+                        className="w-24 h-24 mx-auto mb-4 rounded-full object-cover border-2 border-white/30"
+                    />
+                ) : (
+                    <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center">
+                        <span className="text-3xl font-bold">
+                            {personal.name?.charAt(0) || "?"}
+                        </span>
+                    </div>
+                )}
 
                 {/* Name */}
                 <h1 className="text-xl font-bold text-center mb-1">
@@ -75,7 +83,7 @@ const ModernTemplate = ({ data }: TemplateProps) => {
             </div>
 
             {/* Main Content */}
-            <div className="w-2/3 p-6 text-gray-800">
+            <div className="w-2/3 p-6" style={{ color: "#1f2937" }}>
                 {/* Experience */}
                 {experience.length > 0 && (
                     <div className="mb-6">
@@ -91,9 +99,9 @@ const ModernTemplate = ({ data }: TemplateProps) => {
                                 <div key={exp.id}>
                                     <div className="flex justify-between">
                                         <h3 className="font-semibold">{exp.position}</h3>
-                                        <span className="text-sm text-gray-500">{exp.date}</span>
+                                        <span className="text-sm" style={{ color: "#6b7280" }}>{exp.date}</span>
                                     </div>
-                                    <p className="text-sm text-gray-600">{exp.company}</p>
+                                    <p className="text-sm" style={{ color: "#4b5563" }}>{exp.company}</p>
                                     {exp.details && (
                                         <div
                                             className="mt-1 text-sm prose prose-sm max-w-none"
@@ -121,12 +129,12 @@ const ModernTemplate = ({ data }: TemplateProps) => {
                                 <div key={edu.id}>
                                     <div className="flex justify-between">
                                         <h3 className="font-semibold">{edu.school}</h3>
-                                        <span className="text-sm text-gray-500">
+                                        <span className="text-sm" style={{ color: "#6b7280" }}>
                                             {edu.startDate && new Date(edu.startDate).getFullYear()} - {" "}
                                             {edu.endDate ? new Date(edu.endDate).getFullYear() : "Present"}
                                         </span>
                                     </div>
-                                    <p className="text-sm text-gray-600">
+                                    <p className="text-sm" style={{ color: "#4b5563" }}>
                                         {edu.degree} {edu.major ? `in ${edu.major}` : ""}
                                     </p>
                                 </div>
@@ -150,9 +158,9 @@ const ModernTemplate = ({ data }: TemplateProps) => {
                                 <div key={project.id}>
                                     <div className="flex justify-between">
                                         <h3 className="font-semibold">{project.name}</h3>
-                                        <span className="text-sm text-gray-500">{project.date}</span>
+                                        <span className="text-sm" style={{ color: "#6b7280" }}>{project.date}</span>
                                     </div>
-                                    <p className="text-sm text-gray-600">{project.role}</p>
+                                    <p className="text-sm" style={{ color: "#4b5563" }}>{project.role}</p>
                                     {project.description && (
                                         <div
                                             className="mt-1 text-sm prose prose-sm max-w-none"

@@ -3,11 +3,11 @@
  * Form for editing personal information section with social links
  */
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     User, Mail, Phone, MapPin, Briefcase, Calendar,
-    Plus, Trash2, Link, Github, Linkedin, Twitter, Globe
+    Plus, Trash2, Link, Github, Linkedin, Twitter, Globe, Camera, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,9 @@ import FormField from "../FormField";
 import { cn } from "@/lib/utils";
 import { useResumeBuilderStore } from "@/store/resumeBuilderStore";
 import { CustomFieldConfig, generateId } from "@/types/resumeBuilder";
+import { toast } from "sonner";
+
+const MAX_PHOTO_SIZE = 5 * 1024 * 1024; // 5MB
 
 // Predefined social link options
 const SOCIAL_LINK_PRESETS = [
@@ -44,6 +47,7 @@ const PersonalInfoEditor = () => {
     const [showAddLink, setShowAddLink] = useState(false);
     const [selectedLinkType, setSelectedLinkType] = useState("linkedin");
     const [customLinkLabel, setCustomLinkLabel] = useState("");
+    const photoInputRef = useRef<HTMLInputElement>(null);
 
     if (!personal) return null;
 
@@ -57,6 +61,43 @@ const PersonalInfoEditor = () => {
         { key: "location", label: "Location", icon: MapPin, placeholder: "New York, NY" },
         { key: "employmentStatus", label: "Status", icon: Calendar, placeholder: "Available for hire" },
     ];
+
+    // Photo upload handler
+    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith("image/")) {
+            toast.error("Please upload an image file (JPG, PNG, etc.)");
+            return;
+        }
+
+        // Validate file size (5MB max)
+        if (file.size > MAX_PHOTO_SIZE) {
+            toast.error("Image too large. Maximum size is 5MB.");
+            return;
+        }
+
+        // Convert to base64
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const base64 = event.target?.result as string;
+            updatePersonalInfo({ photo: base64 });
+            toast.success("Photo uploaded successfully!");
+        };
+        reader.onerror = () => {
+            toast.error("Failed to read image file.");
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleRemovePhoto = () => {
+        updatePersonalInfo({ photo: "" });
+        if (photoInputRef.current) {
+            photoInputRef.current.value = "";
+        }
+    };
 
     const handleAddLink = () => {
         const preset = SOCIAL_LINK_PRESETS.find(p => p.type === selectedLinkType);
@@ -100,6 +141,70 @@ const PersonalInfoEditor = () => {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Personal Information
             </h2>
+
+            {/* Photo Upload Section */}
+            <div className={cn(
+                "flex items-center gap-4 p-4",
+                "bg-white dark:bg-neutral-900",
+                "rounded-lg border border-gray-200 dark:border-neutral-800"
+            )}>
+                <div className="relative">
+                    {personal.photo ? (
+                        <div className="relative">
+                            <img
+                                src={personal.photo}
+                                alt="Profile"
+                                className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 dark:border-neutral-700"
+                            />
+                            <button
+                                onClick={handleRemovePhoto}
+                                className="absolute -top-1 -right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                            >
+                                <X className="h-3 w-3" />
+                            </button>
+                        </div>
+                    ) : (
+                        <div
+                            onClick={() => photoInputRef.current?.click()}
+                            className={cn(
+                                "w-20 h-20 rounded-full",
+                                "bg-gray-100 dark:bg-neutral-800",
+                                "border-2 border-dashed border-gray-300 dark:border-neutral-700",
+                                "flex items-center justify-center cursor-pointer",
+                                "hover:bg-gray-150 dark:hover:bg-neutral-750 transition-colors"
+                            )}
+                        >
+                            <Camera className="h-6 w-6 text-gray-400" />
+                        </div>
+                    )}
+                    <input
+                        ref={photoInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                    />
+                </div>
+                <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Profile Photo
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Upload a professional photo (max 5MB)
+                    </p>
+                    {!personal.photo && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => photoInputRef.current?.click()}
+                        >
+                            <Camera className="h-4 w-4 mr-2" />
+                            Upload Photo
+                        </Button>
+                    )}
+                </div>
+            </div>
 
             {/* Standard Fields */}
             <div className="space-y-3">

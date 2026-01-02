@@ -231,7 +231,7 @@ export const createDefaultResume = (id: string): ResumeDocument => ({
         { id: "skills", title: "Skills", icon: "Wrench", enabled: true, order: 4 },
     ],
     styleSettings: {
-        themeColor: "#1e40af",
+        themeColor: "#000000", // Black (Classic theme default)
         fontFamily: "Inter",
         baseFontSize: 14,
         pagePadding: 40,
