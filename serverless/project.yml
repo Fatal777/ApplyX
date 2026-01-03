@@ -17,3 +17,9 @@ packages:
         limits:
           timeout: 60000
           memory: 512
+      - name: job-match
+        runtime: python:3.11
+        web: true
+        limits:
+          timeout: 30000
+          memory: 256

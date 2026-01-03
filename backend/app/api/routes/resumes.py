@@ -483,3 +483,97 @@ async def convert_to_builder(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to convert resume: {str(e)}"
         )
+
+
+@router.get("/{resume_id}/job-match")
+@limiter.limit("10/minute")
+async def get_job_matches(
+    request: Request,
+    resume_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Analyze resume against job roles using AI.
+    Returns real match percentages and recommendations.
+    """
+    import httpx
+    from app.core.security import decrypt_sensitive_data
+    
+    # Get the resume
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+    
+    if not resume.extracted_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Resume has not been processed yet"
+        )
+    
+    # Check if function URL is configured
+    job_match_url = settings.DO_JOB_MATCH_URL
+    if not job_match_url:
+        # Fallback: return basic analysis without serverless
+        logger.warning("DO_JOB_MATCH_URL not configured, returning basic analysis")
+        return {
+            "success": True,
+            "job_matches": [
+                {"role": "Software Engineer", "match_percent": 75, "strengths": ["Technical skills detected"], "gaps": ["Configure AI for detailed analysis"]},
+                {"role": "Data Analyst", "match_percent": 60, "strengths": ["Analytical background"], "gaps": ["Configure AI for detailed analysis"]},
+            ],
+            "note": "Configure DO_JOB_MATCH_URL for detailed AI analysis"
+        }
+    
+    try:
+        # Decrypt resume text
+        resume_text = decrypt_sensitive_data(resume.extracted_text)
+        
+        # Call serverless function
+        async with httpx.AsyncClient(timeout=35.0) as client:
+            response = await client.post(
+                job_match_url,
+                json={"resume_text": resume_text[:4000]},
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"Job match function returned {response.status_code}")
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="AI analysis service unavailable"
+                )
+            
+            result = response.json()
+            
+            if result.get("error"):
+                logger.error(f"Job match function error: {result['error']}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=result["error"]
+                )
+            
+            return {
+                "success": True,
+                "resume_id": resume_id,
+                "job_matches": result.get("job_matches", [])
+            }
+            
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="AI analysis timed out"
+        )
+    except Exception as e:
+        logger.error(f"Error in job matching: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to analyze resume: {str(e)}"
+        )

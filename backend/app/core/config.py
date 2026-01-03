@@ -157,6 +157,7 @@ class Settings(BaseSettings):
     # DigitalOcean Serverless Functions
     DO_RESUME_SUGGESTIONS_URL: Optional[str] = None
     DO_INTERVIEW_AGENT_URL: Optional[str] = None
+    DO_JOB_MATCH_URL: Optional[str] = None
     
     # Deepgram Speech-to-Text
     DEEPGRAM_API_KEY: Optional[str] = None
