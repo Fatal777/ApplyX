@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     DB_MAX_OVERFLOW: int = 200      # Handle traffic spikes
     DB_POOL_TIMEOUT: int = 10       # Connection timeout
     DB_POOL_RECYCLE: int = 300      # Recycle every 5 min
+    DB_NAME: Optional[str] = None   # Database name (legacy)
     
     # Redis - Optimized for sub-ms caching
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -98,6 +99,11 @@ class Settings(BaseSettings):
     # AI Service Configuration
     OPENAI_API_KEY: Optional[str] = None
     OPENAI_MODEL: str = "gpt-3.5-turbo"
+    GEMINI_API_KEY: Optional[str] = None  # Google Gemini API
+    
+    # Admin Credentials
+    ADMIN_USERNAME: Optional[str] = None
+    ADMIN_PASSWORD: Optional[str] = None
     
     # AgentRouter Configuration (supports both env variable names)
     AGENTROUTER_API_KEY: Optional[str] = None
