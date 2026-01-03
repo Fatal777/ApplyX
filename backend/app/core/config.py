@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     DB_POOL_TIMEOUT: int = 10       # Connection timeout
     DB_POOL_RECYCLE: int = 300      # Recycle every 5 min
     DB_NAME: Optional[str] = None   # Database name (legacy)
+    DB_USER: Optional[str] = None   # Database user (legacy)
+    DB_PASSWORD: Optional[str] = None  # Database password (legacy)
     
     # Redis - Optimized for sub-ms caching
     REDIS_URL: str = "redis://localhost:6379/0"
