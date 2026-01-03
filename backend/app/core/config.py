@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_HOUR: int = 1000
     
     # CORS
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:8080,http://127.0.0.1:8080"
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:8080,http://127.0.0.1:8080,https://applyx.in,https://www.applyx.in"
     CORS_ALLOW_CREDENTIALS: bool = True
     
     # Logging
