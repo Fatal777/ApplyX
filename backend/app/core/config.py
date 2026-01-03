@@ -139,6 +139,24 @@ class Settings(BaseSettings):
     JOB_CACHE_TTL_HOURS: int = 4  # How long to cache job listings
     JOB_RECOMMENDATIONS_TTL_HOURS: int = 24  # How long to cache recommendations
     
+    # DigitalOcean Serverless Functions
+    DO_RESUME_SUGGESTIONS_URL: Optional[str] = None
+    DO_INTERVIEW_AGENT_URL: Optional[str] = None
+    
+    # Deepgram Speech-to-Text
+    DEEPGRAM_API_KEY: Optional[str] = None
+    
+    # Zyte Web Scraping
+    ZYTE_API_KEY: Optional[str] = None
+    
+    # SerpAPI for Search
+    SERPAPI_KEY: Optional[str] = None
+    
+    # LiveKit Real-time Communication
+    LIVEKIT_URL: Optional[str] = None
+    LIVEKIT_API_KEY: Optional[str] = None
+    LIVEKIT_API_SECRET: Optional[str] = None
+    
     @property
     def AGENTROUTER_KEY(self) -> Optional[str]:
         """Return AgentRouter API key from either environment variable"""
