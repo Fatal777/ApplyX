@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
-import { 
-  Upload, BarChart2, FileText, Target, Zap, Award, TrendingUp, 
-  ChevronDown, Download, Share2, Check, AlertCircle, ArrowRight, 
+import {
+  Upload, BarChart2, FileText, Target, Zap, Award, TrendingUp,
+  ChevronDown, Download, Share2, Check, AlertCircle, ArrowRight,
   Sparkles, Clock, CheckCircle, Edit3, User, Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useResumes } from "@/hooks/useResumes";
+import { resumeBuilderApi } from "@/services/resumeBuilderApi";
+import { useToast } from "@/components/ui/use-toast";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { SuccessStoryCard, successStories } from "@/components/ui/SuccessStoryCard";
@@ -35,6 +37,32 @@ const ResumeAnalysis = () => {
   const { getResumeById, loading } = useResumes();
   const [resume, setResume] = useState<ResumeData | null>(null);
   const [isPolling, setIsPolling] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
+  const { toast } = useToast();
+
+  // Handler to convert resume to builder format and open editor
+  const handleEditInBuilder = async () => {
+    if (!id) return;
+
+    setIsConverting(true);
+    try {
+      const builderDoc = await resumeBuilderApi.convertFromResume(parseInt(id));
+      toast({
+        title: "Resume imported!",
+        description: "Opening in Resume Editor...",
+      });
+      navigate(`/resume-editor/${builderDoc.id}`);
+    } catch (error: any) {
+      console.error('Error converting resume:', error);
+      toast({
+        title: "Conversion failed",
+        description: error.response?.data?.detail || "Could not import resume. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConverting(false);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -174,13 +202,13 @@ const ResumeAnalysis = () => {
       <nav className="border-b border-gray-200 bg-white sticky top-0 z-50 shadow-sm">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between px-4 md:px-8 py-4">
           <div className="flex items-center gap-3">
-            <img 
+            <img
               src="/Dark BG Logo.png"
               alt="ApplyX Logo"
               className="h-10 md:h-12 w-auto"
             />
           </div>
-          
+
           <div className="hidden md:flex items-center gap-6">
             <button onClick={() => navigate('/dashboard')} className="text-sm font-medium text-gray-600 hover:text-black transition-colors">Dashboard</button>
             <button onClick={() => navigate('/resume-builder')} className="text-sm font-medium text-gray-600 hover:text-black transition-colors">Upload New</button>
@@ -205,7 +233,7 @@ const ResumeAnalysis = () => {
             <span>/</span>
             <span className="text-black font-medium">{resume.original_filename}</span>
           </div>
-          
+
           <div className="flex flex-col md:flex-row md:items-start justify-between mb-6 md:mb-8 gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-3 mb-2">
@@ -216,7 +244,7 @@ const ResumeAnalysis = () => {
                 Last updated {new Date(resume.processed_at || resume.created_at).toLocaleString()} • {Math.round(resume.file_size / 1024)} KB
               </p>
             </div>
-            
+
             <div className="flex flex-wrap items-center gap-3">
               <Button variant="outline" size="default" className="group">
                 <Share2 className="w-4 h-4 mr-2" />
@@ -293,8 +321,8 @@ const ResumeAnalysis = () => {
                     { text: 'Include quantifiable metrics', impact: 5, time: '5 min' },
                     { text: 'Standardize date formatting', impact: 2, time: '1 min' },
                   ]).slice(0, 3).map((item: any, idx: number) => (
-                    <div 
-                      key={idx} 
+                    <div
+                      key={idx}
                       className="group bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-4 md:p-5 transition-all cursor-pointer"
                       onClick={() => navigate(`/live-editor/${id}`)}
                     >
@@ -361,7 +389,7 @@ const ResumeAnalysis = () => {
                         </div>
                       </div>
                       <div className="relative w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className={`${item.score >= 90 ? 'bg-black' : item.score >= 85 ? 'bg-gray-600' : 'bg-gray-400'} h-2 rounded-full transition-all duration-700`}
                           style={{ width: `${item.score}%` }}
                         ></div>
@@ -390,11 +418,10 @@ const ResumeAnalysis = () => {
                   ].map((item, idx) => (
                     <div key={idx} className="group bg-white border border-gray-200 hover:border-gray-300 rounded-xl p-4 md:p-5 transition-all">
                       <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-4">
-                        <span className={`px-2.5 py-1 text-xs font-bold rounded-lg self-start ${
-                          item.priority === 'High' ? 'bg-black text-white' :
-                          item.priority === 'Medium' ? 'bg-gray-200 text-gray-700' :
-                          'bg-gray-100 text-gray-500'
-                        }`}>
+                        <span className={`px-2.5 py-1 text-xs font-bold rounded-lg self-start ${item.priority === 'High' ? 'bg-black text-white' :
+                            item.priority === 'Medium' ? 'bg-gray-200 text-gray-700' :
+                              'bg-gray-100 text-gray-500'
+                          }`}>
                           {item.label}
                         </span>
                         <div className="flex-1 min-w-0">
@@ -436,7 +463,7 @@ const ResumeAnalysis = () => {
                         <span className="text-lg md:text-xl font-bold text-black ml-2">{item.match}%</span>
                       </div>
                       <div className="relative w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className={`${idx === 0 ? 'bg-black' : idx === 1 ? 'bg-gray-700' : 'bg-gray-400'} h-1.5 rounded-full transition-all duration-500`}
                           style={{ width: `${item.match}%` }}
                         ></div>
@@ -483,6 +510,17 @@ const ResumeAnalysis = () => {
               <CardContent className="p-6">
                 <h3 className="font-bold text-black mb-4">Quick Actions</h3>
                 <div className="space-y-3">
+                  <Button
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                    onClick={handleEditInBuilder}
+                    disabled={isConverting}
+                  >
+                    {isConverting ? (
+                      <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />Converting...</>
+                    ) : (
+                      <><Edit3 className="w-4 h-4 mr-2" />Edit in Resume Builder</>
+                    )}
+                  </Button>
                   <Button className="w-full bg-lime-400 hover:bg-lime-500 text-black font-bold">
                     <Zap className="w-4 h-4 mr-2" />
                     Optimize with AI

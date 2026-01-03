@@ -12,6 +12,7 @@ import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResumeBuilder from "./pages/ResumeBuilder";
+import ResumeLanding from "./pages/ResumeLanding";
 import ResumeEditor from "./pages/ResumeEditor";
 import ResumeAnalysis from "./pages/ResumeAnalysis";
 import NotFound from "./pages/NotFound";
@@ -123,6 +124,11 @@ const AppRoutes = () => {
       <Route path="/auth/callback" element={<AuthCallback />} />
 
       {/* Protected Routes */}
+      <Route path="/resume" element={
+        <ProtectedRoute>
+          <ResumeLanding />
+        </ProtectedRoute>
+      } />
       <Route path="/resume-builder" element={
         <ProtectedRoute>
           <ResumeBuilder />

@@ -151,6 +151,20 @@ export const resumeBuilderApi = {
         });
         return response.data;
     },
+
+    /**
+     * Convert an uploaded resume to builder format using LLM parsing
+     * @param resumeId - The ID of the uploaded resume (from /resumes endpoint)
+     * @returns New ResumeBuilderDocument with parsed content
+     */
+    async convertFromResume(resumeId: number): Promise<ResumeBuilderDocument> {
+        const response = await axios.post(
+            `${API_BASE}/api/v1/resumes/${resumeId}/convert-to-builder`,
+            null,
+            { headers: getAuthHeader() }
+        );
+        return response.data;
+    },
 };
 
 /**
