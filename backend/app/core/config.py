@@ -67,6 +67,11 @@ class Settings(BaseSettings):
     ALLOWED_EXTENSIONS: str = "pdf,docx,doc,txt"
     UPLOAD_DIR: str = "/app/uploads"
     
+    @property
+    def allowed_extensions_list(self) -> list:
+        """Return ALLOWED_EXTENSIONS as a list"""
+        return [ext.strip().lower() for ext in self.ALLOWED_EXTENSIONS.split(",")]
+    
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_PER_HOUR: int = 1000
