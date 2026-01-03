@@ -59,6 +59,8 @@ class Settings(BaseSettings):
     SUPABASE_KEY: Optional[str] = None
     SUPABASE_JWT_SECRET: Optional[str] = None
     SUPABASE_PROJECT_REF: Optional[str] = None
+    SUPABASE_ANON_KEY: Optional[str] = None
+    SUPABASE_SERVICE_KEY: Optional[str] = None
     
     # File Upload
     MAX_FILE_SIZE: int = 5242880  # 5MB
