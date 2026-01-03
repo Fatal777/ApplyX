@@ -171,7 +171,7 @@ const Landing = () => {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <Link to="/resume-builder">
+                <Link to="/resume">
                   <Button
                     size="lg"
                     className="bg-accent hover:bg-accent/90 text-black font-bold text-lg px-10 py-7 transition-colors duration-200"
@@ -388,7 +388,7 @@ const Landing = () => {
             </StaggerContainer>
 
             <FadeIn delay={0.4} className="text-center mt-16">
-              <Link to="/resume-builder">
+              <Link to="/resume">
                 <MagneticButton strength={0.3}>
                   <Button
                     size="lg"
@@ -433,7 +433,7 @@ const Landing = () => {
                 ))}
               </StaggerContainer>
               <FadeIn delay={0.5}>
-                <Link to="/resume-builder">
+                <Link to="/resume">
                   <MagneticButton className="mt-10">
                     <Button
                       size="lg"
@@ -710,7 +710,7 @@ const Landing = () => {
                 Join thousands of successful students who have landed their dream jobs with ApplyX
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link to="/resume-builder">
+                <Link to="/resume">
                   <MagneticButton strength={0.25}>
                     <Button
                       size="lg"
