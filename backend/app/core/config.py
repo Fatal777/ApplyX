@@ -155,6 +155,7 @@ class Settings(BaseSettings):
     
     # Deepgram Speech-to-Text
     DEEPGRAM_API_KEY: Optional[str] = None
+    DEEPGRAM_MODEL: str = "nova-2"  # Default Deepgram model
     
     # Zyte Web Scraping
     ZYTE_API_KEY: Optional[str] = None
