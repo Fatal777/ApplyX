@@ -155,9 +155,9 @@ export const resumeBuilderApi = {
     /**
      * Convert an uploaded resume to builder format using LLM parsing
      * @param resumeId - The ID of the uploaded resume (from /resumes endpoint)
-     * @returns New ResumeBuilderDocument with parsed content
+     * @returns Response with builder_document_id
      */
-    async convertFromResume(resumeId: number): Promise<ResumeBuilderDocument> {
+    async convertFromResume(resumeId: number): Promise<{ success: boolean; builder_document_id: number; message: string; content: Record<string, unknown> }> {
         const response = await axios.post(
             `${API_BASE}/api/v1/resumes/${resumeId}/convert-to-builder`,
             null,

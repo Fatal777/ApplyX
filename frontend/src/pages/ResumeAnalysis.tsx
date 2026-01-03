@@ -51,7 +51,7 @@ const ResumeAnalysis = () => {
         title: "Resume imported!",
         description: "Opening in Resume Editor...",
       });
-      navigate(`/resume-editor/${builderDoc.id}`);
+      navigate(`/resume-editor/${builderDoc.builder_document_id}`);
     } catch (error: any) {
       console.error('Error converting resume:', error);
       toast({
@@ -419,8 +419,8 @@ const ResumeAnalysis = () => {
                     <div key={idx} className="group bg-white border border-gray-200 hover:border-gray-300 rounded-xl p-4 md:p-5 transition-all">
                       <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-4">
                         <span className={`px-2.5 py-1 text-xs font-bold rounded-lg self-start ${item.priority === 'High' ? 'bg-black text-white' :
-                            item.priority === 'Medium' ? 'bg-gray-200 text-gray-700' :
-                              'bg-gray-100 text-gray-500'
+                          item.priority === 'Medium' ? 'bg-gray-200 text-gray-700' :
+                            'bg-gray-100 text-gray-500'
                           }`}>
                           {item.label}
                         </span>
