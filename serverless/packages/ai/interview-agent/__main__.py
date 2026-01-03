@@ -1,12 +1,9 @@
-"""
-Mock Interview Agent - DigitalOcean Serverless Function
-Uses DigitalOcean GenAI (inference.do-ai.run)
-"""
+"""Mock Interview Agent - DigitalOcean Serverless Function"""
 
 import os
 import json
-import httpx
-
+import urllib.request
+import urllib.error
 
 PERSONAS = {
     "friendly": {"name": "Alex", "style": "warm, encouraging"},
@@ -15,25 +12,27 @@ PERSONAS = {
     "challenging": {"name": "Michael", "style": "direct, challenging"}
 }
 
-
 def call_llm(api_key, messages, max_tokens=400):
-    response = httpx.post(
+    data = json.dumps({
+        "model": "llama3.3-70b-instruct",
+        "messages": messages,
+        "temperature": 0.8,
+        "max_tokens": max_tokens,
+    }).encode('utf-8')
+    
+    req = urllib.request.Request(
         "https://inference.do-ai.run/v1/chat/completions",
+        data=data,
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
-        },
-        json={
-            "model": "llama3.3-70b-instruct",
-            "messages": messages,
-            "temperature": 0.8,
-            "max_tokens": max_tokens,
-        },
-        timeout=60.0
+        }
     )
-    result = response.json()
+    
+    with urllib.request.urlopen(req, timeout=55) as response:
+        result = json.loads(response.read().decode('utf-8'))
+    
     return result["choices"][0]["message"]["content"]
-
 
 def main(args):
     action = args.get("action", "respond")
@@ -46,7 +45,7 @@ def main(args):
     
     api_key = os.environ.get("DO_GENAI_API_KEY")
     if not api_key:
-        return {"statusCode": 500, "body": {"error": "DO_GENAI_API_KEY not configured"}}
+        return {"statusCode": 500, "body": {"error": "API key not configured"}}
     
     try:
         if action == "start":
@@ -83,10 +82,13 @@ def main(args):
         
         elif action == "feedback":
             convo = "\n".join([f"{'Interviewer' if m.get('role')=='assistant' else 'Candidate'}: {m.get('content','')}" for m in history])
-            prompt = f"Analyze this {job_role} interview and give JSON feedback: overall_score (0-100), strengths (list), improvements (list), communication_score, content_score.\n\n{convo[:3000]}"
+            prompt = f"Analyze this {job_role} interview and give JSON feedback: overall_score (0-100), strengths (list), improvements (list).\n\n{convo[:3000]}"
             
             feedback = call_llm(api_key, [{"role": "user", "content": prompt}], 1000)
-            return {"statusCode": 200, "body": json.loads(feedback)}
+            try:
+                return {"statusCode": 200, "body": json.loads(feedback)}
+            except:
+                return {"statusCode": 200, "body": {"raw_response": feedback}}
         
         else:
             return {"statusCode": 400, "body": {"error": f"Unknown action: {action}"}}
