@@ -38,6 +38,8 @@ const ResumeAnalysis = () => {
   const [resume, setResume] = useState<ResumeData | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
+  const [jobMatches, setJobMatches] = useState<Array<{ role: string; match_percent: number; strengths?: string[]; gaps?: string[] }>>([]);
+  const [loadingJobMatches, setLoadingJobMatches] = useState(false);
   const { toast } = useToast();
 
   // Handler to convert resume to builder format and open editor
@@ -95,6 +97,32 @@ const ResumeAnalysis = () => {
       if (interval) clearInterval(interval);
     };
   }, [id, isPolling]);
+
+  // Fetch real job matches when resume is loaded
+  useEffect(() => {
+    if (!id || !resume || resume.status !== 'completed') return;
+
+    const fetchJobMatches = async () => {
+      setLoadingJobMatches(true);
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/resumes/${id}/job-match`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setJobMatches(data.job_matches || []);
+        }
+      } catch (error) {
+        console.error('Error fetching job matches:', error);
+      } finally {
+        setLoadingJobMatches(false);
+      }
+    };
+
+    fetchJobMatches();
+  }, [id, resume?.status]);
 
   if (loading && !resume) {
     return (
@@ -449,27 +477,32 @@ const ResumeAnalysis = () => {
                 </div>
 
                 <div className="space-y-5">
-                  {[
-                    { role: 'Software Engineer', company: 'Tech companies', match: 94 },
-                    { role: 'Senior Developer', company: 'Startups', match: 88 },
-                    { role: 'Product Manager', company: 'Mid-size', match: 72 },
-                  ].map((item, idx) => (
-                    <div key={idx} className="group cursor-pointer">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm text-black truncate">{item.role}</p>
-                          <p className="text-xs text-gray-500">{item.company}</p>
-                        </div>
-                        <span className="text-lg md:text-xl font-bold text-black ml-2">{item.match}%</span>
-                      </div>
-                      <div className="relative w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                        <div
-                          className={`${idx === 0 ? 'bg-black' : idx === 1 ? 'bg-gray-700' : 'bg-gray-400'} h-1.5 rounded-full transition-all duration-500`}
-                          style={{ width: `${item.match}%` }}
-                        ></div>
-                      </div>
+                  {loadingJobMatches ? (
+                    <div className="text-center py-4">
+                      <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto"></div>
+                      <p className="text-sm text-gray-500 mt-2">Analyzing job matches...</p>
                     </div>
-                  ))}
+                  ) : jobMatches.length > 0 ? (
+                    jobMatches.slice(0, 3).map((item, idx) => (
+                      <div key={idx} className="group cursor-pointer">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm text-black truncate">{item.role}</p>
+                            <p className="text-xs text-gray-500">{item.strengths?.[0] || 'AI analyzed'}</p>
+                          </div>
+                          <span className="text-lg md:text-xl font-bold text-black ml-2">{item.match_percent}%</span>
+                        </div>
+                        <div className="relative w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className={`${idx === 0 ? 'bg-black' : idx === 1 ? 'bg-gray-700' : 'bg-gray-400'} h-1.5 rounded-full transition-all duration-500`}
+                            style={{ width: `${item.match_percent}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">Processing job matches...</p>
+                  )}
                 </div>
 
                 <Button variant="outline" className="w-full mt-6">
