@@ -31,13 +31,21 @@ export default function LivePdfEditor() {
   useEffect(() => {
     if (!resumeId) return;
 
-    const token = localStorage.getItem("token");
-
     const fetchPdfBlob = async () => {
       try {
+        // Get token from supabase session (same as api.ts interceptor)
+        const { supabase } = await import("@/lib/supabase");
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session?.access_token) {
+          console.error("No access token found");
+          setLoading(false);
+          return;
+        }
+
         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/resumes/${resumeId}/pdf`, {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${session.access_token}`
           }
         });
         if (response.ok) {
