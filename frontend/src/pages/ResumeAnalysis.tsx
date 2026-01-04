@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { useResumes } from "@/hooks/useResumes";
 import { resumeBuilderApi } from "@/services/resumeBuilderApi";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/lib/supabase";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { SuccessStoryCard, successStories } from "@/components/ui/SuccessStoryCard";
@@ -110,7 +111,9 @@ const ResumeAnalysis = () => {
       setLoadingJobMatches(true);
       setHasFetchedJobs(true);
       try {
-        const token = localStorage.getItem('token');
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token) return;
         const response = await fetch(
           `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/resumes/${id}/job-match`,
           { headers: { 'Authorization': `Bearer ${token}` } }
@@ -137,7 +140,9 @@ const ResumeAnalysis = () => {
       setLoadingAts(true);
       setHasFetchedAts(true);
       try {
-        const token = localStorage.getItem('token');
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token) return;
         const response = await fetch(
           `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/resumes/${id}/ats-analysis`,
           { headers: { 'Authorization': `Bearer ${token}` } }
