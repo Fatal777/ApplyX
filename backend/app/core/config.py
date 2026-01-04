@@ -159,6 +159,7 @@ class Settings(BaseSettings):
     DO_INTERVIEW_AGENT_URL: Optional[str] = None
     DO_JOB_MATCH_URL: Optional[str] = None
     DO_ATS_ANALYSIS_URL: Optional[str] = None
+    DO_RESUME_PARSER_URL: Optional[str] = None
     
     # Deepgram Speech-to-Text
     DEEPGRAM_API_KEY: Optional[str] = None

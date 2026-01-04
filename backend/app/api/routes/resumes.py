@@ -407,9 +407,9 @@ async def convert_to_builder(
 ):
     """
     Convert a parsed resume into ResumeBuilder format for editing.
-    Uses LLM-based structured extraction for accurate parsing.
+    Uses DO Serverless GPT-oss-20b for structured extraction.
     """
-    from app.services.resume_parsing_service import resume_parsing_service
+    import httpx
     from app.core.security import decrypt_sensitive_data
     from app.models.resume_builder import ResumeBuilderDocument
     
@@ -441,17 +441,107 @@ async def convert_to_builder(
                 detail="Resume text extraction failed or insufficient content."
             )
         
-        # Parse using LLM service
-        parsed = resume_parsing_service.parse_with_llm(resume_text)
-        
-        if not parsed:
+        # Call DO Serverless resume-parser function
+        parser_url = settings.DO_RESUME_PARSER_URL
+        if not parser_url:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to parse resume content"
+                detail="Resume parser service not configured"
             )
         
-        # Convert to builder format
-        builder_content = resume_parsing_service.to_resume_builder_format(parsed)
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                parser_url,
+                json={"resume_text": resume_text},
+                headers={"Content-Type": "application/json"}
+            )
+        
+        result = response.json()
+        
+        # Handle serverless function response
+        if isinstance(result, dict) and "body" in result:
+            parsed_data = result["body"]
+        else:
+            parsed_data = result
+        
+        if parsed_data.get("error"):
+            logger.error(f"Resume parser error: {parsed_data.get('error')}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to parse resume: {parsed_data.get('error')}"
+            )
+        
+        # Convert parsed data to builder format
+        personal = parsed_data.get("personal", {})
+        
+        # Build custom fields for links
+        custom_fields = []
+        if personal.get("linkedin"):
+            custom_fields.append({"id": "linkedin", "label": "LinkedIn", "value": personal["linkedin"], "icon": "linkedin", "visible": True})
+        if personal.get("github"):
+            custom_fields.append({"id": "github", "label": "GitHub", "value": personal["github"], "icon": "github", "visible": True})
+        if personal.get("website"):
+            custom_fields.append({"id": "website", "label": "Website", "value": personal["website"], "icon": "website", "visible": True})
+        
+        builder_content = {
+            "title": f"{personal.get('name', 'Imported')}'s Resume",
+            "personal": {
+                "name": personal.get("name", ""),
+                "title": personal.get("title", ""),
+                "email": personal.get("email", ""),
+                "phone": personal.get("phone", ""),
+                "location": personal.get("location", ""),
+                "birthDate": "",
+                "employmentStatus": "",
+                "photo": "",
+                "photoConfig": {},
+                "icons": {},
+                "customFields": custom_fields,
+            },
+            "education": [
+                {
+                    "id": f"edu-{i}",
+                    "school": e.get("school", ""),
+                    "degree": e.get("degree", ""),
+                    "major": e.get("major", ""),
+                    "startDate": e.get("start_date", ""),
+                    "endDate": e.get("end_date", ""),
+                    "gpa": e.get("gpa", ""),
+                    "description": e.get("description", ""),
+                    "visible": True,
+                }
+                for i, e in enumerate(parsed_data.get("education", []))
+            ],
+            "experience": [
+                {
+                    "id": f"exp-{i}",
+                    "company": e.get("company", ""),
+                    "position": e.get("position", ""),
+                    "date": e.get("date", ""),
+                    "details": e.get("details", ""),
+                    "visible": True,
+                }
+                for i, e in enumerate(parsed_data.get("experience", []))
+            ],
+            "projects": [
+                {
+                    "id": f"proj-{i}",
+                    "name": p.get("name", ""),
+                    "role": p.get("role", ""),
+                    "date": p.get("date", ""),
+                    "description": p.get("description", ""),
+                    "link": p.get("link", ""),
+                    "visible": True,
+                }
+                for i, p in enumerate(parsed_data.get("projects", []))
+            ],
+            "skillsContent": parsed_data.get("skills_content", ""),
+            "customSections": {},
+            "activeSection": "personal",
+            "draggingProjectId": None,
+            "sections": [],
+            "styleSettings": {"themeColor": "#000000"},
+        }
         
         # Create a new ResumeBuilderDocument
         builder_doc = ResumeBuilderDocument(
