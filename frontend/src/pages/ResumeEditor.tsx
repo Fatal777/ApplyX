@@ -87,6 +87,10 @@ const ResumeEditor = () => {
                             const defaultDoc = createDefaultResume(id);
                             const content = backendDoc.content || {};
 
+                            // Helper to safely filter arrays (remove null/undefined items)
+                            const safeArray = (arr: any[] | undefined | null) =>
+                                Array.isArray(arr) ? arr.filter(item => item != null) : [];
+
                             // Merge: default structure + backend content
                             const localDoc = {
                                 ...defaultDoc,
@@ -95,12 +99,18 @@ const ResumeEditor = () => {
                                 templateId: backendDoc.template_id || defaultDoc.templateId || "classic",
                                 createdAt: backendDoc.created_at || defaultDoc.createdAt,
                                 updatedAt: backendDoc.updated_at || defaultDoc.updatedAt,
-                                personal: { ...defaultDoc.personal, ...(content.personal || {}) },
-                                education: content.education || defaultDoc.education,
-                                experience: content.experience || defaultDoc.experience,
-                                projects: content.projects || defaultDoc.projects,
+                                personal: {
+                                    ...defaultDoc.personal,
+                                    ...(content.personal || {}),
+                                    // Ensure customFields is always an array
+                                    customFields: safeArray(content.personal?.customFields) || defaultDoc.personal.customFields,
+                                },
+                                education: safeArray(content.education).length > 0 ? safeArray(content.education) : defaultDoc.education,
+                                experience: safeArray(content.experience).length > 0 ? safeArray(content.experience) : defaultDoc.experience,
+                                projects: safeArray(content.projects).length > 0 ? safeArray(content.projects) : defaultDoc.projects,
                                 skillsContent: content.skillsContent || content.skills || defaultDoc.skillsContent,
                                 sections: defaultDoc.sections, // Always use default sections with icons
+                                customSections: content.customSections || defaultDoc.customSections || {},
                                 styleSettings: { ...defaultDoc.styleSettings, ...(content.styleSettings || {}) },
                             };
                             importDocument(localDoc as any);
