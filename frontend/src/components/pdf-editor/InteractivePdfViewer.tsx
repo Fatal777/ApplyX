@@ -3,6 +3,7 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { useResumeBuilderStore } from "@/store/resumeBuilderStore";
+import { EditableOverlay } from "./EditableOverlay";
 
 // Worker setup
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -19,6 +20,14 @@ export function InteractivePdfViewer({ pdfUrl, scale = 1.0 }: InteractivePdfView
 
     // Text layer items for matching
     const [textItems, setTextItems] = useState<any[]>([]);
+
+    // Store matching logic
+    const { activeDocument, documents, updateDocument } = useResumeBuilderStore();
+    // Ensure activeDocument is a string ID before accessing documents
+    const doc = activeDocument && typeof activeDocument === 'string' ? documents[activeDocument] : null;
+
+    // Memoized matching of Store Data -> PDF Text Items
+    const [overlays, setOverlays] = useState<any[]>([]);
 
     const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
         setNumPages(numPages);
@@ -53,6 +62,75 @@ export function InteractivePdfViewer({ pdfUrl, scale = 1.0 }: InteractivePdfView
 
         setTextItems(items);
         console.log("Extracted items:", items);
+    };
+
+    useEffect(() => {
+        if (!doc || textItems.length === 0) return;
+
+        const newOverlays: any[] = [];
+        const usedTextIds = new Set<string>();
+
+        // Helper to find text item matching a string
+        const findMatches = (value: string, fieldId: string, section: string, isMultiline = false) => {
+            if (!value) return;
+
+            // Simple exact match first
+            const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+            const target = normalize(value);
+
+            // Try to find single item match
+            const exactMatch = textItems.find(item =>
+                !usedTextIds.has(item.id) && normalize(item.str).includes(target)
+            );
+
+            if (exactMatch) {
+                usedTextIds.add(exactMatch.id);
+                newOverlays.push({
+                    id: `overlay-${fieldId}`,
+                    fieldId,
+                    section,
+                    value,
+                    x: exactMatch.x,
+                    y: exactMatch.y,
+                    width: exactMatch.width,
+                    height: exactMatch.height,
+                    fontSize: exactMatch.height * 0.8, // Estimate font size
+                    isMultiline
+                });
+            }
+        };
+
+        // 1. Personal Info
+        if (doc.personal) {
+            findMatches(doc.personal.name, 'name', 'personal');
+            findMatches(doc.personal.title, 'jobTitle', 'personal');
+            findMatches(doc.personal.email, 'email', 'personal');
+            findMatches(doc.personal.phone, 'phone', 'personal');
+        }
+
+        // 2. Experience (simplified for MVP - matching Company/Position)
+        doc.experience?.forEach((exp, idx) => {
+            findMatches(exp.company, `exp-${idx}-company`, 'experience');
+            findMatches(exp.position, `exp-${idx}-position`, 'experience');
+            // Bullets are harder, skipping for initial MVP match
+        });
+
+        setOverlays(newOverlays);
+        console.log("Generated Overlays:", newOverlays.length);
+
+    }, [doc, textItems]);
+
+    const handleOverlayChange = (id: string, newValue: string, section: string, fieldId: string) => {
+        if (!doc) return;
+
+        // Update store based on fieldId
+        // This is a naive implementation; needs proper path mapping
+        if (section === 'personal') {
+            updateDocument(doc.id, {
+                personal: { ...doc.personal, [fieldId]: newValue }
+            });
+        }
+        // Experience updates... needed
     };
 
     return (
@@ -100,6 +178,19 @@ export function InteractivePdfViewer({ pdfUrl, scale = 1.0 }: InteractivePdfView
                  }}
                />
             ))} */}
+                        {/* RENDER OVERLAYS */}
+                        {overlays.map((ov) => (
+                            <EditableOverlay
+                                key={ov.id}
+                                initialValue={ov.value}
+                                x={ov.x}
+                                y={ov.y}
+                                width={ov.width}
+                                height={ov.height}
+                                fontSize={ov.fontSize}
+                                onChange={(val) => handleOverlayChange(ov.id, val, ov.section, ov.fieldId)}
+                            />
+                        ))}
                     </div>
 
                 </Document>
