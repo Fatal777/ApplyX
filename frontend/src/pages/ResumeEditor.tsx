@@ -85,11 +85,11 @@ const ResumeEditor = () => {
 
                             // Start with default structure to ensure all required fields
                             const defaultDoc = createDefaultResume(id);
-                            const content = backendDoc.content || {};
+                            const content = (backendDoc.content || {}) as Record<string, any>;
 
                             // Helper to safely filter arrays (remove null/undefined items)
-                            const safeArray = (arr: any[] | undefined | null) =>
-                                Array.isArray(arr) ? arr.filter(item => item != null) : [];
+                            const safeArray = (arr: any) =>
+                                Array.isArray(arr) ? arr.filter((item: any) => item != null) : [];
 
                             // Merge: default structure + backend content
                             const localDoc = {
@@ -101,17 +101,16 @@ const ResumeEditor = () => {
                                 updatedAt: backendDoc.updated_at || defaultDoc.updatedAt,
                                 personal: {
                                     ...defaultDoc.personal,
-                                    ...(content.personal || {}),
-                                    // Ensure customFields is always an array
+                                    ...((content.personal || {}) as Record<string, any>),
                                     customFields: safeArray(content.personal?.customFields) || defaultDoc.personal.customFields,
                                 },
                                 education: safeArray(content.education).length > 0 ? safeArray(content.education) : defaultDoc.education,
                                 experience: safeArray(content.experience).length > 0 ? safeArray(content.experience) : defaultDoc.experience,
                                 projects: safeArray(content.projects).length > 0 ? safeArray(content.projects) : defaultDoc.projects,
                                 skillsContent: content.skillsContent || content.skills || defaultDoc.skillsContent,
-                                sections: defaultDoc.sections, // Always use default sections with icons
+                                sections: defaultDoc.sections,
                                 customSections: content.customSections || defaultDoc.customSections || {},
-                                styleSettings: { ...defaultDoc.styleSettings, ...(content.styleSettings || {}) },
+                                styleSettings: { ...defaultDoc.styleSettings, ...((content.styleSettings || {}) as Record<string, any>) },
                             };
                             importDocument(localDoc as any);
                             setIsLoading(false);
