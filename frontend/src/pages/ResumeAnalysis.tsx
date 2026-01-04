@@ -256,10 +256,11 @@ const ResumeAnalysis = () => {
     );
   }
 
-  const score = resume.analysis_score || 0;
+  const score = atsData?.ats_score || resume.analysis_score || 0;
   const atsScore = atsData?.ats_score || score || 75;
   const keywordsFound = resume.keywords?.length || atsData?.keyword_analysis?.density_score || 0;
   const impactScore = atsData?.section_scores?.find((s: any) => s.section?.includes('Experience'))?.score || 78;
+  const analysisTime = atsData ? new Date().toLocaleString() : new Date(resume.processed_at || resume.created_at).toLocaleString();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -306,7 +307,7 @@ const ResumeAnalysis = () => {
                 <span className="px-3 py-1 bg-black text-white text-xs font-bold rounded-full">LIVE</span>
               </div>
               <p className="text-gray-600 text-base md:text-lg">
-                Last updated {new Date(resume.processed_at || resume.created_at).toLocaleString()} • {Math.round(resume.file_size / 1024)} KB
+                Last updated {analysisTime} • {Math.round(resume.file_size / 1024)} KB
               </p>
             </div>
 
