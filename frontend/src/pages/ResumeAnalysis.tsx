@@ -40,6 +40,8 @@ const ResumeAnalysis = () => {
   const [isConverting, setIsConverting] = useState(false);
   const [jobMatches, setJobMatches] = useState<Array<{ role: string; match_percent: number; strengths?: string[]; gaps?: string[] }>>([]);
   const [loadingJobMatches, setLoadingJobMatches] = useState(false);
+  const [atsData, setAtsData] = useState<{ ats_score?: number; section_scores?: any[]; recommendations?: any[]; keyword_analysis?: any } | null>(null);
+  const [loadingAts, setLoadingAts] = useState(false);
   const { toast } = useToast();
 
   // Handler to convert resume to builder format and open editor
@@ -220,9 +222,35 @@ const ResumeAnalysis = () => {
   }
 
   const score = resume.analysis_score || 0;
-  const atsScore = 92; // Mock data
-  const keywordsFound = resume.keywords?.length || 0;
-  const impactScore = 78; // Mock data
+  const atsScore = atsData?.ats_score || score || 75;
+  const keywordsFound = resume.keywords?.length || atsData?.keyword_analysis?.density_score || 0;
+  const impactScore = atsData?.section_scores?.find((s: any) => s.section?.includes('Experience'))?.score || 78;
+
+  // Fetch ATS analysis
+  useEffect(() => {
+    if (!id || !resume || resume.status !== 'completed') return;
+
+    const fetchAtsAnalysis = async () => {
+      setLoadingAts(true);
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/resumes/${id}/ats-analysis`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setAtsData(data);
+        }
+      } catch (error) {
+        console.error('Error fetching ATS analysis:', error);
+      } finally {
+        setLoadingAts(false);
+      }
+    };
+
+    fetchAtsAnalysis();
+  }, [id, resume?.status]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -393,16 +421,22 @@ const ResumeAnalysis = () => {
                 </div>
 
                 <div className="space-y-6">
-                  {[
-                    { section: 'Work Experience', score: 92, status: 'Excellent', icon: CheckCircle },
-                    { section: 'Skills & Keywords', score: 88, status: 'Strong', icon: CheckCircle },
-                    { section: 'Professional Summary', score: 85, status: 'Good', icon: CheckCircle },
-                    { section: 'Education', score: 78, status: 'Needs improvement', icon: AlertCircle },
-                  ].map((item, idx) => (
+                  {loadingAts ? (
+                    <div className="text-center py-4">
+                      <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto"></div>
+                      <p className="text-sm text-gray-500 mt-2">Analyzing sections...</p>
+                    </div>
+                  ) : (atsData?.section_scores || [
+                    { section: 'Work Experience', score: 80, status: 'Good', feedback: 'Loading...', icon: CheckCircle },
+                    { section: 'Skills & Keywords', score: 75, status: 'Fair', feedback: 'Loading...', icon: CheckCircle },
+                    { section: 'Format & Structure', score: 70, status: 'Fair', feedback: 'Loading...', icon: AlertCircle },
+                  ]).map((item: any, idx: number) => (
                     <div key={idx} className="group">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
-                          <item.icon className={`w-4 h-4 md:w-5 md:h-5 flex-shrink-0 ${item.score >= 90 ? 'text-black' : item.score >= 85 ? 'text-gray-600' : 'text-gray-400'}`} />
+                          {item.score >= 90 ? <CheckCircle className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0 text-black" /> :
+                            item.score >= 75 ? <CheckCircle className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0 text-gray-600" /> :
+                              <AlertCircle className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0 text-gray-400" />}
                           <span className="font-semibold text-black text-sm md:text-base truncate">{item.section}</span>
                           <span className="text-xs px-2 py-0.5 md:px-2.5 md:py-1 bg-gray-100 text-gray-600 font-medium rounded-full whitespace-nowrap">
                             {item.status}
@@ -410,18 +444,15 @@ const ResumeAnalysis = () => {
                         </div>
                         <div className="flex items-center gap-2 md:gap-4">
                           <span className="text-base md:text-lg font-bold text-black">{item.score}</span>
-                          <button className="hidden md:block opacity-0 group-hover:opacity-100 text-sm font-medium text-blue-600 hover:text-blue-700 transition-all flex items-center gap-1">
-                            <Edit3 className="w-3 h-3" />
-                            Edit
-                          </button>
                         </div>
                       </div>
                       <div className="relative w-full bg-gray-100 h-2 rounded-full overflow-hidden">
                         <div
-                          className={`${item.score >= 90 ? 'bg-black' : item.score >= 85 ? 'bg-gray-600' : 'bg-gray-400'} h-2 rounded-full transition-all duration-700`}
+                          className={`${item.score >= 90 ? 'bg-black' : item.score >= 75 ? 'bg-gray-600' : 'bg-gray-400'} h-2 rounded-full transition-all duration-700`}
                           style={{ width: `${item.score}%` }}
                         ></div>
                       </div>
+                      {item.feedback && <p className="text-xs text-gray-500 mt-1">{item.feedback}</p>}
                     </div>
                   ))}
                 </div>

@@ -577,3 +577,97 @@ async def get_job_matches(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to analyze resume: {str(e)}"
         )
+
+
+@router.get("/{resume_id}/ats-analysis")
+@limiter.limit("10/minute")
+async def get_ats_analysis(
+    request: Request,
+    resume_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Comprehensive ATS analysis like Workday, Lever, Greenhouse.
+    Returns: ATS score, section scores, keyword analysis, recommendations.
+    """
+    import httpx
+    from app.core.security import decrypt_sensitive_data
+    
+    # Get the resume
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+    
+    if not resume.extracted_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Resume has not been processed yet"
+        )
+    
+    ats_url = settings.DO_ATS_ANALYSIS_URL
+    if not ats_url:
+        logger.warning("DO_ATS_ANALYSIS_URL not configured, returning basic analysis")
+        return {
+            "success": True,
+            "ats_score": 75,
+            "section_scores": [
+                {"section": "Work Experience", "score": 80, "status": "Good", "feedback": "Configure AI for detailed analysis"},
+                {"section": "Skills", "score": 70, "status": "Fair", "feedback": "Configure AI for detailed analysis"},
+            ],
+            "recommendations": [
+                {"priority": "High", "category": "Setup", "text": "Configure DO_ATS_ANALYSIS_URL for real AI analysis", "impact": "Required"}
+            ],
+            "note": "Configure DO_ATS_ANALYSIS_URL for detailed AI analysis"
+        }
+    
+    try:
+        resume_text = decrypt_sensitive_data(resume.extracted_text)
+        
+        async with httpx.AsyncClient(timeout=35.0) as client:
+            response = await client.post(
+                ats_url,
+                json={"resume_text": resume_text[:5000]},
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"ATS analysis function returned {response.status_code}")
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="ATS analysis service unavailable"
+                )
+            
+            result = response.json()
+            
+            if result.get("error"):
+                logger.error(f"ATS analysis error: {result['error']}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=result["error"]
+                )
+            
+            return {
+                "success": True,
+                "resume_id": resume_id,
+                **result
+            }
+            
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="ATS analysis timed out"
+        )
+    except Exception as e:
+        logger.error(f"Error in ATS analysis: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to analyze resume: {str(e)}"
+        )

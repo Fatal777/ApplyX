@@ -23,3 +23,9 @@ packages:
         limits:
           timeout: 30000
           memory: 256
+      - name: ats-analysis
+        runtime: python:3.11
+        web: true
+        limits:
+          timeout: 30000
+          memory: 256
