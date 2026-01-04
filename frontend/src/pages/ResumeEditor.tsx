@@ -64,17 +64,55 @@ const ResumeEditor = () => {
 
     // Initialize or load resume
     useEffect(() => {
-        if (id && documents[id]) {
-            setActiveDocument(id);
-        } else if (!id && Object.keys(documents).length === 0) {
-            // Create new resume if none exist
-            createDocument();
-        } else if (!id && Object.keys(documents).length > 0) {
-            // Select first resume
-            const firstId = Object.keys(documents)[0];
-            setActiveDocument(firstId);
-        }
-    }, [id, documents, setActiveDocument, createDocument]);
+        const loadDocument = async () => {
+            // If we have an ID, check if it's a local ID or a backend ID (numeric)
+            if (id) {
+                if (documents[id]) {
+                    // Local document found
+                    setActiveDocument(id);
+                } else if (/^\d+$/.test(id)) {
+                    // ID is numeric - fetch from backend API
+                    try {
+                        const { resumeBuilderApi } = await import("@/services/resumeBuilderApi");
+                        const backendDoc = await resumeBuilderApi.get(parseInt(id));
+
+                        // Convert backend document to local format and import
+                        if (backendDoc && backendDoc.content) {
+                            const { importDocument } = useResumeBuilderStore.getState();
+                            const localDoc = {
+                                id: id,
+                                title: backendDoc.title || "Imported Resume",
+                                templateId: backendDoc.template_id || "classic",
+                                themeColor: "#2563eb",
+                                createdAt: backendDoc.created_at || new Date().toISOString(),
+                                updatedAt: backendDoc.updated_at || new Date().toISOString(),
+                                ...backendDoc.content,
+                            };
+                            importDocument(localDoc as any);
+                            toast.success("Resume loaded from server");
+                        }
+                    } catch (error) {
+                        console.error("Failed to load document from API:", error);
+                        toast.error("Failed to load resume");
+                        // Fall back to creating a new document
+                        createDocument();
+                    }
+                } else {
+                    // Unknown ID format, create new
+                    createDocument();
+                }
+            } else if (Object.keys(documents).length === 0) {
+                // No ID and no documents - create new
+                createDocument();
+            } else if (Object.keys(documents).length > 0) {
+                // No ID but have documents - select first
+                const firstId = Object.keys(documents)[0];
+                setActiveDocument(firstId);
+            }
+        };
+
+        loadDocument();
+    }, [id]);
 
     const handleTitleEdit = () => {
         if (activeDocument) {
