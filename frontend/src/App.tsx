@@ -141,6 +141,16 @@ const AppRoutes = () => {
           <ResumeEditor />
         </ProtectedRoute>
       } />
+
+      {/* Live PDF Editor - must come BEFORE /resume-editor/:id */}
+      <Route path="/resume-editor/live/:id" element={
+        <React.Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+          <ProtectedRoute>
+            <LivePdfEditor />
+          </ProtectedRoute>
+        </React.Suspense>
+      } />
+
       <Route path="/resume-editor/:id" element={
         <ProtectedRoute>
           <ResumeEditor />
