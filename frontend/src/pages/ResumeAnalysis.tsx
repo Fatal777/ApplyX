@@ -42,6 +42,8 @@ const ResumeAnalysis = () => {
   const [loadingJobMatches, setLoadingJobMatches] = useState(false);
   const [atsData, setAtsData] = useState<{ ats_score?: number; section_scores?: any[]; recommendations?: any[]; keyword_analysis?: any } | null>(null);
   const [loadingAts, setLoadingAts] = useState(false);
+  const [hasFetchedAts, setHasFetchedAts] = useState(false);
+  const [hasFetchedJobs, setHasFetchedJobs] = useState(false);
   const { toast } = useToast();
 
   // Handler to convert resume to builder format and open editor
@@ -102,10 +104,11 @@ const ResumeAnalysis = () => {
 
   // Fetch real job matches when resume is loaded
   useEffect(() => {
-    if (!id || !resume || resume.status !== 'completed') return;
+    if (!id || !resume || resume.status !== 'completed' || hasFetchedJobs) return;
 
     const fetchJobMatches = async () => {
       setLoadingJobMatches(true);
+      setHasFetchedJobs(true);
       try {
         const token = localStorage.getItem('token');
         const response = await fetch(
@@ -124,7 +127,34 @@ const ResumeAnalysis = () => {
     };
 
     fetchJobMatches();
-  }, [id, resume?.status]);
+  }, [id, resume?.status, hasFetchedJobs]);
+
+  // Fetch ATS analysis when resume is loaded  
+  useEffect(() => {
+    if (!id || !resume || resume.status !== 'completed' || hasFetchedAts) return;
+
+    const fetchAtsAnalysis = async () => {
+      setLoadingAts(true);
+      setHasFetchedAts(true);
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/resumes/${id}/ats-analysis`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setAtsData(data);
+        }
+      } catch (error) {
+        console.error('Error fetching ATS analysis:', error);
+      } finally {
+        setLoadingAts(false);
+      }
+    };
+
+    fetchAtsAnalysis();
+  }, [id, resume?.status, hasFetchedAts]);
 
   if (loading && !resume) {
     return (
@@ -225,32 +255,6 @@ const ResumeAnalysis = () => {
   const atsScore = atsData?.ats_score || score || 75;
   const keywordsFound = resume.keywords?.length || atsData?.keyword_analysis?.density_score || 0;
   const impactScore = atsData?.section_scores?.find((s: any) => s.section?.includes('Experience'))?.score || 78;
-
-  // Fetch ATS analysis
-  useEffect(() => {
-    if (!id || !resume || resume.status !== 'completed') return;
-
-    const fetchAtsAnalysis = async () => {
-      setLoadingAts(true);
-      try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/resumes/${id}/ats-analysis`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setAtsData(data);
-        }
-      } catch (error) {
-        console.error('Error fetching ATS analysis:', error);
-      } finally {
-        setLoadingAts(false);
-      }
-    };
-
-    fetchAtsAnalysis();
-  }, [id, resume?.status]);
 
   return (
     <div className="min-h-screen bg-gray-50">
