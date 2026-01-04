@@ -1,52 +1,33 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useResumeBuilderStore } from "@/store/resumeBuilderStore";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, GripVertical, FileDown, Loader2 } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
-import { EditorSidebar } from "@/components/resume-editor/EditorSidebar";
-import { cn } from "@/lib/utils";
-import { Document, Page, pdfjs } from 'react-pdf';
+import { ArrowLeft, FileDown, Loader2, Save, ZoomIn, ZoomOut } from "lucide-react";
+import EditorSidebar from "@/components/resume-editor/EditorSidebar";
+import { pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 import { InteractivePdfViewer } from "@/components/pdf-editor/InteractivePdfViewer";
+import { applyEditsToFP, downloadPdf } from "@/services/pdfExportService";
+import { toast } from "sonner";
 
 // Set worker source
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-interface TextItem {
-  str: string;
-  transform: number[];
-  width: number;
-  height: number;
-  id: string; // generated
-}
-
 export default function LivePdfEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { documents, activeDocument, setActiveDocument, updateDocument } = useResumeBuilderStore();
-  const [numPages, setNumPages] = useState<number>(0);
-  const [pageNumber, setPageNumber] = useState(1);
+  const { documents, activeDocument, setActiveDocument } = useResumeBuilderStore();
   const [scale, setScale] = useState(1.0);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfBytes, setPdfBytes] = useState<ArrayBuffer | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
 
-  // Create authenticated PDF URL
+  // Create authenticated PDF URL and store bytes for export
   useEffect(() => {
     if (activeDocument) {
-      // We need the original Resume ID, not the Builder Document ID
-      // Since we don't have it directly in the builder doc, we might need to rely on
-      // a convention or fetch it. For now, assuming we can get it or use a different endpoint.
-
-      // TEMPORARY: In a real scenario, the builder document should store the original_resume_id
-      // For this MVP, we'll try to use the ID from the URL if it matches a pattern, 
-      // or fetch the document metadata which hopefully contains it.
-
       const token = localStorage.getItem("token");
-      // Using a direct URL with token in query param for the PDF viewer
-      // Note: This requires the backend to accept token in query param for this endpoint
-      // OR we fetch blob in a separate useEffect
 
       const fetchPdfBlob = async () => {
         try {
@@ -59,20 +40,22 @@ export default function LivePdfEditor() {
             const blob = await response.blob();
             const url = URL.createObjectURL(blob);
             setPdfUrl(url);
-            setLoading(false); // Set loading to false once PDF is fetched
+
+            // Also store bytes for export
+            const bytes = await blob.arrayBuffer();
+            setPdfBytes(bytes);
+
+            setLoading(false);
           } else {
             console.error("Failed to fetch PDF:", response.status, response.statusText);
-            setLoading(false); // Also set loading to false on error
+            setLoading(false);
           }
         } catch (error) {
           console.error("Failed to fetch PDF", error);
-          setLoading(false); // Also set loading to false on error
+          setLoading(false);
         }
       };
 
-      // If the ID in URL is the builder ID, we first need to find the original resume ID.
-      // This is a missing link in the current data model. 
-      // For now, let's assume the user just redirected from "Edit in Builder" which passed the ID.
       fetchPdfBlob();
     }
   }, [id, activeDocument]);
@@ -81,20 +64,48 @@ export default function LivePdfEditor() {
   useEffect(() => {
     if (id && documents[id]) {
       setActiveDocument(id);
-      // setLoading(false); // Moved to pdfUrl fetching useEffect for more accurate loading state
-      // In a real app, we'd fetch the PDF URL from backend
-      // For now, we need to handle how we get the PDF file
     } else {
-      // Fetch logic similar to ResumeEditor
+      // Fetch from backend if not in local store
       const loadDoc = async () => {
-        // ... implementation pending backend integration
+        try {
+          const { resumeBuilderApi } = await import("@/services/resumeBuilderApi");
+          const backendDoc = await resumeBuilderApi.get(parseInt(id || '0'));
+          if (backendDoc) {
+            const { importDocument } = useResumeBuilderStore.getState();
+            importDocument({
+              id: String(backendDoc.id),
+              ...backendDoc.content,
+            } as any);
+            setActiveDocument(String(backendDoc.id));
+          }
+        } catch (error) {
+          console.error("Failed to load document:", error);
+        }
       };
       loadDoc();
     }
   }, [id, documents, setActiveDocument]);
 
-  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
+  // Handle PDF export
+  const handleExport = async () => {
+    if (!pdfBytes) {
+      toast.error("PDF not loaded yet");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      // For now, just download the original PDF
+      // TODO: Apply actual edits when overlay tracking is complete
+      const modifiedBytes = await applyEditsToFP(pdfBytes, []);
+      downloadPdf(modifiedBytes, `${doc?.title || 'resume'}_edited.pdf`);
+      toast.success("PDF exported successfully!");
+    } catch (error) {
+      console.error("Export failed:", error);
+      toast.error("Failed to export PDF");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   if (loading) {
@@ -105,7 +116,7 @@ export default function LivePdfEditor() {
     );
   }
 
-  const doc = activeDocument ? documents[activeDocument] : null;
+  const doc = activeDocument && typeof activeDocument === 'string' ? documents[activeDocument] : null;
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -125,6 +136,23 @@ export default function LivePdfEditor() {
               {doc?.title || "Resume Editor"}
             </span>
           </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={isExporting || !pdfBytes}
+            >
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <FileDown className="h-4 w-4 mr-2" />
+              )}
+              Export PDF
+            </Button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-hidden relative">
@@ -133,11 +161,36 @@ export default function LivePdfEditor() {
       </div>
 
       {/* PDF Viewer Area */}
-      <div className="flex-1 overflow-auto bg-gray-100 p-8 flex justify-center relative">
-        <div className="relative shadow-lg">
-          <InteractivePdfViewer pdfUrl={pdfUrl} scale={scale} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Zoom Controls */}
+        <div className="h-12 bg-white border-b flex items-center justify-center gap-4 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setScale(s => Math.max(0.5, s - 0.1))}
+          >
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <span className="text-sm font-medium min-w-[60px] text-center">
+            {Math.round(scale * 100)}%
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setScale(s => Math.min(2, s + 0.1))}
+          >
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* PDF Canvas */}
+        <div className="flex-1 overflow-auto bg-gray-100 p-8 flex justify-center">
+          <div className="relative shadow-lg">
+            <InteractivePdfViewer pdfUrl={pdfUrl} scale={scale} />
+          </div>
         </div>
       </div>
     </div>
   );
 }
+

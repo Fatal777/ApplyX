@@ -70,67 +70,175 @@ export function InteractivePdfViewer({ pdfUrl, scale = 1.0 }: InteractivePdfView
         const newOverlays: any[] = [];
         const usedTextIds = new Set<string>();
 
-        // Helper to find text item matching a string
-        const findMatches = (value: string, fieldId: string, section: string, isMultiline = false) => {
-            if (!value) return;
+        // Helper: Extract plain text from HTML (for bullet matching)
+        const htmlToPlain = (html: string) => {
+            if (!html) return '';
+            return html
+                .replace(/<li>/gi, '• ')
+                .replace(/<\/li>/gi, '\n')
+                .replace(/<[^>]*>/g, '')
+                .trim();
+        };
 
-            // Simple exact match first
-            const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+        // Helper: Normalize text for comparison
+        const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+
+        // Helper to find text item matching a string (V2: Better fuzzy matching)
+        const findMatches = (value: string, fieldId: string, section: string, isMultiline = false) => {
+            if (!value || value.length < 2) return;
+
             const target = normalize(value);
 
-            // Try to find single item match
-            const exactMatch = textItems.find(item =>
-                !usedTextIds.has(item.id) && normalize(item.str).includes(target)
+            // Try exact match first
+            let match = textItems.find(item =>
+                !usedTextIds.has(item.id) && normalize(item.str) === target
             );
 
-            if (exactMatch) {
-                usedTextIds.add(exactMatch.id);
+            // Fallback: Substring match (for partial matches)
+            if (!match) {
+                match = textItems.find(item =>
+                    !usedTextIds.has(item.id) &&
+                    item.str.length > 3 &&
+                    (normalize(item.str).includes(target) || target.includes(normalize(item.str)))
+                );
+            }
+
+            if (match) {
+                usedTextIds.add(match.id);
                 newOverlays.push({
                     id: `overlay-${fieldId}`,
                     fieldId,
                     section,
                     value,
-                    x: exactMatch.x,
-                    y: exactMatch.y,
-                    width: exactMatch.width,
-                    height: exactMatch.height,
-                    fontSize: exactMatch.height * 0.8, // Estimate font size
+                    x: match.x,
+                    y: match.y,
+                    width: Math.max(match.width, 100), // Min width for editability
+                    height: match.height,
+                    fontSize: match.height * 0.8,
                     isMultiline
+                });
+            }
+        };
+
+        // Helper: Find contiguous text block (for multi-word matches like company names)
+        const findTextBlock = (value: string, fieldId: string, section: string) => {
+            if (!value || value.length < 2) return;
+
+            const words = value.split(/\s+/).filter(w => w.length > 1);
+            if (words.length === 0) return;
+
+            // Find first word
+            const firstWord = normalize(words[0]);
+            const startMatch = textItems.find(item =>
+                !usedTextIds.has(item.id) && normalize(item.str).includes(firstWord)
+            );
+
+            if (startMatch) {
+                // Get bounding box covering all words (simplified: use first match width * word count)
+                usedTextIds.add(startMatch.id);
+                newOverlays.push({
+                    id: `overlay-${fieldId}`,
+                    fieldId,
+                    section,
+                    value,
+                    x: startMatch.x,
+                    y: startMatch.y,
+                    width: Math.max(startMatch.width * words.length * 0.8, 150),
+                    height: startMatch.height,
+                    fontSize: startMatch.height * 0.8,
+                    isMultiline: false
                 });
             }
         };
 
         // 1. Personal Info
         if (doc.personal) {
-            findMatches(doc.personal.name, 'name', 'personal');
-            findMatches(doc.personal.title, 'jobTitle', 'personal');
+            findTextBlock(doc.personal.name, 'name', 'personal');
+            findMatches(doc.personal.title, 'title', 'personal');
             findMatches(doc.personal.email, 'email', 'personal');
             findMatches(doc.personal.phone, 'phone', 'personal');
+            findMatches(doc.personal.location, 'location', 'personal');
         }
 
-        // 2. Experience (simplified for MVP - matching Company/Position)
-        doc.experience?.forEach((exp, idx) => {
-            findMatches(exp.company, `exp-${idx}-company`, 'experience');
+        // 2. Experience - Company, Position, and bullet points
+        doc.experience?.forEach((exp: any, idx: number) => {
+            findTextBlock(exp.company, `exp-${idx}-company`, 'experience');
             findMatches(exp.position, `exp-${idx}-position`, 'experience');
-            // Bullets are harder, skipping for initial MVP match
+            findMatches(exp.date, `exp-${idx}-date`, 'experience');
+
+            // Parse bullets from HTML details
+            if (exp.details) {
+                const bullets = htmlToPlain(exp.details).split('\n').filter((b: string) => b.trim());
+                bullets.forEach((bullet: string, bIdx: number) => {
+                    const cleanBullet = bullet.replace(/^[•\-\*]\s*/, '').trim();
+                    if (cleanBullet.length > 10) { // Only match substantial bullets
+                        findMatches(cleanBullet.substring(0, 30), `exp-${idx}-bullet-${bIdx}`, 'experience', true);
+                    }
+                });
+            }
+        });
+
+        // 3. Education
+        doc.education?.forEach((edu: any, idx: number) => {
+            findTextBlock(edu.school, `edu-${idx}-school`, 'education');
+            findMatches(edu.degree, `edu-${idx}-degree`, 'education');
+            findMatches(edu.major, `edu-${idx}-major`, 'education');
+        });
+
+        // 4. Projects
+        doc.projects?.forEach((proj: any, idx: number) => {
+            findTextBlock(proj.name, `proj-${idx}-name`, 'projects');
+            findMatches(proj.role, `proj-${idx}-role`, 'projects');
         });
 
         setOverlays(newOverlays);
-        console.log("Generated Overlays:", newOverlays.length);
+        console.log("Generated Overlays (V2):", newOverlays.length, newOverlays);
 
     }, [doc, textItems]);
 
     const handleOverlayChange = (id: string, newValue: string, section: string, fieldId: string) => {
         if (!doc) return;
 
-        // Update store based on fieldId
-        // This is a naive implementation; needs proper path mapping
+        // Parse fieldId to determine what to update
+        const parts = fieldId.split('-');
+
         if (section === 'personal') {
             updateDocument(doc.id, {
                 personal: { ...doc.personal, [fieldId]: newValue }
             });
+        } else if (section === 'experience' && parts.length >= 3) {
+            const expIdx = parseInt(parts[1]);
+            const field = parts[2]; // 'company', 'position', 'date', or 'bullet'
+
+            if (doc.experience && doc.experience[expIdx]) {
+                const updatedExp = [...doc.experience];
+                if (field === 'bullet' && parts[3]) {
+                    // Handle bullet update - would need to parse/reconstruct HTML
+                    console.log('Bullet update:', newValue);
+                } else {
+                    updatedExp[expIdx] = { ...updatedExp[expIdx], [field]: newValue };
+                }
+                updateDocument(doc.id, { experience: updatedExp });
+            }
+        } else if (section === 'education' && parts.length >= 3) {
+            const eduIdx = parseInt(parts[1]);
+            const field = parts[2];
+
+            if (doc.education && doc.education[eduIdx]) {
+                const updatedEdu = [...doc.education];
+                updatedEdu[eduIdx] = { ...updatedEdu[eduIdx], [field]: newValue };
+                updateDocument(doc.id, { education: updatedEdu });
+            }
+        } else if (section === 'projects' && parts.length >= 3) {
+            const projIdx = parseInt(parts[1]);
+            const field = parts[2];
+
+            if (doc.projects && doc.projects[projIdx]) {
+                const updatedProj = [...doc.projects];
+                updatedProj[projIdx] = { ...updatedProj[projIdx], [field]: newValue };
+                updateDocument(doc.id, { projects: updatedProj });
+            }
         }
-        // Experience updates... needed
     };
 
     return (
