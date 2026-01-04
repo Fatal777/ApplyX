@@ -91,7 +91,7 @@ IMPORTANT:
 
     try:
         request_data = json.dumps({
-            "model": "openai-gpt-oss-20b",  # Fast and cost-effective
+            "model": "openai-gpt-oss-120b",  # Larger model for better accuracy
             "messages": [
                 {"role": "system", "content": "You are an expert resume parser. Extract structured data accurately from resumes. Return only valid JSON."},
                 {"role": "user", "content": prompt}
