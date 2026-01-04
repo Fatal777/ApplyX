@@ -7,13 +7,15 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SmoothScrollProvider } from "@/components/effects";
 import { SentryErrorBoundary, setUser, clearUser } from "@/lib/sentry";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
-import { useEffect } from "react";
+import React, { useEffect } from "react"; // Added React import
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResumeBuilder from "./pages/ResumeBuilder";
 import ResumeLanding from "./pages/ResumeLanding";
-import ResumeEditor from "./pages/ResumeEditor";
+const ResumeEditor = React.lazy(() => import("@/pages/ResumeEditor"));
+const LivePdfEditor = React.lazy(() => import("@/pages/LivePdfEditor"));
+// Removed invalid import
 import ResumeAnalysis from "./pages/ResumeAnalysis";
 import NotFound from "./pages/NotFound";
 import MockInterview from "./pages/MockInterview";
