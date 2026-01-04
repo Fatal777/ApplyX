@@ -286,7 +286,7 @@ function App() {
   return (
     <SentryErrorBoundary
       fallback={({ error, resetError }) => (
-        <ErrorFallback error={error} resetError={resetError} />
+        <ErrorFallback error={error as Error} resetError={resetError} />
       )}
       showDialog={false}
     >
