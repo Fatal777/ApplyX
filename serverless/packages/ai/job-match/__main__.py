@@ -31,13 +31,19 @@ def main(args):
     
     if not resume_text or len(resume_text.strip()) < 50:
         return {
-            "error": "Resume text is required and must be at least 50 characters",
-            "job_matches": []
+            "statusCode": 400,
+            "body": {
+                "error": "Resume text is required and must be at least 50 characters",
+                "job_matches": []
+            }
         }
     
     api_key = os.environ.get("DO_GENAI_API_KEY")
     if not api_key:
-        return {"error": "DO_GENAI_API_KEY not configured", "job_matches": []}
+        return {
+            "statusCode": 500,
+            "body": {"error": "DO_GENAI_API_KEY not configured", "job_matches": []}
+        }
     
     # Build prompt for job matching
     roles_list = ", ".join(target_roles[:5])  # Limit to 5 roles
@@ -99,25 +105,37 @@ Respond with valid JSON only:
             if json_start >= 0 and json_end > json_start:
                 parsed = json.loads(content[json_start:json_end])
                 return {
-                    "success": True,
-                    "job_matches": parsed.get("job_matches", [])
+                    "statusCode": 200,
+                    "body": {
+                        "success": True,
+                        "job_matches": parsed.get("job_matches", [])
+                    }
                 }
         except json.JSONDecodeError:
             pass
         
         return {
-            "error": "Failed to parse LLM response",
-            "raw_content": content[:500],
-            "job_matches": []
+            "statusCode": 200,
+            "body": {
+                "error": "Failed to parse LLM response",
+                "raw_content": content[:500],
+                "job_matches": []
+            }
         }
         
     except urllib.error.HTTPError as e:
         return {
-            "error": f"API error: {e.code}",
-            "job_matches": []
+            "statusCode": 500,
+            "body": {
+                "error": f"API error: {e.code}",
+                "job_matches": []
+            }
         }
     except Exception as e:
         return {
-            "error": str(e),
-            "job_matches": []
+            "statusCode": 500,
+            "body": {
+                "error": str(e),
+                "job_matches": []
+            }
         }

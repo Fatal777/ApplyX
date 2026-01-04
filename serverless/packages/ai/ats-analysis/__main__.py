@@ -29,12 +29,16 @@ def main(args):
     
     if not resume_text or len(resume_text.strip()) < 50:
         return {
-            "error": "Resume text is required and must be at least 50 characters"
+            "statusCode": 400,
+            "body": {"error": "Resume text is required and must be at least 50 characters"}
         }
     
     api_key = os.environ.get("DO_GENAI_API_KEY")
     if not api_key:
-        return {"error": "DO_GENAI_API_KEY not configured"}
+        return {
+            "statusCode": 500,
+            "body": {"error": "DO_GENAI_API_KEY not configured"}
+        }
     
     # Workday-style ATS analysis prompt
     prompt = f"""You are an ATS (Applicant Tracking System) analyzer like Workday, Lever, or Greenhouse.
@@ -109,18 +113,30 @@ Respond with ONLY valid JSON:
             if json_start >= 0 and json_end > json_start:
                 parsed = json.loads(content[json_start:json_end])
                 return {
-                    "success": True,
-                    **parsed
+                    "statusCode": 200,
+                    "body": {
+                        "success": True,
+                        **parsed
+                    }
                 }
         except json.JSONDecodeError:
             pass
         
         return {
-            "error": "Failed to parse LLM response",
-            "raw_content": content[:500]
+            "statusCode": 200,
+            "body": {
+                "error": "Failed to parse LLM response",
+                "raw_content": content[:500]
+            }
         }
         
     except urllib.error.HTTPError as e:
-        return {"error": f"API error: {e.code}"}
+        return {
+            "statusCode": 500,
+            "body": {"error": f"API error: {e.code}"}
+        }
     except Exception as e:
-        return {"error": str(e)}
+        return {
+            "statusCode": 500,
+            "body": {"error": str(e)}
+        }
