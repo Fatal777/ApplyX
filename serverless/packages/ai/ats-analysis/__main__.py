@@ -1,6 +1,6 @@
 """
 ATS Analysis Function - Real Resume Scoring
-Analyzes resume like Workday/Lever ATS systems
+Analyzes resume focusing on content quality, experience, and skills
 Provides: ATS compatibility score, section scores, keyword analysis, and recommendations
 """
 
@@ -12,14 +12,14 @@ import urllib.error
 
 def main(args):
     """
-    Comprehensive ATS analysis like Workday, Lever, Greenhouse
+    Balanced ATS analysis focusing on content quality over strict formatting
     
     Args:
         resume_text: The extracted text from the resume
         job_description: Optional job description for keyword matching
     
     Returns:
-        ats_score: Overall ATS compatibility (0-100)
+        ats_score: Overall score (0-100)
         section_scores: Individual section ratings
         keyword_analysis: Keywords found and missing
         recommendations: Prioritized improvement suggestions
@@ -40,50 +40,62 @@ def main(args):
             "body": {"error": "DO_GENAI_API_KEY not configured"}
         }
     
-    # Workday-style ATS analysis prompt
-    prompt = f"""You are an ATS (Applicant Tracking System) analyzer like Workday, Lever, or Greenhouse.
-Analyze this resume for ATS compatibility and provide detailed scoring.
+    # Balanced scoring prompt - focuses on content quality
+    prompt = f"""You are a fair and balanced resume analyzer. Score this resume based primarily on CONTENT QUALITY, not formatting strictness.
 
 Resume:
 {resume_text[:5000]}
 
-{"Job Description for keyword matching:" + job_description[:1500] if job_description else ""}
+{("Job Description for context:" + job_description[:1500]) if job_description else ""}
 
-Analyze and score these ATS factors:
-1. FORMAT & READABILITY: Clean structure, proper headings, no tables/images
-2. KEYWORD OPTIMIZATION: Industry terms, action verbs, skills mentioned
-3. SECTION COMPLETENESS: Contact, Summary, Experience, Education, Skills
-4. IMPACT METRICS: Quantified achievements, numbers, percentages
-5. GRAMMAR & CLARITY: Professional language, no errors
+SCORING GUIDELINES (be fair, not harsh):
+- A resume with solid experience and skills should score 65-80 even without perfect formatting
+- Strong technical skills or relevant experience = major positive (add 15-20 points)
+- Multiple years of experience = major positive (add 10-15 points)
+- Clear job titles and companies = positive (add 5-10 points)
+- Education credentials = positive (add 5-10 points)
+- Base score starts at 50 for any coherent resume with work experience
+
+Score these factors with BALANCED weights:
+1. EXPERIENCE QUALITY (40%): Relevant job history, tenure, progression
+2. SKILLS & EXPERTISE (25%): Technical skills, tools, languages mentioned
+3. EDUCATION (15%): Degrees, certifications, relevant coursework
+4. CLARITY & STRUCTURE (10%): Readability, organization
+5. IMPACT & ACHIEVEMENTS (10%): Quantified results, accomplishments
+
+A resume with:
+- 3+ years experience = minimum 60 base
+- Technical skills listed = add 10-15
+- Clear job progression = add 5-10
+- Education = add 5-10
 
 Respond with ONLY valid JSON:
 {{
-  "ats_score": 85,
+  "ats_score": 75,
   "section_scores": [
-    {{"section": "Work Experience", "score": 92, "status": "Excellent", "feedback": "Strong quantified achievements"}},
-    {{"section": "Skills & Keywords", "score": 78, "status": "Good", "feedback": "Add more technical terms"}},
-    {{"section": "Professional Summary", "score": 85, "status": "Strong", "feedback": "Clear value proposition"}},
-    {{"section": "Education", "score": 90, "status": "Excellent", "feedback": "Well formatted"}},
-    {{"section": "Format & Structure", "score": 88, "status": "Strong", "feedback": "ATS-friendly layout"}}
+    {{"section": "Work Experience", "score": 80, "status": "Strong", "feedback": "Good career progression shown"}},
+    {{"section": "Skills & Expertise", "score": 75, "status": "Good", "feedback": "Solid technical foundation"}},
+    {{"section": "Education", "score": 85, "status": "Strong", "feedback": "Relevant degree"}},
+    {{"section": "Clarity", "score": 70, "status": "Good", "feedback": "Well organized"}},
+    {{"section": "Impact", "score": 65, "status": "Fair", "feedback": "Could add more metrics"}}
   ],
   "keyword_analysis": {{
     "found": ["python", "javascript", "team leadership"],
-    "missing": ["agile", "CI/CD", "cloud"],
-    "density_score": 75
+    "missing": ["agile", "CI/CD"],
+    "density_score": 70
   }},
   "recommendations": [
-    {{"priority": "High", "category": "Keywords", "text": "Add missing technical terms", "impact": "+8 points"}},
-    {{"priority": "High", "category": "Metrics", "text": "Replace 'managed team' with 'Led team of 8 engineers'", "impact": "+5 points"}},
-    {{"priority": "Medium", "category": "Format", "text": "Use consistent date format", "impact": "+3 points"}}
+    {{"priority": "Medium", "category": "Impact", "text": "Add specific metrics to achievements", "impact": "+5 points"}},
+    {{"priority": "Low", "category": "Keywords", "text": "Consider adding industry buzzwords", "impact": "+3 points"}}
   ],
-  "summary": "Your resume has strong content but needs keyword optimization for ATS systems."
+  "summary": "Solid resume with good experience. Minor improvements can boost visibility."
 }}"""
 
     try:
         request_data = json.dumps({
             "model": "llama3.3-70b-instruct",
             "messages": [
-                {"role": "system", "content": "You are an expert ATS analyzer. Provide accurate, actionable resume scoring. Be specific and honest in your assessments."},
+                {"role": "system", "content": "You are a fair resume reviewer. Focus on what the candidate HAS accomplished, not what's missing. Be encouraging while providing actionable feedback. A decent resume should score at least 60-70."},
                 {"role": "user", "content": prompt}
             ],
             "max_tokens": 1500,
@@ -107,7 +119,6 @@ Respond with ONLY valid JSON:
         
         # Parse JSON from response
         try:
-            # Find JSON in response
             json_start = content.find('{')
             json_end = content.rfind('}') + 1
             if json_start >= 0 and json_end > json_start:
