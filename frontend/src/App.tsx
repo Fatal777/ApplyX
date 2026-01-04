@@ -32,7 +32,6 @@ import Employers from "./pages/Employers";
 import Settings from "./pages/Settings";
 import ATSTemplates from "./pages/ATSTemplates";
 import Dashboard from "./pages/Dashboard";
-import LivePdfEditor from "./pages/LivePdfEditor";
 import Pricing from "./pages/Pricing";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminPanel from "./pages/AdminPanel";
