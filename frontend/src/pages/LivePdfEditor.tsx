@@ -5,8 +5,6 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, FileDown, Loader2, ZoomIn, ZoomOut } from "lucide-react";
 import EditorSidebar from "@/components/resume-editor/EditorSidebar";
 import { pdfjs } from 'react-pdf';
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
 import { InteractivePdfViewer } from "@/components/pdf-editor/InteractivePdfViewer";
 import { applyEditsToFP, downloadPdf } from "@/services/pdfExportService";
 import { toast } from "sonner";
