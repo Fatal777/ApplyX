@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useResumeBuilderStore } from "@/store/resumeBuilderStore";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileDown, Loader2, Save, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, FileDown, Loader2, ZoomIn, ZoomOut } from "lucide-react";
 import EditorSidebar from "@/components/resume-editor/EditorSidebar";
 import { pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
@@ -15,7 +15,12 @@ import { toast } from "sonner";
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export default function LivePdfEditor() {
-  const { id } = useParams();
+  // resumeId = original resume ID (for PDF fetching)
+  // builderId = builder document ID (for edited data)
+  const { id: resumeId } = useParams();
+  const [searchParams] = useSearchParams();
+  const builderId = searchParams.get('builderId');
+
   const navigate = useNavigate();
   const { documents, activeDocument, setActiveDocument } = useResumeBuilderStore();
   const [scale, setScale] = useState(1.0);
@@ -24,52 +29,52 @@ export default function LivePdfEditor() {
   const [loading, setLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Create authenticated PDF URL and store bytes for export
+  // Fetch the ORIGINAL PDF using resumeId
   useEffect(() => {
-    if (activeDocument) {
-      const token = localStorage.getItem("token");
+    if (!resumeId) return;
 
-      const fetchPdfBlob = async () => {
-        try {
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/resumes/${id}/pdf`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          if (response.ok) {
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            setPdfUrl(url);
+    const token = localStorage.getItem("token");
 
-            // Also store bytes for export
-            const bytes = await blob.arrayBuffer();
-            setPdfBytes(bytes);
-
-            setLoading(false);
-          } else {
-            console.error("Failed to fetch PDF:", response.status, response.statusText);
-            setLoading(false);
+    const fetchPdfBlob = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/resumes/${resumeId}/pdf`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
           }
-        } catch (error) {
-          console.error("Failed to fetch PDF", error);
+        });
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          setPdfUrl(url);
+
+          const bytes = await blob.arrayBuffer();
+          setPdfBytes(bytes);
+
+          setLoading(false);
+        } else {
+          console.error("Failed to fetch PDF:", response.status);
           setLoading(false);
         }
-      };
+      } catch (error) {
+        console.error("Failed to fetch PDF", error);
+        setLoading(false);
+      }
+    };
 
-      fetchPdfBlob();
-    }
-  }, [id, activeDocument]);
+    fetchPdfBlob();
+  }, [resumeId]);
 
-  // Load document
+  // Load builder document using builderId
   useEffect(() => {
-    if (id && documents[id]) {
-      setActiveDocument(id);
+    if (!builderId) return;
+
+    if (documents[builderId]) {
+      setActiveDocument(builderId);
     } else {
-      // Fetch from backend if not in local store
       const loadDoc = async () => {
         try {
           const { resumeBuilderApi } = await import("@/services/resumeBuilderApi");
-          const backendDoc = await resumeBuilderApi.get(parseInt(id || '0'));
+          const backendDoc = await resumeBuilderApi.get(parseInt(builderId));
           if (backendDoc) {
             const { importDocument } = useResumeBuilderStore.getState();
             importDocument({
@@ -84,7 +89,7 @@ export default function LivePdfEditor() {
       };
       loadDoc();
     }
-  }, [id, documents, setActiveDocument]);
+  }, [builderId, documents, setActiveDocument]);
 
   // Handle PDF export
   const handleExport = async () => {
@@ -95,8 +100,6 @@ export default function LivePdfEditor() {
 
     setIsExporting(true);
     try {
-      // For now, just download the original PDF
-      // TODO: Apply actual edits when overlay tracking is complete
       const modifiedBytes = await applyEditsToFP(pdfBytes, []);
       downloadPdf(modifiedBytes, `${doc?.title || 'resume'}_edited.pdf`);
       toast.success("PDF exported successfully!");
@@ -193,4 +196,3 @@ export default function LivePdfEditor() {
     </div>
   );
 }
-

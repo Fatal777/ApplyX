@@ -58,7 +58,8 @@ const ResumeAnalysis = () => {
         title: "Resume imported!",
         description: "Opening in Resume Editor...",
       });
-      navigate(`/resume-editor/live/${builderDoc.builder_document_id}`);
+      // Pass both: resumeId for PDF, builderId for document data
+      navigate(`/resume-editor/live/${id}?builderId=${builderDoc.builder_document_id}`);
     } catch (error: any) {
       console.error('Error converting resume:', error);
       toast({
