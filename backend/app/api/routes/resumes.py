@@ -185,6 +185,61 @@ async def get_resume(
     return resume
 
 
+@router.get("/{resume_id}/pdf")
+async def get_resume_pdf(
+    resume_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Download the original PDF file for a resume
+    Returns the PDF file content with appropriate headers
+    """
+    from fastapi.responses import Response
+    
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+    
+    try:
+        # Get storage service and download file
+        storage = get_storage_service()
+        
+        # The stored_filename is the key/path in storage
+        file_bytes = storage.get_file(resume.stored_filename)
+        
+        # Determine content type
+        content_type = "application/pdf"
+        if resume.file_type:
+            if "word" in resume.file_type.lower() or resume.file_type == "docx":
+                content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            elif resume.file_type == "doc":
+                content_type = "application/msword"
+        
+        return Response(
+            content=file_bytes,
+            media_type=content_type,
+            headers={
+                "Content-Disposition": f'inline; filename="{resume.original_filename}"',
+                "Cache-Control": "private, max-age=3600"
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to retrieve PDF for resume {resume_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve resume file"
+        )
+
+
 @router.delete("/{resume_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_resume(
     resume_id: int,
