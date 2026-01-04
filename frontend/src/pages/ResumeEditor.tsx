@@ -74,27 +74,41 @@ const ResumeEditor = () => {
                     // ID is numeric - fetch from backend API
                     try {
                         const { resumeBuilderApi } = await import("@/services/resumeBuilderApi");
+                        const { createDefaultResume } = await import("@/types/resumeBuilder");
                         const backendDoc = await resumeBuilderApi.get(parseInt(id));
 
                         // Convert backend document to local format and import
                         if (backendDoc && backendDoc.content) {
                             const { importDocument } = useResumeBuilderStore.getState();
+
+                            // Start with default structure to ensure all required fields
+                            const defaultDoc = createDefaultResume(id);
+                            const content = backendDoc.content || {};
+
+                            // Merge: default structure + backend content
                             const localDoc = {
+                                ...defaultDoc,
                                 id: id,
                                 title: backendDoc.title || "Imported Resume",
-                                templateId: backendDoc.template_id || "classic",
-                                themeColor: "#2563eb",
-                                createdAt: backendDoc.created_at || new Date().toISOString(),
-                                updatedAt: backendDoc.updated_at || new Date().toISOString(),
-                                ...backendDoc.content,
+                                templateId: backendDoc.template_id || defaultDoc.templateId || "classic",
+                                createdAt: backendDoc.created_at || defaultDoc.createdAt,
+                                updatedAt: backendDoc.updated_at || defaultDoc.updatedAt,
+                                personal: { ...defaultDoc.personal, ...(content.personal || {}) },
+                                education: content.education || defaultDoc.education,
+                                experience: content.experience || defaultDoc.experience,
+                                projects: content.projects || defaultDoc.projects,
+                                skillsContent: content.skillsContent || content.skills || defaultDoc.skillsContent,
+                                sections: defaultDoc.sections, // Always use default sections with icons
+                                styleSettings: { ...defaultDoc.styleSettings, ...(content.styleSettings || {}) },
                             };
                             importDocument(localDoc as any);
                             toast.success("Resume loaded from server");
+                        } else {
+                            createDocument();
                         }
                     } catch (error) {
                         console.error("Failed to load document from API:", error);
                         toast.error("Failed to load resume");
-                        // Fall back to creating a new document
                         createDocument();
                     }
                 } else {
