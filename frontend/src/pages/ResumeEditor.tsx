@@ -51,6 +51,7 @@ const ResumeEditor = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [editTitle, setEditTitle] = useState("");
     const [isSaving, setIsSaving] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [zoom, setZoom] = useState(100);
     const previewScrollRef = useRef<HTMLDivElement>(null);
 
@@ -70,6 +71,7 @@ const ResumeEditor = () => {
                 if (documents[id]) {
                     // Local document found
                     setActiveDocument(id);
+                    setIsLoading(false);
                 } else if (/^\d+$/.test(id)) {
                     // ID is numeric - fetch from backend API
                     try {
@@ -102,26 +104,32 @@ const ResumeEditor = () => {
                                 styleSettings: { ...defaultDoc.styleSettings, ...(content.styleSettings || {}) },
                             };
                             importDocument(localDoc as any);
+                            setIsLoading(false);
                             toast.success("Resume loaded from server");
                         } else {
                             createDocument();
+                            setIsLoading(false);
                         }
                     } catch (error) {
                         console.error("Failed to load document from API:", error);
                         toast.error("Failed to load resume");
                         createDocument();
+                        setIsLoading(false);
                     }
                 } else {
                     // Unknown ID format, create new
                     createDocument();
+                    setIsLoading(false);
                 }
             } else if (Object.keys(documents).length === 0) {
                 // No ID and no documents - create new
                 createDocument();
+                setIsLoading(false);
             } else if (Object.keys(documents).length > 0) {
                 // No ID but have documents - select first
                 const firstId = Object.keys(documents)[0];
                 setActiveDocument(firstId);
+                setIsLoading(false);
             }
         };
 
@@ -164,7 +172,7 @@ const ResumeEditor = () => {
     const handleZoomOut = () => setZoom((z) => Math.max(z - 10, 50));
     const handleResetZoom = () => setZoom(100);
 
-    if (!activeDocument) {
+    if (isLoading || !activeDocument) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
