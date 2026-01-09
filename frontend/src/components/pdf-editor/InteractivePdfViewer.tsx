@@ -23,8 +23,8 @@ export function InteractivePdfViewer({ pdfUrl, scale = 1.0 }: InteractivePdfView
 
     // Store matching logic
     const { activeDocument, documents, updateDocument } = useResumeBuilderStore();
-    // Ensure activeDocument is a string ID before accessing documents
-    const doc = activeDocument && typeof activeDocument === 'string' ? documents[activeDocument] : null;
+    // activeDocument is the full document object directly
+    const doc = activeDocument;
 
     // Memoized matching of Store Data -> PDF Text Items
     const [overlays, setOverlays] = useState<any[]>([]);
