@@ -209,11 +209,19 @@ async def get_resume_pdf(
         )
     
     try:
-        # Get storage service and download file
-        storage = get_storage_service()
+        # Read file directly from file_path (full path stored in database)
+        import os
         
-        # The stored_filename is the key/path in storage
-        file_bytes = storage.get_file(resume.stored_filename)
+        file_path = resume.file_path
+        if not os.path.exists(file_path):
+            logger.error(f"Resume file not found at: {file_path}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Resume file not found on server"
+            )
+        
+        with open(file_path, 'rb') as f:
+            file_bytes = f.read()
         
         # Determine content type
         content_type = "application/pdf"
@@ -232,6 +240,8 @@ async def get_resume_pdf(
             }
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to retrieve PDF for resume {resume_id}: {str(e)}")
         raise HTTPException(
