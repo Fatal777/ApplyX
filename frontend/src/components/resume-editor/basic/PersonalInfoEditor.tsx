@@ -247,7 +247,7 @@ const PersonalInfoEditor = () => {
 
                 {/* Links List */}
                 <AnimatePresence mode="popLayout">
-                    {customFields.map((field, index) => {
+                    {customFields.filter((f) => f && f.icon).map((field, index) => {
                         const IconComponent = getIconComponent(field.icon);
                         const preset = SOCIAL_LINK_PRESETS.find(p => p.type === field.icon);
 
