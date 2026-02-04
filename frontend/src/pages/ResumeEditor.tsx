@@ -88,8 +88,8 @@ const ResumeEditor = () => {
                             const content = (backendDoc.content || {}) as Record<string, any>;
 
                             // Helper to safely filter arrays (remove null/undefined items)
-                            const safeArray = (arr: any) =>
-                                Array.isArray(arr) ? arr.filter((item: any) => item != null) : [];
+                            const safeArray = <T,>(arr: T[] | null | undefined): T[] =>
+                                Array.isArray(arr) ? arr.filter((item): item is NonNullable<T> => item != null) : [];
 
                             // Merge: default structure + backend content
                             const localDoc = {
@@ -102,13 +102,15 @@ const ResumeEditor = () => {
                                 personal: {
                                     ...defaultDoc.personal,
                                     ...((content.personal || {}) as Record<string, any>),
-                                    customFields: safeArray(content.personal?.customFields) || defaultDoc.personal.customFields,
+                                    customFields: safeArray(content.personal?.customFields).length > 0
+                                        ? safeArray(content.personal?.customFields)
+                                        : defaultDoc.personal.customFields,
                                 },
                                 education: safeArray(content.education).length > 0 ? safeArray(content.education) : defaultDoc.education,
                                 experience: safeArray(content.experience).length > 0 ? safeArray(content.experience) : defaultDoc.experience,
                                 projects: safeArray(content.projects).length > 0 ? safeArray(content.projects) : defaultDoc.projects,
                                 skillsContent: content.skillsContent || content.skills || defaultDoc.skillsContent,
-                                sections: defaultDoc.sections,
+                                sections: safeArray(content.sections).length > 0 ? safeArray(content.sections) : defaultDoc.sections,
                                 customSections: content.customSections || defaultDoc.customSections || {},
                                 styleSettings: { ...defaultDoc.styleSettings, ...((content.styleSettings || {}) as Record<string, any>) },
                             };

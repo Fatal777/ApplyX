@@ -97,7 +97,7 @@ const ClassicTemplate = ({ data }: TemplateProps) => {
                         </>
                     )}
                     {/* Social Links inline */}
-                    {customFields.filter(f => f.visible !== false && f.value).map((field) => (
+                    {customFields.filter(f => f && f.visible !== false && f.value).map((field) => (
                         <span key={field.id} className="flex items-center">
                             <span className="mx-1">|</span>
                             <a
@@ -119,7 +119,7 @@ const ClassicTemplate = ({ data }: TemplateProps) => {
                 <div style={{ marginBottom: `${sectionSpacing}px` }}>
                     <SectionTitle title="Experience" themeColor={themeColor} />
                     <div className="space-y-4">
-                        {experience.filter(e => e.visible !== false).map((exp) => (
+                        {experience.filter(e => e && e.visible !== false).map((exp) => (
                             <div key={exp.id}>
                                 <div className="flex justify-between items-start">
                                     <div>
@@ -145,7 +145,7 @@ const ClassicTemplate = ({ data }: TemplateProps) => {
                 <div style={{ marginBottom: `${sectionSpacing}px` }}>
                     <SectionTitle title="Education" themeColor={themeColor} />
                     <div className="space-y-3">
-                        {education.filter(e => e.visible !== false).map((edu) => (
+                        {education.filter(e => e && e.visible !== false).map((edu) => (
                             <div key={edu.id} className="flex justify-between items-start">
                                 <div>
                                     <h3 className="font-semibold">{edu.school}</h3>
@@ -172,7 +172,7 @@ const ClassicTemplate = ({ data }: TemplateProps) => {
                 <div style={{ marginBottom: `${sectionSpacing}px` }}>
                     <SectionTitle title="Projects" themeColor={themeColor} />
                     <div className="space-y-4">
-                        {projects.filter(p => p.visible !== false).map((project) => (
+                        {projects.filter(p => p && p.visible !== false).map((project) => (
                             <div key={project.id}>
                                 <div className="flex justify-between items-start">
                                     <div>

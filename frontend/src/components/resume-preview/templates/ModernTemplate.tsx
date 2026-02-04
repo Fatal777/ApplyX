@@ -95,7 +95,7 @@ const ModernTemplate = ({ data }: TemplateProps) => {
                             Experience
                         </h2>
                         <div className="space-y-4">
-                            {experience.filter(e => e.visible !== false).map((exp) => (
+                            {experience.filter(e => e && e.visible !== false).map((exp) => (
                                 <div key={exp.id}>
                                     <div className="flex justify-between">
                                         <h3 className="font-semibold">{exp.position}</h3>
@@ -125,7 +125,7 @@ const ModernTemplate = ({ data }: TemplateProps) => {
                             Education
                         </h2>
                         <div className="space-y-3">
-                            {education.filter(e => e.visible !== false).map((edu) => (
+                            {education.filter(e => e && e.visible !== false).map((edu) => (
                                 <div key={edu.id}>
                                     <div className="flex justify-between">
                                         <h3 className="font-semibold">{edu.school}</h3>
@@ -154,7 +154,7 @@ const ModernTemplate = ({ data }: TemplateProps) => {
                             Projects
                         </h2>
                         <div className="space-y-3">
-                            {projects.filter(p => p.visible !== false).map((project) => (
+                            {projects.filter(p => p && p.visible !== false).map((project) => (
                                 <div key={project.id}>
                                     <div className="flex justify-between">
                                         <h3 className="font-semibold">{project.name}</h3>
