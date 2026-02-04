@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRealtimeTranscription } from '@/hooks/useRealtimeTranscription';
+import useLiveKitInterview from '@/hooks/useLiveKitInterview';
 
 import WebcamDisplay from './WebcamDisplay';
 import VoiceAgent from './VoiceAgent';
@@ -66,7 +66,8 @@ export function InterviewRoom() {
 
   // Interview state
   const [phase, setPhase] = useState<InterviewPhase>('setup');
-  const [sessionId, setSessionId] = useState<number | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [interviewSession, setInterviewSession] = useState<any | null>(null); // LiveKit session data
   const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [feedback, setFeedback] = useState<InterviewFeedback | null>(null);
@@ -83,20 +84,32 @@ export function InterviewRoom() {
   const [liveTranscript, setLiveTranscript] = useState('');  // Real-time transcription
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
-  // Real-time transcription hook
+  // LiveKit interview hook - connects audio properly to the room
   const {
-    isRecording: isLiveTranscribing,
-    interimText,
-    finalText,
-    startRecording: startLiveTranscription,
-    stopRecording: stopLiveTranscription,
-    clearTranscript: clearLiveTranscript,
-  } = useRealtimeTranscription({
-    onTranscript: (result) => {
-      // Update live transcript display
-      if (result.isFinal) {
-        setLiveTranscript(prev => prev + (prev ? ' ' : '') + result.text);
+    isConnected: isLiveKitConnected,
+    isConnecting: isLiveKitConnecting,
+    isMicEnabled,
+    aiIsSpeaking,
+    connect: connectLiveKit,
+    disconnect: disconnectLiveKit,
+    toggleMic,
+    error: livekitError,
+  } = useLiveKitInterview({
+    roomName: interviewSession?.room_name || `interview-${Date.now()}`,
+    participantName: 'candidate',
+    onTranscript: (text, isFinal) => {
+      // User's speech transcribed by Deepgram STT
+      if (isFinal) {
+        setLiveTranscript(prev => prev + (prev ? '\n\nYou: ' : 'You: ') + text);
       }
+    },
+    onAIResponse: (text) => {
+      // Agent's text response (for transcript display)
+      setLiveTranscript(prev => prev + (prev ? '\n\nAI: ' : 'AI: ') + text);
+    },
+    onError: (err) => {
+      console.error('LiveKit error:', err);
+      setError(err.message);
     },
   });
 
@@ -193,7 +206,7 @@ export function InterviewRoom() {
       setPhase('setup');
       setError(null);
 
-      // Request mic permission upfront so user can respond
+      // Request mic permission upfront
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         stream.getTracks().forEach(track => track.stop()); // Stop immediately, just requesting permission
@@ -206,6 +219,7 @@ export function InterviewRoom() {
         });
       }
 
+      // Create interview session
       const response = await interviewService.startInterview({
         interview_type: config.interviewType,
         difficulty: config.difficulty,
@@ -216,20 +230,20 @@ export function InterviewRoom() {
         job_description: config.jobDescription,
       });
 
-      setSessionId(response.session_id);
+      setSessionId(response.session_id?.toString() || null);
+      setInterviewSession(response);
       setQuestions(response.questions);
+
+      // Connect to LiveKit room - this connects user audio to the agent
+      await connectLiveKit();
+
       setPhase('in-progress');
 
       toast({
         title: "Interview started",
-        description: `${response.questions.length} questions prepared. Good luck!`,
+        description: "The AI interviewer will begin shortly. Speak naturally!",
       });
 
-      // Play greeting audio if available
-      if (response.greeting_audio) {
-        setCurrentAudio(response.greeting_audio);
-        setIsSpeaking(true);
-      }
     } catch (err: any) {
       console.error('Failed to start interview:', err);
 
@@ -337,7 +351,7 @@ export function InterviewRoom() {
       // Transcribe audio
       const transcribeStartTime = Date.now();
       const transcribeResponse = await interviewService.transcribeAudio({
-        session_id: sessionId,
+        session_id: sessionId ? parseInt(sessionId) : 0,
         audio_data: base64Audio,
         audio_format: 'webm',
         question_number: currentQuestionIndex + 1,
@@ -356,7 +370,7 @@ export function InterviewRoom() {
       // Get AI response
       const aiStartTime = Date.now();
       const respondResponse = await interviewService.getInterviewerResponse({
-        session_id: sessionId,
+        session_id: sessionId ? parseInt(sessionId) : 0,
         question_number: currentQuestionIndex + 1,
         transcript: transcribeResponse.transcript,
       });
@@ -397,10 +411,10 @@ export function InterviewRoom() {
     setPhase('analyzing');
 
     try {
-      const analyzeResponse = await interviewService.analyzeInterview(sessionId);
+      const analyzeResponse = await interviewService.analyzeInterview(sessionId ? parseInt(sessionId) : 0);
 
       if (analyzeResponse.success) {
-        const feedbackData = await interviewService.getFeedback(sessionId);
+        const feedbackData = await interviewService.getFeedback(sessionId ? parseInt(sessionId) : 0);
         setFeedback(feedbackData);
         setPhase('feedback');
         toast({
@@ -426,7 +440,7 @@ export function InterviewRoom() {
 
     if (sessionId && phase === 'in-progress') {
       try {
-        await interviewService.cancelInterview(sessionId);
+        await interviewService.cancelInterview(sessionId ? parseInt(sessionId) : 0);
         toast({
           title: "Interview cancelled",
           description: "Your progress has been saved",

@@ -36,7 +36,7 @@ def get_interview_prompt(job_role: str = "Software Engineer", difficulty: str = 
 
 Your personality:
 - Professional but friendly
-- Encouraging but honest
+- Encouraging but honest  
 - Clear and articulate
 - Patient with candidates
 
@@ -49,7 +49,10 @@ Interview guidelines:
 - Keep responses concise (under 30 seconds when spoken)
 - After 5-7 questions, conclude the interview professionally
 
-Start by introducing yourself briefly and asking the first question.
+IMPORTANT: Begin by greeting the candidate ONCE with:
+"Hello! I'm your AI interviewer today. We'll be conducting a mock interview for a {job_role} position. Please take a moment to get comfortable. Are you ready to start?"
+
+Then wait for their response and proceed with the first interview question.
 Do NOT use markdown formatting or special characters in your responses.
 Speak naturally as if you're having a real conversation."""
 
@@ -75,13 +78,16 @@ async def create_interview_agent(
             model="nova-2",
             language="en",
         ),
+        # Use DigitalOcean GenAI with Llama 3.3-70B Instruct
         llm=openai.LLM(
-            api_key=settings.OPENAI_API_KEY,
-            model="gpt-4o-mini",  # Fast and cost-effective
+            api_key=settings.DO_GENAI_API_KEY or settings.OPENAI_API_KEY,
+            model="llama3.3-70b-instruct",
+            base_url="https://inference.do-ai.run/v1" if settings.DO_GENAI_API_KEY else None,
         ),
-        tts=openai.TTS(
-            api_key=settings.OPENAI_API_KEY,
-            voice="alloy",  # Professional voice
+        # Use Deepgram TTS
+        tts=deepgram.TTS(
+            api_key=settings.DEEPGRAM_API_KEY,
+            model="aura-asteria-en",  # Professional female voice
         ),
         chat_ctx=initial_ctx,
         allow_interruptions=True,
@@ -112,15 +118,8 @@ async def entrypoint(ctx: JobContext):
     # Create and start the interview agent
     assistant = await create_interview_agent(ctx, job_role, difficulty)
     
-    # Start the assistant
+    # Start the assistant - it will introduce itself automatically via the system prompt
     assistant.start(ctx.room, participant)
-    
-    # Initial greeting - start the interview
-    await assistant.say(
-        f"Hello! I'm your AI interviewer today. We'll be conducting a mock interview for a {job_role} position. "
-        "Please take a moment to get comfortable, and then we'll begin. "
-        "Are you ready to start?"
-    )
     
     # Keep the agent running
     await asyncio.sleep(3600)  # 1 hour max session

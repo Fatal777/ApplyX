@@ -142,6 +142,27 @@ services:
     networks:
       - applyx-network
 
+  # LiveKit Interview Agent
+  interview-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: applyx-interview-agent
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-applyx}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-applyx}
+      REDIS_URL: redis://redis:6379/0
+    command: python -m app.agents.interview_agent
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - applyx-network
+
   # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine

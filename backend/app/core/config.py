@@ -154,6 +154,9 @@ class Settings(BaseSettings):
     JOB_CACHE_TTL_HOURS: int = 4  # How long to cache job listings
     JOB_RECOMMENDATIONS_TTL_HOURS: int = 24  # How long to cache recommendations
     
+    # DigitalOcean GenAI (Inference API)
+    DO_GENAI_API_KEY: Optional[str] = None  # For Llama 3.3-70B Instruct
+    
     # DigitalOcean Serverless Functions
     DO_RESUME_SUGGESTIONS_URL: Optional[str] = None
     DO_INTERVIEW_AGENT_URL: Optional[str] = None
