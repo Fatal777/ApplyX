@@ -652,7 +652,7 @@ export function InterviewRoom() {
                   <TranscriptionDisplay
                     aiText={questions[currentQuestionIndex]?.question}
                     userText={isListening
-                      ? (liveTranscript + (interimText ? ' ' + interimText : '')).trim() || 'Listening...'
+                      ? liveTranscript.trim() || 'Listening...'
                       : transcript
                     }
                     isAiSpeaking={isSpeaking}
