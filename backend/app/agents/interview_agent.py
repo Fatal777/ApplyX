@@ -15,7 +15,7 @@ from livekit.agents import (
     cli,
     llm,
 )
-from livekit.agents.voice_assistant import VoiceAssistant
+from livekit.agents.pipeline import VoicePipelineAgent
 from livekit.plugins import deepgram, openai, silero
 
 from app.core.config import settings
@@ -61,8 +61,8 @@ async def create_interview_agent(
     ctx: JobContext,
     job_role: str = "Software Engineer",
     difficulty: str = "intermediate",
-) -> VoiceAssistant:
-    """Create a VoiceAssistant configured for interview"""
+) -> VoicePipelineAgent:
+    """Create a VoicePipelineAgent configured for interview"""
     
     # Initialize AI components
     initial_ctx = llm.ChatContext().append(
@@ -71,7 +71,7 @@ async def create_interview_agent(
     )
     
     # Create the voice assistant
-    assistant = VoiceAssistant(
+    assistant = VoicePipelineAgent(
         vad=silero.VAD.load(),
         stt=deepgram.STT(
             api_key=settings.DEEPGRAM_API_KEY,
