@@ -154,7 +154,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${DB_USER:-applyx}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-applyx}
       REDIS_URL: redis://redis:6379/0
-    command: python -m app.agents.interview_agent
+    command: python -m app.agents.interview_agent start
     depends_on:
       - postgres
       - redis
