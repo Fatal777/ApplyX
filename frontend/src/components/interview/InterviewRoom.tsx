@@ -272,9 +272,7 @@ export function InterviewRoom() {
 
   const startRecording = useCallback(async () => {
     try {
-      // Start live transcription first
-      await startLiveTranscription();
-      clearLiveTranscript();
+      // LiveKit handles audio automatically via useLiveKitInterview hook
       setLiveTranscript('');
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -295,8 +293,8 @@ export function InterviewRoom() {
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
 
-        // Use live transcript instead of processing audio for STT
-        const finalTranscript = liveTranscript + (interimText ? ' ' + interimText : '');
+        // Use live transcript from LiveKit
+        const finalTranscript = liveTranscript;
         setTranscript(finalTranscript.trim());
 
         await processRecording(audioBlob);
@@ -319,17 +317,16 @@ export function InterviewRoom() {
         variant: "destructive",
       });
     }
-  }, [startLiveTranscription, clearLiveTranscript, liveTranscript, interimText]);
+  }, [liveTranscript]);
 
   const stopRecording = useCallback(() => {
-    // Stop live transcription
-    stopLiveTranscription();
+    // LiveKit handles audio automatically();
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
       setIsListening(false);
     }
-  }, [stopLiveTranscription]);
+  }, []);
 
   const processRecording = async (audioBlob: Blob) => {
     if (!sessionId) return;
