@@ -156,7 +156,7 @@ async def search_jobs(
     location: str = Query("India", description="Location to search in"),
     portal: Optional[str] = Query(None, description="Specific portal: adzuna, jsearch, remotive, greenhouse, lever, workday, smartrecruiters, ashby"),
     experience_level: Optional[str] = Query(None, description="Filter by level: fresher, mid, senior"),
-    limit: int = Query(20, ge=1, le=50, description="Max results to return"),
+    limit: int = Query(20, ge=1, le=100, description="Max results to return"),
 ):
     # Public endpoint - no authentication required
     """Search for jobs directly without resume matching.
