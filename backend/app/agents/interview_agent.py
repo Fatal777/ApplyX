@@ -71,8 +71,9 @@ async def create_interview_agent(
         content=get_interview_prompt(job_role, difficulty)
     )
     
-    # Create the voice assistant
+    # Create the voice assistant with v1.2.18 API
     assistant = VoiceAgent(
+        instructions=get_interview_prompt(job_role, difficulty),
         vad=silero.VAD.load(),
         stt=deepgram.STT(
             api_key=settings.DEEPGRAM_API_KEY,
@@ -92,9 +93,6 @@ async def create_interview_agent(
         ),
         chat_ctx=initial_ctx,
         allow_interruptions=True,
-        interrupt_speech_duration=0.5,
-        interrupt_min_words=2,
-        preemptive_synthesis=True,
     )
     
     return assistant
