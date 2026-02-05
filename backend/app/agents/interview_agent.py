@@ -64,10 +64,11 @@ async def create_interview_agent(
 ) -> VoiceAgent:
     """Create a VoiceAgent configured for interview"""
     
-    # Initialize AI components - using add_message for v1.2.18 API
+    # Initialize AI components - using add_message with keyword args for v1.2.18 API
     initial_ctx = llm.ChatContext()
     initial_ctx.add_message(
-        llm.ChatMessage(role="system", content=[get_interview_prompt(job_role, difficulty)])
+        role="system",
+        content=get_interview_prompt(job_role, difficulty)
     )
     
     # Create the voice assistant
