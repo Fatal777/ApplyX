@@ -15,7 +15,7 @@ from livekit.agents import (
     cli,
     llm,
 )
-from livekit.agents.voice import Agent as VoiceAgent
+from livekit.agents.voice import Agent as VoiceAgent, AgentSession
 from livekit.plugins import deepgram, openai, silero
 
 from app.core.config import settings
@@ -57,22 +57,14 @@ Do NOT use markdown formatting or special characters in your responses.
 Speak naturally as if you're having a real conversation."""
 
 
-async def create_interview_agent(
-    ctx: JobContext,
+def create_interview_agent(
     job_role: str = "Software Engineer",
     difficulty: str = "intermediate",
 ) -> VoiceAgent:
     """Create a VoiceAgent configured for interview"""
     
-    # Initialize AI components - using add_message with keyword args for v1.2.18 API
-    initial_ctx = llm.ChatContext()
-    initial_ctx.add_message(
-        role="system",
-        content=get_interview_prompt(job_role, difficulty)
-    )
-    
-    # Create the voice assistant with v1.2.18 API
-    assistant = VoiceAgent(
+    # Create the voice agent with v1.2.18 API
+    agent = VoiceAgent(
         instructions=get_interview_prompt(job_role, difficulty),
         vad=silero.VAD.load(),
         stt=deepgram.STT(
@@ -91,11 +83,10 @@ async def create_interview_agent(
             api_key=settings.DEEPGRAM_API_KEY,
             model="aura-asteria-en",  # Professional female voice
         ),
-        chat_ctx=initial_ctx,
         allow_interruptions=True,
     )
     
-    return assistant
+    return agent
 
 
 async def entrypoint(ctx: JobContext):
@@ -114,11 +105,12 @@ async def entrypoint(ctx: JobContext):
     participant = await ctx.wait_for_participant()
     logger.info(f"Candidate joined: {participant.identity}")
     
-    # Create and start the interview agent
-    assistant = await create_interview_agent(ctx, job_role, difficulty)
+    # Create the interview agent
+    agent = create_interview_agent(job_role, difficulty)
     
-    # Start the assistant - it will introduce itself automatically via the system prompt
-    assistant.start(ctx.room, participant)
+    # Create session and start the agent with the room (v1.2.18 API)
+    session = AgentSession()
+    await session.start(agent, room=ctx.room)
     
     # Keep the agent running
     await asyncio.sleep(3600)  # 1 hour max session
