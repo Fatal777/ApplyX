@@ -93,19 +93,15 @@ prometheus-client>=0.19.0
 # CORS
 fastapi-cors==0.0.6
 
-# Testing
-pytest==7.4.3
-pytest-asyncio==0.21.1
-pytest-cov==4.1.0
-httpx==0.25.2
+# Testing (install separately, not in production image)
+# pytest>=8.0.0
+# pytest-asyncio>=0.23.0
+# pytest-cov>=4.1.0
 
-# Code Quality
-black==23.12.1
-flake8==6.1.0
-mypy==1.7.1
-
-# Documentation
-pydantic[email]==2.5.2
+# Code Quality (install separately)
+# black==23.12.1
+# flake8==6.1.0
+# mypy==1.7.1
 
 # Job Matching & Scraping (added for job recommendation feature)
 beautifulsoup4==4.12.2
@@ -117,6 +113,5 @@ lxml==4.9.3
 # NOTE: livekit-agents + plugins are installed ONLY in Dockerfile.livekit-agent
 livekit>=0.18.0
 
-# DigitalOcean Gradient ADK (evaluation service)
-gradient-adk>=0.1.0
-httpx>=0.25.2
+# NOTE: gradient-adk is NOT needed here — gradient_service.py only uses httpx
+# The ADK CLI is only needed if deploying Gradient agents (not in this container)
