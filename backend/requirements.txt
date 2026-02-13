@@ -112,7 +112,7 @@ lxml==4.9.3
 
 # LiveKit Server SDK (used by API routes for token generation & room management)
 # NOTE: livekit-agents + plugins are installed ONLY in Dockerfile.livekit-agent
-livekit>=0.18.0
+livekit-api>=1.0.0
 
 # NOTE: gradient-adk is NOT needed here — gradient_service.py only uses httpx
 # The ADK CLI is only needed if deploying Gradient agents (not in this container)

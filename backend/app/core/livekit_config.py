@@ -3,9 +3,27 @@ LiveKit Configuration
 Handles LiveKit Cloud connection and token generation for real-time interview sessions
 """
 
-from livekit import api
+from __future__ import annotations
+
+import logging
 from datetime import timedelta
+
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+try:
+    from livekit.api import AccessToken, VideoGrants  # livekit-api>=1.0
+    _HAS_LIVEKIT = True
+except ImportError:
+    try:
+        from livekit import api as _lk_api  # fallback: livekit>=0.18
+        AccessToken = _lk_api.AccessToken
+        VideoGrants = _lk_api.VideoGrants
+        _HAS_LIVEKIT = True
+    except (ImportError, AttributeError):
+        _HAS_LIVEKIT = False
+        logger.warning("livekit-api is not installed — LiveKit features disabled")
 
 # LiveKit Cloud configuration from settings
 LIVEKIT_URL = settings.LIVEKIT_URL or ""
@@ -15,7 +33,7 @@ LIVEKIT_API_SECRET = settings.LIVEKIT_API_SECRET or ""
 
 def is_livekit_configured() -> bool:
     """Check if LiveKit is properly configured"""
-    return bool(LIVEKIT_URL and LIVEKIT_API_KEY and LIVEKIT_API_SECRET)
+    return bool(_HAS_LIVEKIT and LIVEKIT_URL and LIVEKIT_API_KEY and LIVEKIT_API_SECRET)
 
 
 def generate_room_token(
@@ -39,13 +57,13 @@ def generate_room_token(
     if not is_livekit_configured():
         raise ValueError("LiveKit is not configured. Please set LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET")
     
-    token = api.AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+    token = AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
     token.with_identity(participant_identity)
     token.with_name(participant_name or participant_identity)
     token.with_ttl(timedelta(hours=ttl_hours))
     
     # Grant permissions for the room
-    token.with_grants(api.VideoGrants(
+    token.with_grants(VideoGrants(
         room_join=True,
         room=room_name,
         can_publish=True,
@@ -73,12 +91,12 @@ def generate_agent_token(
     if not is_livekit_configured():
         raise ValueError("LiveKit is not configured")
     
-    token = api.AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+    token = AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
     token.with_identity(agent_identity)
     token.with_name("AI Interviewer")
     token.with_ttl(timedelta(hours=4))
     
-    token.with_grants(api.VideoGrants(
+    token.with_grants(VideoGrants(
         room_join=True,
         room=room_name,
         can_publish=True,

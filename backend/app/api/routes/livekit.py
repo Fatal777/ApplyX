@@ -139,11 +139,16 @@ async def start_interview(
 
     try:
         # Create the room via LiveKit Server SDK and set metadata
-        from livekit import api as lk_api
+        try:
+            from livekit.api import LiveKitAPI, CreateRoomRequest
+        except ImportError:
+            from livekit import api as _lk
+            LiveKitAPI = _lk.LiveKitAPI
+            CreateRoomRequest = _lk.CreateRoomRequest
 
-        lk = lk_api.LiveKitAPI(LIVEKIT_URL)
+        lk = LiveKitAPI(LIVEKIT_URL)
         await lk.room.create_room(
-            lk_api.CreateRoomRequest(
+            CreateRoomRequest(
                 name=room_name,
                 metadata=json.dumps(room_metadata),
                 empty_timeout=300,  # close room 5 min after last participant leaves
