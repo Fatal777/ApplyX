@@ -1,138 +1,287 @@
 """
-LiveKit Interview Agent
-Real-time AI interviewer using LiveKit Agents with Deepgram STT and TTS
+LiveKit Interview Agent — v1.3 Agent-class API
+Real-time AI mock-interviewer using:
+  - STT:  Deepgram Nova-3
+  - LLM:  DO Gradient Serverless Inference (Llama 3.3-70B) via OpenAI-compat
+  - TTS:  Deepgram Aura (aura-asteria-en)
+  - VAD:  Silero
+  - Turn: LiveKit multilingual turn-detector
+  - NC:   LiveKit noise-cancellation (BVC)
 """
 
+from __future__ import annotations
+
 import asyncio
+import json
 import logging
-from typing import Optional
+import os
+import time
+from typing import Any, Optional
 
-from livekit import rtc
+from dotenv import load_dotenv
+
+from livekit import agents, rtc
 from livekit.agents import (
-    AutoSubscribe,
-    JobContext,
-    WorkerOptions,
-    cli,
-    llm,
+    Agent,
+    AgentServer,
+    AgentSession,
+    RunContext,
+    function_tool,
+    room_io,
 )
-from livekit.agents.voice import Agent as VoiceAgent, AgentSession
-from livekit.plugins import deepgram, openai, silero
+from livekit.plugins import deepgram, noise_cancellation, openai, silero
+from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
-from app.core.config import settings
+from app.agents.interview_prompts import build_interviewer_instructions
+
+load_dotenv(".env.local")
+load_dotenv(".env")
 
 logger = logging.getLogger("interview-agent")
 
+# ── Environment helpers ─────────────────────────────────────────────────────
 
-def get_interview_prompt(job_role: str = "Software Engineer", difficulty: str = "intermediate") -> str:
-    """Generate the AI interviewer system prompt based on role and difficulty"""
-    
-    difficulty_context = {
-        "beginner": "Ask simpler questions suitable for entry-level candidates. Be encouraging and supportive.",
-        "intermediate": "Ask standard interview questions appropriate for mid-level candidates.",
-        "advanced": "Ask challenging questions suitable for senior candidates. Probe deeper on technical details.",
-    }
-    
-    return f"""You are an experienced technical interviewer conducting a mock interview for a {job_role} position.
-
-Your personality:
-- Professional but friendly
-- Encouraging but honest  
-- Clear and articulate
-- Patient with candidates
-
-Interview guidelines:
-- {difficulty_context.get(difficulty, difficulty_context["intermediate"])}
-- Ask one question at a time
-- Listen carefully to responses
-- Provide brief acknowledgment before moving to next question
-- Ask follow-up questions when appropriate
-- Keep responses concise (under 30 seconds when spoken)
-- After 5-7 questions, conclude the interview professionally
-
-IMPORTANT: Begin by greeting the candidate ONCE with:
-"Hello! I'm your AI interviewer today. We'll be conducting a mock interview for a {job_role} position. Please take a moment to get comfortable. Are you ready to start?"
-
-Then wait for their response and proceed with the first interview question.
-Do NOT use markdown formatting or special characters in your responses.
-Speak naturally as if you're having a real conversation."""
+_LIVEKIT_URL = os.getenv("LIVEKIT_URL", "")
+_LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY", "")
+_LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "")
+_DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "")
+_GRADIENT_KEY = os.getenv("GRADIENT_MODEL_ACCESS_KEY", "") or os.getenv("DO_GENAI_API_KEY", "")
+_OPENAI_KEY = os.getenv("OPENAI_API_KEY", "")
+_GRADIENT_EVAL_URL = os.getenv("GRADIENT_EVAL_AGENT_URL", "")  # deployed Gradient agent endpoint
 
 
-def create_interview_agent(
-    job_role: str = "Software Engineer",
-    difficulty: str = "intermediate",
-) -> VoiceAgent:
-    """Create a VoiceAgent configured for interview"""
-    
-    # Create the voice agent with v1.2.18 API
-    agent = VoiceAgent(
-        instructions=get_interview_prompt(job_role, difficulty),
-        vad=silero.VAD.load(),
-        stt=deepgram.STT(
-            api_key=settings.DEEPGRAM_API_KEY,
-            model="nova-2",
-            language="en",
-        ),
-        # Use DigitalOcean GenAI with Llama 3.3-70B Instruct
-        llm=openai.LLM(
-            api_key=settings.DO_GENAI_API_KEY or settings.OPENAI_API_KEY,
-            model="llama3.3-70b-instruct",
-            base_url="https://inference.do-ai.run/v1" if settings.DO_GENAI_API_KEY else None,
-        ),
-        # Use Deepgram TTS
-        tts=deepgram.TTS(
-            api_key=settings.DEEPGRAM_API_KEY,
-            model="aura-asteria-en",  # Professional female voice
-        ),
-        allow_interruptions=True,
-    )
-    
-    return agent
+def _llm_base_url() -> str | None:
+    """Return the base URL for the LLM provider."""
+    if _GRADIENT_KEY:
+        return "https://inference.do-ai.run/v1"
+    return None  # use default OpenAI
 
 
-async def entrypoint(ctx: JobContext):
-    """Main entrypoint for the interview agent"""
-    
-    logger.info(f"Interview agent starting for room: {ctx.room.name}")
-    
-    # Parse room metadata for interview config
-    job_role = ctx.room.metadata.get("job_role", "Software Engineer") if ctx.room.metadata else "Software Engineer"
-    difficulty = ctx.room.metadata.get("difficulty", "intermediate") if ctx.room.metadata else "intermediate"
-    
-    # Wait for participant to connect
-    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
-    
-    # Wait for the candidate to join
-    participant = await ctx.wait_for_participant()
-    logger.info(f"Candidate joined: {participant.identity}")
-    
-    # Create the interview agent
-    agent = create_interview_agent(job_role, difficulty)
-    
-    # Create session and start the agent with the room (v1.2.18 API)
-    session = AgentSession()
-    await session.start(agent, room=ctx.room)
-    
-    # Keep the agent running
-    await asyncio.sleep(3600)  # 1 hour max session
+def _llm_api_key() -> str:
+    return _GRADIENT_KEY or _OPENAI_KEY or ""
 
 
-def run_agent():
-    """Run the interview agent worker"""
-    
-    if not settings.LIVEKIT_URL or not settings.LIVEKIT_API_KEY:
-        logger.error("LiveKit is not configured. Please set LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET")
-        return
-    
-    cli.run_app(
-        WorkerOptions(
-            entrypoint_fnc=entrypoint,
-            api_key=settings.LIVEKIT_API_KEY,
-            api_secret=settings.LIVEKIT_API_SECRET,
-            ws_url=settings.LIVEKIT_URL,
+def _llm_model() -> str:
+    if _GRADIENT_KEY:
+        return "llama3.3-70b-instruct"
+    return "gpt-4.1-mini"
+
+
+# ── InterviewerAgent ────────────────────────────────────────────────────────
+
+
+class InterviewerAgent(Agent):
+    """
+    A voice AI interviewer that:
+    - Asks questions one at a time
+    - Listens, pauses while candidate speaks, then responds
+    - Tracks question progress via tools
+    - Triggers post-interview evaluation via Gradient ADK
+    """
+
+    def __init__(
+        self,
+        job_role: str = "Software Engineer",
+        difficulty: str = "intermediate",
+        persona: str = "professional",
+        interview_type: str = "mixed",
+        num_questions: int = 6,
+        resume_summary: str | None = None,
+        job_description: str | None = None,
+    ) -> None:
+        self._job_role = job_role
+        self._difficulty = difficulty
+        self._num_questions = num_questions
+        self._question_index = 0
+        self._started_at: float = 0.0
+        self._responses: list[dict[str, Any]] = []
+
+        instructions = build_interviewer_instructions(
+            job_role=job_role,
+            difficulty=difficulty,
+            persona=persona,
+            interview_type=interview_type,
+            num_questions=num_questions,
+            resume_summary=resume_summary,
+            job_description=job_description,
         )
+        super().__init__(instructions=instructions)
+
+    # ── Tools the LLM can call ──────────────────────────────────────────
+
+    @function_tool()
+    async def advance_question(self, context: RunContext) -> str:
+        """Call this after the candidate finishes answering to move to the next question.
+
+        Returns:
+            A status string with the current question number.
+        """
+        self._question_index += 1
+        remaining = self._num_questions - self._question_index
+        logger.info(
+            "Question advanced → %d / %d (remaining: %d)",
+            self._question_index,
+            self._num_questions,
+            remaining,
+        )
+
+        # Notify frontend via data channel
+        room = agents.get_job_context().room
+        await room.local_participant.publish_data(
+            json.dumps({
+                "type": "question_progress",
+                "current": self._question_index,
+                "total": self._num_questions,
+            }).encode(),
+        )
+
+        if remaining <= 0:
+            return (
+                f"Question {self._question_index} of {self._num_questions}. "
+                "All questions complete — please wrap up and call end_interview."
+            )
+        return (
+            f"Question {self._question_index} of {self._num_questions}. "
+            f"{remaining} questions remaining."
+        )
+
+    @function_tool()
+    async def rate_response(
+        self,
+        context: RunContext,
+        score: int,
+        notes: str,
+    ) -> None:
+        """Silently rate the candidate's last response (1-10). Do NOT speak the rating aloud.
+
+        Args:
+            score: Rating from 1 (poor) to 10 (excellent).
+            notes: Brief evaluation notes for the feedback report.
+        """
+        self._responses.append({
+            "question_index": self._question_index,
+            "score": score,
+            "notes": notes,
+            "timestamp": time.time(),
+        })
+        logger.info("Response rated: Q%d → %d/10", self._question_index, score)
+
+    @function_tool()
+    async def end_interview(self, context: RunContext) -> str:
+        """Call this when the interview is complete (after the closing statement).
+
+        Triggers feedback generation and notifies the frontend.
+        """
+        duration = time.time() - self._started_at if self._started_at else 0
+
+        summary = {
+            "type": "interview_complete",
+            "questions_asked": self._question_index,
+            "duration_seconds": round(duration),
+            "response_scores": self._responses,
+        }
+
+        room = agents.get_job_context().room
+        await room.local_participant.publish_data(
+            json.dumps(summary).encode(),
+        )
+
+        logger.info(
+            "Interview ended. Duration: %.0fs, Questions: %d",
+            duration,
+            self._question_index,
+        )
+        return "Interview session ended. Feedback data has been sent to the backend."
+
+    # ── Lifecycle hook ──────────────────────────────────────────────────
+
+    async def on_enter(self) -> None:
+        """Called when the agent joins the session."""
+        self._started_at = time.time()
+        logger.info("InterviewerAgent entered session")
+
+
+# ── Agent Server & Session wiring ───────────────────────────────────────────
+
+server = AgentServer()
+
+
+@server.rtc_session()
+async def interview_session(ctx: agents.JobContext):
+    """
+    Called for every new room dispatched to this agent server.
+    Reads room metadata to configure the interview, then starts a voice session.
+    """
+    logger.info("Agent dispatched → room=%s", ctx.room.name)
+
+    # Parse config from room metadata (set when the room is created via API)
+    meta: dict[str, Any] = {}
+    if ctx.room.metadata:
+        try:
+            meta = json.loads(ctx.room.metadata)
+        except (json.JSONDecodeError, TypeError):
+            meta = {}
+
+    agent = InterviewerAgent(
+        job_role=meta.get("job_role", "Software Engineer"),
+        difficulty=meta.get("difficulty", "intermediate"),
+        persona=meta.get("persona", "professional"),
+        interview_type=meta.get("interview_type", "mixed"),
+        num_questions=meta.get("num_questions", 6),
+        resume_summary=meta.get("resume_summary"),
+        job_description=meta.get("job_description"),
     )
 
+    # Build the voice session with industry-best pipeline
+    session = AgentSession(
+        # STT — Deepgram Nova-3 (multi-language capable)
+        stt=deepgram.STT(
+            api_key=_DEEPGRAM_API_KEY,
+            model="nova-3",
+            language="multi",
+        ),
+        # LLM — DO Gradient (Llama 3.3-70B) via OpenAI-compatible API
+        llm=openai.LLM(
+            api_key=_llm_api_key(),
+            model=_llm_model(),
+            base_url=_llm_base_url(),
+        ),
+        # TTS — Deepgram Aura (professional female voice)
+        tts=deepgram.TTS(
+            api_key=_DEEPGRAM_API_KEY,
+            model="aura-asteria-en",
+        ),
+        # VAD — Silero voice activity detection
+        vad=silero.VAD.load(),
+        # Turn detection — context-aware multilingual model
+        turn_detection=MultilingualModel(),
+        # Interruption & turn settings
+        allow_interruptions=True,
+        min_interruption_duration=0.5,
+        resume_false_interruption=True,
+        min_endpointing_delay=0.5,
+        max_endpointing_delay=3.0,
+    )
+
+    await session.start(
+        room=ctx.room,
+        agent=agent,
+        room_options=room_io.RoomOptions(
+            audio_input=room_io.AudioInputOptions(
+                # Enhanced noise cancellation for the participant's mic
+                noise_cancellation=noise_cancellation.BVC(),
+            ),
+        ),
+    )
+
+    # Kick off the opening greeting
+    await session.generate_reply(
+        instructions="Greet the candidate with your opening line and wait for them to say they are ready."
+    )
+
+
+# ── CLI entry point ─────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    run_agent()
+    agents.cli.run_app(server)

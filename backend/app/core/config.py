@@ -157,6 +157,10 @@ class Settings(BaseSettings):
     # DigitalOcean GenAI (Inference API)
     DO_GENAI_API_KEY: Optional[str] = None  # For Llama 3.3-70B Instruct
     
+    # DigitalOcean Gradient AI Platform
+    GRADIENT_MODEL_ACCESS_KEY: Optional[str] = None  # Model inference key
+    GRADIENT_EVAL_AGENT_URL: Optional[str] = None    # Deployed evaluation agent endpoint
+    
     # DigitalOcean Serverless Functions
     DO_RESUME_SUGGESTIONS_URL: Optional[str] = None
     DO_INTERVIEW_AGENT_URL: Optional[str] = None
@@ -166,7 +170,7 @@ class Settings(BaseSettings):
     
     # Deepgram Speech-to-Text
     DEEPGRAM_API_KEY: Optional[str] = None
-    DEEPGRAM_MODEL: str = "nova-2"  # Default Deepgram model
+    DEEPGRAM_MODEL: str = "nova-3"  # Default Deepgram model (upgraded to Nova-3)
     
     # Zyte Web Scraping
     ZYTE_API_KEY: Optional[str] = None

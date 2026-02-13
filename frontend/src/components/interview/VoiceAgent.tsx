@@ -1,139 +1,82 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { Mic, MicOff, Volume2, Loader2, Send } from 'lucide-react';
+import { Mic, MicOff, Volume2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+type AgentState = 'idle' | 'listening' | 'speaking' | 'thinking';
+
 interface VoiceAgentProps {
-  isListening: boolean;
-  isSpeaking: boolean;
-  isProcessing: boolean;
-  currentQuestion: string;
-  onStartRecording: () => void;
-  onStopRecording: () => void;
-  onAudioEnd?: () => void; // Called when AI audio finishes playing
-  audioToPlay?: string; // Base64 audio data
-  className?: string;
+  /** Current high-level state of the voice agent */
+  agentState: AgentState;
+  /** Whether the local mic is enabled */
+  isMicEnabled: boolean;
+  /** Toggle microphone callback */
+  onToggleMic: () => void;
+  /** Persona used by the interviewer */
   persona?: 'friendly' | 'professional' | 'challenging';
+  className?: string;
 }
 
 /**
- * VoiceAgent Component
- * Handles voice interaction with the AI interviewer
- * - Shows AI speaking animation
- * - Shows listening state
- * - Handles audio playback
+ * VoiceAgent Component (v1.3)
+ *
+ * Pure state-driven visualization — no audio playback logic.
+ * LiveKit handles all audio routing; we just render the avatar and controls.
  */
 export function VoiceAgent({
-  isListening,
-  isSpeaking,
-  isProcessing,
-  currentQuestion,
-  onStartRecording,
-  onStopRecording,
-  onAudioEnd,
-  audioToPlay,
+  agentState,
+  isMicEnabled,
+  onToggleMic,
+  persona = 'professional',
   className,
-  persona = 'professional'
 }: VoiceAgentProps) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [audioPlaying, setAudioPlaying] = useState(false);
 
-  // Play audio when audioToPlay changes
-  useEffect(() => {
-    if (audioToPlay && audioRef.current) {
-      const audioSrc = `data:audio/mp3;base64,${audioToPlay}`;
-      audioRef.current.src = audioSrc;
+  const isSpeaking = agentState === 'speaking';
+  const isListening = agentState === 'listening';
+  const isThinking = agentState === 'thinking';
 
-      // Add a fallback timeout in case onEnded doesn't fire
-      const fallbackTimeout = setTimeout(() => {
-        console.log('Audio fallback timeout triggered');
-        setAudioPlaying(false);
-        onAudioEnd?.();
-      }, 30000); // 30 second max for any audio
+  // Persona colors
+  const personaColor = {
+    friendly: 'from-green-400 to-emerald-600',
+    professional: 'from-blue-400 to-indigo-600',
+    challenging: 'from-orange-400 to-red-600',
+  }[persona];
 
-      audioRef.current.play()
-        .then(() => {
-          setAudioPlaying(true);
-        })
-        .catch((err) => {
-          console.error('Audio play error:', err);
-          setAudioPlaying(false);
-          onAudioEnd?.();
-        });
-
-      return () => {
-        clearTimeout(fallbackTimeout);
-      };
-    }
-  }, [audioToPlay, onAudioEnd]);
-
-  const handleAudioEnd = () => {
-    setAudioPlaying(false);
-    onAudioEnd?.(); // Notify parent that audio finished
-  };
-
-  // Get persona avatar color
-  const getPersonaColor = () => {
-    switch (persona) {
-      case 'friendly': return 'from-green-400 to-emerald-600';
-      case 'challenging': return 'from-orange-400 to-red-600';
-      default: return 'from-blue-400 to-indigo-600';
-    }
-  };
-
-  // Get persona name
-  const getPersonaName = () => {
-    switch (persona) {
-      case 'friendly': return 'Alex';
-      case 'challenging': return 'Jordan';
-      default: return 'Taylor';
-    }
-  };
+  const personaName = {
+    friendly: 'Alex',
+    professional: 'Taylor',
+    challenging: 'Jordan',
+  }[persona];
 
   return (
-    <div className={cn("flex flex-col items-center", className)}>
-      {/* Hidden audio element */}
-      <audio
-        ref={audioRef}
-        onEnded={() => {
-          console.log('Audio ended');
-          handleAudioEnd();
-        }}
-        onError={(e) => {
-          console.error('Audio error:', e);
-          handleAudioEnd(); // Reset state on error
-        }}
-        className="hidden"
-      />
-
+    <div className={cn('flex flex-col items-center', className)}>
       {/* AI Avatar */}
       <div className="relative mb-6">
         {/* Animated rings when speaking */}
-        {(isSpeaking || audioPlaying) && (
+        {isSpeaking && (
           <>
-            <div className={cn(
-              "absolute inset-0 rounded-full bg-gradient-to-r opacity-30 animate-ping",
-              getPersonaColor()
-            )} />
-            <div className={cn(
-              "absolute -inset-2 rounded-full bg-gradient-to-r opacity-20 animate-pulse",
-              getPersonaColor()
-            )} />
+            <div className={cn('absolute inset-0 rounded-full bg-gradient-to-r opacity-30 animate-ping', personaColor)} />
+            <div className={cn('absolute -inset-2 rounded-full bg-gradient-to-r opacity-20 animate-pulse', personaColor)} />
           </>
+        )}
+
+        {/* Listening pulse */}
+        {isListening && (
+          <div className="absolute -inset-2 rounded-full border-2 border-blue-400 opacity-50 animate-pulse" />
         )}
 
         {/* Avatar circle */}
         <div className={cn(
-          "w-32 h-32 rounded-full bg-gradient-to-br flex items-center justify-center relative z-10",
-          getPersonaColor()
+          'w-32 h-32 rounded-full bg-gradient-to-br flex items-center justify-center relative z-10 transition-all duration-300',
+          personaColor,
+          isThinking && 'opacity-80',
         )}>
-          {isProcessing ? (
+          {isThinking ? (
             <Loader2 className="w-12 h-12 text-white animate-spin" />
-          ) : (isSpeaking || audioPlaying) ? (
+          ) : isSpeaking ? (
             <Volume2 className="w-12 h-12 text-white animate-pulse" />
           ) : (
             <span className="text-4xl font-bold text-white">
-              {getPersonaName().charAt(0)}
+              {personaName.charAt(0)}
             </span>
           )}
         </div>
@@ -141,70 +84,62 @@ export function VoiceAgent({
 
       {/* Interviewer name */}
       <h3 className="text-lg font-semibold text-gray-800 mb-2">
-        {getPersonaName()}
+        {personaName}
         <span className="text-sm font-normal text-gray-500 ml-2">
           ({persona} interviewer)
         </span>
       </h3>
 
       {/* Status indicator */}
-      <div className="flex items-center gap-2 mb-4">
-        {isProcessing && (
+      <div className="flex items-center gap-2 mb-6 h-6">
+        {isThinking && (
           <span className="text-sm text-yellow-600 flex items-center gap-1">
             <Loader2 className="w-3 h-3 animate-spin" />
-            Processing...
+            Thinking…
           </span>
         )}
-        {(isSpeaking || audioPlaying) && !isProcessing && (
+        {isSpeaking && (
           <span className="text-sm text-green-600 flex items-center gap-1">
             <Volume2 className="w-3 h-3" />
-            Speaking...
+            Speaking…
           </span>
         )}
         {isListening && (
           <span className="text-sm text-blue-600 flex items-center gap-1">
             <Mic className="w-3 h-3 animate-pulse" />
-            Listening...
+            Listening…
           </span>
         )}
-      </div>
-
-      {/* Current question display */}
-      <div className="w-full max-w-md bg-gray-100 rounded-lg p-4 mb-6">
-        <p className="text-sm text-gray-500 mb-1">Current Question:</p>
-        <p className="text-gray-800">{currentQuestion}</p>
-      </div>
-
-      {/* Recording controls */}
-      <div className="flex gap-4">
-        {!isListening ? (
-          <Button
-            onClick={onStartRecording}
-            disabled={isProcessing || isSpeaking || audioPlaying}
-            size="lg"
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <Mic className="w-5 h-5 mr-2" />
-            Start Speaking
-          </Button>
-        ) : (
-          <Button
-            onClick={onStopRecording}
-            size="lg"
-            variant="destructive"
-            className="animate-pulse"
-          >
-            <MicOff className="w-5 h-5 mr-2" />
-            Stop Recording
-          </Button>
+        {agentState === 'idle' && (
+          <span className="text-sm text-gray-400">Ready</span>
         )}
       </div>
 
-      {/* Recording indicator */}
-      {isListening && (
+      {/* Mic toggle */}
+      <Button
+        onClick={onToggleMic}
+        size="lg"
+        variant={isMicEnabled ? 'default' : 'destructive'}
+        className="gap-2"
+      >
+        {isMicEnabled ? (
+          <>
+            <Mic className="w-5 h-5" />
+            Mute
+          </>
+        ) : (
+          <>
+            <MicOff className="w-5 h-5" />
+            Unmute
+          </>
+        )}
+      </Button>
+
+      {/* Live recording dot */}
+      {isMicEnabled && isListening && (
         <div className="mt-4 flex items-center gap-2">
           <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-          <span className="text-sm text-red-600">Recording...</span>
+          <span className="text-sm text-red-600">Live</span>
         </div>
       )}
     </div>

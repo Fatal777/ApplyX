@@ -142,26 +142,32 @@ services:
     networks:
       - applyx-network
 
-  # LiveKit Interview Agent
+  # LiveKit Interview Agent (voice AI interviewer)
   interview-agent:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.livekit-agent
     container_name: applyx-interview-agent
     restart: always
     env_file:
       - .env.production
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-applyx}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-applyx}
-      REDIS_URL: redis://redis:6379/0
-    command: python -m app.agents.interview_agent start
+      LIVEKIT_URL: ${LIVEKIT_URL}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY}
+      GRADIENT_MODEL_ACCESS_KEY: ${GRADIENT_MODEL_ACCESS_KEY:-}
+      DO_GENAI_API_KEY: ${DO_GENAI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GRADIENT_EVAL_AGENT_URL: ${GRADIENT_EVAL_AGENT_URL:-}
     depends_on:
-      - postgres
       - redis
-    volumes:
-      - ./logs:/app/logs
     networks:
       - applyx-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   # Nginx Reverse Proxy
   nginx:
