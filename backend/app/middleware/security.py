@@ -210,6 +210,7 @@ class DDoSProtectionMiddleware(BaseHTTPMiddleware):
     # Paths to exclude from strict checking (health checks, public APIs, etc.)
     EXCLUDED_PATHS = [
         "/health", "/", "/docs", "/openapi.json",
+        "/api/v1/livekit/status",
         "/api/v1/jobs/search", "/api/v1/jobs/fast-search",
         "/api/v1/jobs/sources", "/api/v1/auth/login", "/api/v1/auth/register"
     ]
