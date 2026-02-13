@@ -100,7 +100,6 @@ backend/railway.toml
 frontend/.env
 frontend/dist/
 frontend/node_modules/
-frontend/package-lock.json
 frontend/bun.lockb
 frontend/package.json.backup
 frontend/*.timestamp-*.mjs
