@@ -5,7 +5,6 @@ Real-time AI mock-interviewer using:
   - LLM:  DO Gradient Serverless Inference (Llama 3.3-70B) via OpenAI-compat
   - TTS:  Deepgram Aura (aura-asteria-en)
   - VAD:  Silero
-  - Turn: LiveKit multilingual turn-detector
   - NC:   LiveKit noise-cancellation (BVC)
 """
 
@@ -30,7 +29,6 @@ from livekit.agents import (
     room_io,
 )
 from livekit.plugins import deepgram, noise_cancellation, openai, silero
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from app.agents.interview_prompts import build_interviewer_instructions
 
@@ -253,8 +251,6 @@ async def interview_session(ctx: agents.JobContext):
         ),
         # VAD — Silero voice activity detection
         vad=silero.VAD.load(),
-        # Turn detection — context-aware multilingual model
-        turn_detection=MultilingualModel(),
         # Interruption & turn settings
         allow_interruptions=True,
         min_interruption_duration=0.5,

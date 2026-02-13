@@ -56,6 +56,7 @@ aiohttp>=3.9.0
 # Speech Processing (Interview Platform)
 deepgram-sdk>=3.0.0  # Deepgram Nova-2/3 STT
 websockets>=12.0  # WebSocket client for real-time transcription
+edge-tts>=6.1.0  # Required by app.services.speech_service
 
 # Cloud Storage
 boto3==1.34.10
