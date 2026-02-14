@@ -76,9 +76,23 @@ export function FeedbackView({ feedback, onRetry, onBack }: FeedbackViewProps) {
   return (
     <div
       ref={scrollContainerRef}
-      className="h-screen overflow-y-auto"
+      className="h-screen overflow-y-auto bg-gray-50"
       style={{ scrollbarWidth: 'thin' }}
     >
+    {/* Sticky top nav bar — always visible */}
+    <div className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
+      <Button onClick={onBack} variant="ghost" size="sm" className="gap-1.5 text-gray-600 hover:text-gray-900">
+        <ArrowRight className="w-4 h-4 rotate-180" />
+        Back to Dashboard
+      </Button>
+      <div className="flex items-center gap-2">
+        <Button onClick={onRetry} size="sm" variant="outline" className="gap-1.5">
+          <RotateCcw className="w-4 h-4" />
+          Practice Again
+        </Button>
+      </div>
+    </div>
+
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       {/* Header */}
       <motion.div
