@@ -259,13 +259,36 @@ async def _generate_and_store_feedback(
 
         # Try to parse JSON from the agent response
         import json as _json
+        import re as _re
 
-        try:
-            feedback_data = _json.loads(raw)
-        except _json.JSONDecodeError:
-            # Agent returned non-JSON; wrap it
+        def _extract_json(text: str):
+            """Try to extract JSON from raw text, handling markdown fences."""
+            # First try direct parse
+            try:
+                return _json.loads(text)
+            except _json.JSONDecodeError:
+                pass
+            # Try to extract from markdown code fences like ```json ... ```
+            fence_match = _re.search(r'```(?:json)?\s*\n?(.*?)\n?\s*```', text, _re.DOTALL)
+            if fence_match:
+                try:
+                    return _json.loads(fence_match.group(1).strip())
+                except _json.JSONDecodeError:
+                    pass
+            # Try to find first { ... } block
+            brace_match = _re.search(r'\{.*\}', text, _re.DOTALL)
+            if brace_match:
+                try:
+                    return _json.loads(brace_match.group(0))
+                except _json.JSONDecodeError:
+                    pass
+            return None
+
+        feedback_data = _extract_json(raw)
+        if feedback_data is None:
+            # Truly unparseable — return zero score with raw text
             feedback_data = {
-                "overall_score": 70,
+                "overall_score": 0,
                 "category_scores": {},
                 "strengths": ["Completed the interview"],
                 "improvements": ["Feedback parsing failed — raw response stored"],

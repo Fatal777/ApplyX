@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo, useCallback } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Mic, Volume2, User, Bot, MessageSquare } from 'lucide-react';
 import type { TranscriptEntry } from '@/hooks/useLiveKitInterview';
@@ -39,12 +39,19 @@ export function TranscriptionDisplay({
     const scrollRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
 
-    // Explicit wheel handler — fixes scroll blocked by parent layout
-    const handleWheel = useCallback((e: React.WheelEvent) => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop += e.deltaY;
-            scrollRef.current.scrollLeft += e.deltaX;
-        }
+    // Native wheel handler with { passive: false } — React's onWheel is passive
+    // and cannot call preventDefault, so we use a direct DOM listener instead
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        const handler = (e: WheelEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            el.scrollTop += e.deltaY;
+            el.scrollLeft += e.deltaX;
+        };
+        el.addEventListener('wheel', handler, { passive: false });
+        return () => el.removeEventListener('wheel', handler);
     }, []);
 
     // Consolidate consecutive same-speaker segments into single messages
@@ -116,7 +123,6 @@ export function TranscriptionDisplay({
             <div className="relative flex-1 min-h-0">
                 <div
                     ref={scrollRef}
-                    onWheel={handleWheel}
                     className="absolute inset-0 px-5 py-4 space-y-4 overflow-y-auto scroll-smooth"
                     style={{ scrollbarWidth: 'thin', scrollbarColor: '#4b5563 transparent' }}
                 >

@@ -136,7 +136,7 @@ class InterviewerAgent(Agent):
 
         if remaining <= 0:
             # Start safety-net timer in case LLM forgets to call end_interview
-            asyncio.create_task(self._auto_end_after_delay(60.0))
+            asyncio.create_task(self._auto_end_after_delay(15.0))
             return (
                 f"Question {self._question_index} of {self._num_questions}. "
                 "All questions complete — you MUST now give a brief closing statement and IMMEDIATELY call end_interview."
@@ -205,7 +205,7 @@ class InterviewerAgent(Agent):
         self._ended = False
         logger.info("InterviewerAgent entered session")
 
-    async def _auto_end_after_delay(self, delay: float = 60.0) -> None:
+    async def _auto_end_after_delay(self, delay: float = 15.0) -> None:
         """Safety net: auto-end the interview if the LLM fails to call end_interview."""
         await asyncio.sleep(delay)
         if not self._ended:

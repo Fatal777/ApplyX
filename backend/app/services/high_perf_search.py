@@ -555,16 +555,32 @@ class HighPerfSearchService:
         )
     
     async def _fetch_from_apis(self, query: SearchQuery) -> List[Dict[str, Any]]:
-        """Fetch jobs from all configured APIs concurrently."""
+        """Fetch jobs from all configured APIs concurrently.
+        
+        Uses run_in_executor because JobScraperService methods are synchronous
+        (they use requests + ThreadPoolExecutor internally) and would block the
+        async event loop otherwise — causing 504 timeouts.
+        """
+        import asyncio
         from app.services.job_scraper_service import JobScraperService
         
         scraper = JobScraperService()
         keywords = list(query.keywords)
+        loop = asyncio.get_event_loop()
         
-        if query.portal:
-            return scraper.fetch_jobs(query.portal, keywords, query.location)
-        
-        return scraper.fetch_all_portals(keywords, query.location)
+        try:
+            if query.portal:
+                return await asyncio.wait_for(
+                    loop.run_in_executor(None, scraper.fetch_jobs, query.portal, keywords, query.location),
+                    timeout=15.0,
+                )
+            return await asyncio.wait_for(
+                loop.run_in_executor(None, scraper.fetch_all_portals, keywords, query.location),
+                timeout=15.0,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Live fetch timed out for query: %s", query.cache_key())
+            return []
     
     def _filter_by_experience(
         self,

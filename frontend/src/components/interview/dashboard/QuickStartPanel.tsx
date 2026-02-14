@@ -282,8 +282,16 @@ const QuickStartPanel = ({ onStartInterview, fullWidth = false }: QuickStartPane
       </div>
 
       {/* Configuration Modal - Light Theme */}
-      <Dialog open={showConfigModal} onOpenChange={setShowConfigModal}>
-        <DialogContent className="bg-white border-gray-200 text-gray-900 max-w-lg max-h-[90vh] overflow-y-auto">
+      <Dialog open={showConfigModal} onOpenChange={(open) => {
+        setShowConfigModal(open);
+        // Prevent background scroll when modal is open
+        document.body.style.overflow = open ? 'hidden' : '';
+      }}>
+        <DialogContent
+          className="bg-white border-gray-200 text-gray-900 max-w-lg max-h-[90vh] overflow-y-auto"
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+        >
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-gray-900">Configure Interview</DialogTitle>
             <DialogDescription className="text-gray-500">

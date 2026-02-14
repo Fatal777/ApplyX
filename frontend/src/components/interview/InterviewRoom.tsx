@@ -117,6 +117,9 @@ export function InterviewRoom() {
     },
     onInterviewComplete: async (result: InterviewResult) => {
       console.log('[Interview] complete:', result);
+      // Immediately disconnect LiveKit + stop media tracks
+      disconnect();
+      setWebcamActive(false);
       setPhase('analyzing');
 
       try {
@@ -159,17 +162,19 @@ export function InterviewRoom() {
                   result.response_scores.length) *
                   10,
               )
-            : 50;
+            : 0;
 
         setFeedback({
           id: 0,
           session_id: 0,
           overall_score: avgScore,
-          category_scores: { overall: avgScore },
-          strengths: ['Completed the interview'],
-          improvements: ['Detailed feedback generation timed out — try again'],
+          category_scores: avgScore > 0 ? { overall: avgScore } : {},
+          strengths: avgScore > 0 ? ['Completed the interview'] : [],
+          improvements: ['Detailed feedback generation timed out — try again for accurate results'],
           detailed_feedback: {
-            summary: `You answered ${result.questions_asked} questions in ${Math.round(result.duration_seconds / 60)} minutes.`,
+            summary: avgScore > 0
+              ? `You answered ${result.questions_asked} questions in ${Math.round(result.duration_seconds / 60)} minutes.`
+              : 'Feedback generation timed out. Please retry the interview for accurate scoring.',
           },
           recommendations: ['Practice again for more detailed feedback'],
           generated_at: new Date().toISOString(),
@@ -261,13 +266,17 @@ export function InterviewRoom() {
     }
   }, [config, toast]);
 
-  // Kick off on mount (once auth resolves)
+  // Kick off on mount (once auth resolves) — guarded to prevent restarts
+  const hasStartedRef = useRef(false);
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
       setPhase('auth-required');
       return;
     }
+    // Only start if not already started and in initial setup phase
+    if (hasStartedRef.current || phase !== 'setup' || sessionData) return;
+    hasStartedRef.current = true;
     startInterview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading]);
@@ -282,7 +291,7 @@ export function InterviewRoom() {
       const timer = setTimeout(() => {
         console.warn('[Interview] Auto-ending — all questions done but no interview_complete received');
         handleEndInterview();
-      }, 45_000);
+      }, 20_000);
       return () => clearTimeout(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -291,6 +300,7 @@ export function InterviewRoom() {
   const handleEndInterview = async () => {
     setShowExitDialog(false);
     disconnect();
+    setWebcamActive(false);
 
     if (sessionData && phase === 'in-progress') {
       setPhase('analyzing');
@@ -329,12 +339,12 @@ export function InterviewRoom() {
       setFeedback({
         id: 0,
         session_id: 0,
-        overall_score: 50,
-        category_scores: { overall: 50 },
-        strengths: ['Completed the interview session'],
-        improvements: ['Detailed feedback generation timed out — try again'],
-        detailed_feedback: { summary: 'Interview ended by user. Feedback generation timed out.' },
-        recommendations: ['Practice again for more detailed feedback'],
+        overall_score: 0,
+        category_scores: {},
+        strengths: [],
+        improvements: ['Feedback generation timed out — your transcript was sent but scoring failed'],
+        detailed_feedback: { summary: 'Interview ended. Feedback generation timed out. Please try again.' },
+        recommendations: ['Practice again for accurate feedback scoring'],
         generated_at: new Date().toISOString(),
       } as InterviewFeedback);
       setPhase('feedback');
@@ -345,9 +355,12 @@ export function InterviewRoom() {
 
   const handleRetry = () => {
     disconnect();
+    setWebcamActive(true);
     setSessionData(null);
     setFeedback(null);
     setError(null);
+    setPhase('setup');
+    hasStartedRef.current = false;
     startInterview();
   };
 
@@ -384,27 +397,17 @@ export function InterviewRoom() {
       {/* ── Header Bar ─────────────────────────────────────────────────── */}
       <header className="flex-shrink-0 bg-gray-900 border-b border-gray-800 px-4 py-2.5 z-30">
         <div className="flex items-center justify-between gap-3">
-          {/* Left: Exit + Agent status */}
+          {/* Left: Exit */}
           <div className="flex items-center gap-3 min-w-0">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowExitDialog(true)}
+              onClick={() => phase === 'in-progress' ? setShowExitDialog(true) : navigate('/dashboard')}
               className="text-gray-400 hover:text-white hover:bg-gray-800 gap-1.5 flex-shrink-0"
             >
               <ArrowLeft className="w-4 h-4" />
               <span className="hidden sm:inline">Exit</span>
             </Button>
-            <div className="h-5 w-px bg-gray-700 flex-shrink-0" />
-            {phase === 'in-progress' && (
-              <VoiceAgent
-                agentState={agentState}
-                isMicEnabled={isMicEnabled}
-                onToggleMic={toggleMic}
-                persona={config.persona}
-                className="[&_span]:text-gray-300 [&_span.text-gray-900]:text-gray-100 [&_span.text-gray-400]:text-gray-500"
-              />
-            )}
           </div>
 
           {/* Center: Progress */}
@@ -415,52 +418,13 @@ export function InterviewRoom() {
             </div>
           </div>
 
-          {/* Right: Controls */}
+          {/* Right: status indicator */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {phase === 'in-progress' && (
-              <>
-                {/* Mic toggle */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleMic}
-                  className={`gap-1.5 rounded-full px-3 ${
-                    isMicEnabled
-                      ? 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10'
-                      : 'text-red-400 hover:text-red-300 hover:bg-red-500/10'
-                  }`}
-                >
-                  {isMicEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-                  <span className="hidden sm:inline text-xs">{isMicEnabled ? 'Mute' : 'Unmute'}</span>
-                </Button>
-
-                {/* Cam toggle */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setWebcamActive(p => !p)}
-                  className={`gap-1.5 rounded-full px-3 ${
-                    webcamActive
-                      ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-500/10'
-                      : 'text-gray-500 hover:text-gray-400 hover:bg-gray-700'
-                  }`}
-                >
-                  {webcamActive ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
-                </Button>
-
-                <div className="h-5 w-px bg-gray-700" />
-
-                {/* End Interview */}
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="gap-1.5 rounded-full px-4 bg-red-600 hover:bg-red-700 text-white"
-                  onClick={() => setShowExitDialog(true)}
-                >
-                  <PhoneOff className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline text-xs">End</span>
-                </Button>
-              </>
+            {phase === 'in-progress' && isConnected && (
+              <span className="flex items-center gap-1.5 text-xs text-emerald-400">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Live
+              </span>
             )}
           </div>
         </div>
@@ -545,10 +509,10 @@ export function InterviewRoom() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="h-full flex flex-col"
+              className="h-full flex flex-row"
             >
-              {/* Transcript takes up the full space */}
-              <div className="flex-1 min-h-0">
+              {/* Left 3/4 — Chat / Transcript */}
+              <div className="w-3/4 h-full min-h-0 border-r border-gray-800">
                 <TranscriptionDisplay
                   transcripts={transcripts}
                   agentIsSpeaking={agentIsSpeaking}
@@ -557,12 +521,82 @@ export function InterviewRoom() {
                 />
               </div>
 
-              {/* Webcam PIP overlay — bottom right */}
-              {webcamActive && (
-                <div className="absolute bottom-4 right-4 z-20 w-40 lg:w-52 aspect-video rounded-xl overflow-hidden shadow-2xl ring-2 ring-gray-700/50">
-                  <WebcamDisplay isActive={webcamActive} className="w-full h-full" />
+              {/* Right 1/4 — Sidebar: AI agent + Webcam + Controls */}
+              <div className="w-1/4 h-full flex flex-col bg-gray-900 overflow-hidden">
+                {/* AI Interviewer Card */}
+                <div className="p-4 border-b border-gray-800">
+                  <VoiceAgent
+                    agentState={agentState}
+                    isMicEnabled={isMicEnabled}
+                    onToggleMic={toggleMic}
+                    persona={config.persona}
+                    className="[&_span]:text-gray-300 [&_span.text-gray-900]:text-gray-100 [&_span.text-gray-400]:text-gray-500"
+                  />
                 </div>
-              )}
+
+                {/* Question Progress */}
+                <div className="px-4 py-3 border-b border-gray-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-gray-400">Progress</span>
+                    <span className="text-xs font-semibold text-gray-300">{questionLabel}</span>
+                  </div>
+                  <Progress value={progress} className="h-1.5 bg-gray-700" />
+                </div>
+
+                {/* Webcam */}
+                <div className="flex-1 min-h-0 p-3">
+                  {webcamActive ? (
+                    <div className="w-full h-full max-h-[220px] rounded-xl overflow-hidden ring-1 ring-gray-700/50 bg-gray-950">
+                      <WebcamDisplay isActive={webcamActive} className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="w-full h-32 rounded-xl bg-gray-800 flex items-center justify-center">
+                      <VideoOff className="w-8 h-8 text-gray-600" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Sidebar Controls */}
+                <div className="p-3 border-t border-gray-800 space-y-2">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={toggleMic}
+                      className={`flex-1 gap-1.5 rounded-lg ${
+                        isMicEnabled
+                          ? 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10'
+                          : 'text-red-400 hover:text-red-300 hover:bg-red-500/10'
+                      }`}
+                    >
+                      {isMicEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                      <span className="text-xs">{isMicEnabled ? 'Mic On' : 'Mic Off'}</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setWebcamActive(p => !p)}
+                      className={`flex-1 gap-1.5 rounded-lg ${
+                        webcamActive
+                          ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-500/10'
+                          : 'text-gray-500 hover:text-gray-400 hover:bg-gray-700'
+                      }`}
+                    >
+                      {webcamActive ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+                      <span className="text-xs">{webcamActive ? 'Cam On' : 'Cam Off'}</span>
+                    </Button>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="w-full gap-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white"
+                    onClick={() => setShowExitDialog(true)}
+                  >
+                    <PhoneOff className="w-3.5 h-3.5" />
+                    End Interview
+                  </Button>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

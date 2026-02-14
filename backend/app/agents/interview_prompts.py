@@ -1,4 +1,4 @@
-"""
+. """
 Interview Prompt Templates for LiveKit Voice Agent
 Structured prompts for different interview types, difficulties, and personas.
 """
@@ -23,6 +23,11 @@ DIFFICULTY_CONTEXT = {
         "Ask challenging, senior-level questions that test depth of knowledge. "
         "Probe architecture decisions, trade-offs, and edge cases. "
         "Challenge assumptions and ask for alternative approaches."
+    ),
+    "expert": (
+        "Ask highly challenging, staff/principal-level questions. "
+        "Expect deep expertise, system-level thinking, and ability to weigh complex trade-offs. "
+        "Push hard on design decisions, scalability, and leadership impact."
     ),
 }
 
@@ -57,6 +62,17 @@ INTERVIEW_TYPE_GUIDANCE = {
         "Focus on technical theory and practical knowledge. "
         "Ask about system design, algorithms, data structures, architecture patterns, "
         "and technology-specific concepts relevant to the role."
+    ),
+    "technical_theory": (
+        "Focus on technical theory and conceptual knowledge. "
+        "Ask about system design principles, algorithms, data structures, architecture patterns, "
+        "and technology-specific concepts relevant to the role. "
+        "Do NOT ask coding problems — focus on theory, trade-offs, and understanding."
+    ),
+    "coding": (
+        "Focus on coding and problem-solving questions. "
+        "Present algorithmic challenges and ask the candidate to walk through their approach. "
+        "Evaluate their problem decomposition, time/space complexity analysis, and edge cases."
     ),
     "mixed": (
         "Alternate between behavioral and technical questions. "
@@ -134,6 +150,10 @@ OPENING:
 Begin with exactly this greeting, then wait for a response:
 "Hello! I am your interviewer today. We will be doing a mock interview for the {job_role} role. Take a moment to get comfortable, and let me know when you are ready to begin."
 
+After the candidate says they are ready, start with a brief background question BEFORE the main questions. This does NOT count toward the {num_questions} question limit. Ask something like:
+"Great! Before we dive in, could you briefly tell me about yourself — your background, current role, and what interests you about this {job_role} position?"
+Listen to their answer, acknowledge it briefly, then begin the actual interview questions.
+
 CLOSING (after {num_questions} questions):
 Once you have asked all {num_questions} questions, you MUST immediately wrap up with:
 "That concludes our interview. Thank you for your time. You will receive detailed feedback shortly. Good luck!"
@@ -149,10 +169,19 @@ def build_evaluation_prompt(
     Prompt for the Gradient ADK evaluation agent.
     Given the full transcript, produce structured feedback.
     """
-    return f"""You are a senior hiring manager evaluating a mock interview transcript for a {job_role} position at {difficulty} difficulty.
+    return f"""You are a strict senior hiring manager evaluating a mock interview transcript for a {job_role} position at {difficulty} difficulty.
 
 TRANSCRIPT:
 {transcript}
+
+SCORING RUBRIC — Score harshly and realistically:
+- 90-100: Exceptional, hire immediately — almost nobody scores here.
+- 75-89: Strong candidate, would advance to next round.
+- 55-74: Average, has potential but clear gaps.
+- 35-54: Below average, significant improvement needed.
+- 1-34: Poor, major foundational gaps.
+Most candidates should score between 40-70. Do NOT inflate scores. A mediocre answer is a 40-55, not a 70.
+If the transcript is very short, answers were vague, or the candidate struggled, score accordingly (30-50 range).
 
 Produce a JSON response with this exact structure:
 {{
@@ -170,8 +199,8 @@ Produce a JSON response with this exact structure:
   "recommendations": ["<actionable recommendation 1>", "<actionable recommendation 2>"]
 }}
 
-Be specific. Reference exact answers from the transcript. Be constructive but honest.
-Return ONLY the JSON object, no other text."""
+Be specific. Reference exact answers from the transcript. Be constructive but brutally honest.
+Return ONLY the JSON object, no markdown, no code fences, no explanation — just raw JSON."""
 
 
 def build_question_generation_prompt(

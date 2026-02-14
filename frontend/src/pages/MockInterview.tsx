@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Video, CheckCircle, Clock, BarChart, Sparkles, ArrowRight, Brain, Target, MessageSquare } from "lucide-react";
@@ -11,11 +11,17 @@ import ThreeBackground from "@/components/ThreeBackground";
 
 const MockInterview = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop += e.deltaY;
-      scrollRef.current.scrollLeft += e.deltaX;
-    }
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      el.scrollTop += e.deltaY;
+      el.scrollLeft += e.deltaX;
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
   }, []);
 
   const features = [
@@ -51,7 +57,7 @@ const MockInterview = () => {
   ];
 
   return (
-    <div ref={scrollRef} onWheel={handleWheel} className="h-screen overflow-y-auto bg-gray-50" style={{ scrollbarWidth: 'thin' }}>
+    <div ref={scrollRef} className="h-screen overflow-y-auto bg-gray-50" style={{ scrollbarWidth: 'thin' }}>
       <nav className="border-b border-gray-200 bg-white sticky top-0 z-50 shadow-sm">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between px-4 md:px-8 py-4">
           <div className="flex items-center gap-3">

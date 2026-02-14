@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   CheckCircle, 
@@ -27,13 +27,19 @@ interface FeedbackViewProps {
  * Displays comprehensive interview feedback with scores and recommendations
  */
 export function FeedbackView({ feedback, onRetry, onBack }: FeedbackViewProps) {
-  // Scroll fix — explicit wheel handler for parent layout compatibility
+  // Scroll fix — native wheel handler with { passive: false }
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop += e.deltaY;
-      scrollContainerRef.current.scrollLeft += e.deltaX;
-    }
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      el.scrollTop += e.deltaY;
+      el.scrollLeft += e.deltaX;
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
   }, []);
 
   // Get score color based on value
@@ -70,7 +76,6 @@ export function FeedbackView({ feedback, onRetry, onBack }: FeedbackViewProps) {
   return (
     <div
       ref={scrollContainerRef}
-      onWheel={handleWheel}
       className="h-screen overflow-y-auto"
       style={{ scrollbarWidth: 'thin' }}
     >

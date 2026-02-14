@@ -3,7 +3,7 @@
  * Aligned with ApplyX design system - light theme, minimal aesthetic
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -39,15 +39,29 @@ const InterviewDashboard = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
 
-  // Scroll fix — explicit wheel handler
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    const el = (e.currentTarget as HTMLDivElement);
-    if (el) {
-      el.scrollTop += e.deltaY;
-      el.scrollLeft += e.deltaX;
+  // Scroll fix — native wheel handler with { passive: false } for each scroll panel
+  const overviewRef = useRef<HTMLDivElement>(null);
+  const historyRef = useRef<HTMLDivElement>(null);
+  const analyticsRef = useRef<HTMLDivElement>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const refs = [overviewRef, historyRef, analyticsRef, settingsRef];
+    const cleanups: (() => void)[] = [];
+    for (const ref of refs) {
+      const el = ref.current;
+      if (!el) continue;
+      const handler = (e: WheelEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        el.scrollTop += e.deltaY;
+        el.scrollLeft += e.deltaX;
+      };
+      el.addEventListener('wheel', handler, { passive: false });
+      cleanups.push(() => el.removeEventListener('wheel', handler));
     }
-  }, []);
+    return () => cleanups.forEach(fn => fn());
+  });
 
   // Real stats state
   const [stats, setStats] = useState({
@@ -190,13 +204,13 @@ const InterviewDashboard = () => {
         <AnimatePresence mode="wait">
           {currentView === 'overview' && (
             <motion.div
+              ref={overviewRef}
               key="overview"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="h-full overflow-y-auto"
-              onWheel={handleWheel}
             >
               <div className="max-w-5xl mx-auto px-8 py-8">
                 {/* Header */}
@@ -344,13 +358,13 @@ const InterviewDashboard = () => {
 
           {currentView === 'history' && (
             <motion.div
+              ref={historyRef}
               key="history"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="h-full overflow-y-auto"
-              onWheel={handleWheel}
             >
               <div className="max-w-5xl mx-auto px-8 py-8">
                 <header className="mb-8">
@@ -364,13 +378,13 @@ const InterviewDashboard = () => {
 
           {currentView === 'analytics' && (
             <motion.div
+              ref={analyticsRef}
               key="analytics"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="h-full overflow-y-auto"
-              onWheel={handleWheel}
             >
               <div className="max-w-5xl mx-auto px-8 py-8">
                 <header className="mb-8">
@@ -384,13 +398,13 @@ const InterviewDashboard = () => {
 
           {currentView === 'settings' && (
             <motion.div
+              ref={settingsRef}
               key="settings"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="h-full overflow-y-auto"
-              onWheel={handleWheel}
             >
               <div className="max-w-3xl mx-auto px-8 py-8">
                 <header className="mb-8">

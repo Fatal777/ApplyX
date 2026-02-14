@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -35,13 +35,19 @@ const InterviewSetup = () => {
   const { isLimitReached, plan, consumeCredit } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  // Scroll fix — explicit wheel handler
+  // Scroll fix — native wheel handler with { passive: false }
   const scrollRef = useRef<HTMLDivElement>(null);
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop += e.deltaY;
-      scrollRef.current.scrollLeft += e.deltaX;
-    }
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      el.scrollTop += e.deltaY;
+      el.scrollLeft += e.deltaX;
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
   }, []);
   
   // Interview configuration state
@@ -91,7 +97,7 @@ const InterviewSetup = () => {
   };
 
   return (
-    <div ref={scrollRef} onWheel={handleWheel} className="h-screen overflow-y-auto bg-gray-50" style={{ scrollbarWidth: 'thin' }}>
+    <div ref={scrollRef} className="h-screen overflow-y-auto bg-gray-50" style={{ scrollbarWidth: 'thin' }}>
       <main className="max-w-4xl mx-auto px-4 py-12 pt-24">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
