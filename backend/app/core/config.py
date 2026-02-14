@@ -109,6 +109,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     OPENAI_MODEL: str = "gpt-3.5-turbo"
     GEMINI_API_KEY: Optional[str] = None  # Google Gemini API
+    GEMINI_MODEL: str = "gemini-2.0-flash"  # Default Gemini model
     
     # Admin Credentials
     ADMIN_USERNAME: Optional[str] = None
