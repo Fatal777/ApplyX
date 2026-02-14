@@ -31,7 +31,7 @@ def upgrade() -> None:
         SET resume_edits_limit = 1,
             resume_analyses_limit = 1,
             interviews_limit = 1
-        WHERE plan = 'free'
+        WHERE lower(plan::text) = 'free'
     """)
 
     # Update existing BASIC users
@@ -39,7 +39,7 @@ def upgrade() -> None:
         UPDATE subscriptions
         SET resume_analyses_limit = 10,
             interviews_limit = 3
-        WHERE plan = 'basic'
+        WHERE lower(plan::text) = 'basic'
     """)
 
     # Update existing PRO users
@@ -47,14 +47,14 @@ def upgrade() -> None:
         UPDATE subscriptions
         SET resume_analyses_limit = -1,
             interviews_limit = 10
-        WHERE plan = 'pro'
+        WHERE lower(plan::text) = 'pro'
     """)
 
     # Update existing PRO_PLUS users (unlimited)
     op.execute("""
         UPDATE subscriptions
         SET resume_analyses_limit = -1
-        WHERE plan = 'pro_plus'
+        WHERE lower(plan::text) = 'pro_plus'
     """)
 
 
@@ -67,5 +67,5 @@ def downgrade() -> None:
         UPDATE subscriptions
         SET resume_edits_limit = 2,
             interviews_limit = 0
-        WHERE plan = 'free'
+        WHERE lower(plan::text) = 'free'
     """)
