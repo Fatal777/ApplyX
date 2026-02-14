@@ -1,4 +1,4 @@
-. """
+"""
 Interview Prompt Templates for LiveKit Voice Agent
 Structured prompts for different interview types, difficulties, and personas.
 """
