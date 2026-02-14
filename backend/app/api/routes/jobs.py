@@ -374,6 +374,109 @@ async def trigger_job_fetch(
     }
 
 
+@router.get("/feed")
+@limiter.limit("120/minute")
+async def get_job_feed(
+    request: Request,
+    keywords: Optional[str] = Query(None, description="Search keywords"),
+    location: Optional[str] = Query(None, description="Location filter"),
+    job_type: Optional[str] = Query(None, description="Employment type: full-time, part-time, etc."),
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(25, ge=1, le=100, description="Results per page"),
+):
+    """
+    Get pre-loaded job feed from database.
+    
+    Returns jobs stored in PostgreSQL (populated by periodic scrapers).
+    Used for instant page load — no external API call needed.
+    """
+    from app.db.database import SessionLocal
+    from app.models.job import Job
+    from sqlalchemy import or_, func as sa_func
+    
+    db = SessionLocal()
+    try:
+        query = db.query(Job).filter(Job.is_active == True)
+        
+        # Keyword filter (search title + company + description)
+        if keywords:
+            keyword_list = [k.strip().lower() for k in keywords.split(",") if k.strip()]
+            keyword_filters = []
+            for kw in keyword_list:
+                keyword_filters.append(Job.title.ilike(f"%{kw}%"))
+                keyword_filters.append(Job.company.ilike(f"%{kw}%"))
+                keyword_filters.append(Job.description.ilike(f"%{kw}%"))
+            if keyword_filters:
+                query = query.filter(or_(*keyword_filters))
+        
+        # Location filter
+        if location:
+            query = query.filter(
+                or_(
+                    Job.location.ilike(f"%{location}%"),
+                    Job.city.ilike(f"%{location}%"),
+                    Job.state.ilike(f"%{location}%"),
+                    Job.country.ilike(f"%{location}%"),
+                )
+            )
+        
+        # Job type filter
+        if job_type:
+            query = query.filter(Job.employment_type == job_type.lower())
+        
+        # Get total count
+        total = query.count()
+        
+        # Paginate
+        offset = (page - 1) * limit
+        jobs = query.order_by(Job.scraped_at.desc()).offset(offset).limit(limit).all()
+        
+        # Convert to response format
+        job_list = []
+        for job in jobs:
+            job_dict = job.to_dict()
+            job_dict["redirect_url"] = job.apply_url or job.source_url
+            job_dict["portal"] = job.source
+            job_dict["skills"] = job.skills_required or []
+            job_list.append(job_dict)
+        
+        return {
+            "status": "ok",
+            "count": len(job_list),
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": (total + limit - 1) // limit,
+            "jobs": job_list,
+        }
+    finally:
+        db.close()
+
+
+@router.post("/populate")
+@limiter.limit("2/minute")
+async def trigger_job_populate(
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    Manually trigger job database population from all sources.
+    Admin-only: fetches from Adzuna, JSearch, Remotive + enhanced ATS sources
+    and stores in the PostgreSQL jobs table.
+    """
+    if not getattr(current_user, 'is_superadmin', False):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    from app.tasks.job_tasks import populate_job_feed
+    task_result = populate_job_feed.delay()
+    
+    return {
+        "status": "processing",
+        "task_id": task_result.id,
+        "message": "Job database population triggered. Jobs will appear in /jobs/feed once complete.",
+    }
+
+
 @router.get("/scraped-jobs")
 @limiter.limit("60/minute")
 async def get_scraped_jobs(

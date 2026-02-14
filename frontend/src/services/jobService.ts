@@ -319,6 +319,47 @@ class JobService {
   }
 
   /**
+   * Get pre-loaded job feed from database (instant, no external API call).
+   * Used for initial page load.
+   */
+  async getJobFeed(params?: {
+    keywords?: string;
+    location?: string;
+    job_type?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    status: string;
+    count: number;
+    total: number;
+    page: number;
+    limit: number;
+    total_pages: number;
+    jobs: Job[];
+  }> {
+    const queryParams = new URLSearchParams();
+    if (params?.keywords) queryParams.append('keywords', params.keywords);
+    if (params?.location) queryParams.append('location', params.location);
+    if (params?.job_type) queryParams.append('job_type', params.job_type);
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+    const url = `${this.baseUrl}/jobs/feed${queryParams.toString() ? '?' + queryParams : ''}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Job feed failed: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
    * Cancel any pending search request
    */
   cancelSearch(): void {

@@ -57,17 +57,33 @@ const JobsPage = () => {
     comparedJobs,
   } = useJobStore();
 
-  // Load all jobs on mount
+  // Load all jobs on mount — use DB-backed feed for instant results
   useEffect(() => {
     const loadAllJobs = async () => {
       try {
         setIsInitialLoading(true);
+        
+        // Try DB-backed feed first (instant, no external API call)
+        try {
+          const feedResponse = await jobService.getJobFeed({
+            limit: 100,
+            page: 1,
+          });
+          if (feedResponse.jobs && feedResponse.jobs.length > 0) {
+            setAllJobs(feedResponse.jobs);
+            return;
+          }
+        } catch {
+          // Feed endpoint failed or empty — fall back to live search
+        }
+        
+        // Fallback: live API search
         const response = await jobService.searchJobs({
-          keywords: 'software developer',  // Default search to get jobs
+          keywords: 'software developer',
           location: 'India',
-          limit: 100,  // Load 100 jobs
+          limit: 100,
           skipAbort: true,
-          useFastSearch: true,  // Use cached/fast endpoint for instant results
+          useFastSearch: true,
         });
         setAllJobs(response.jobs);
       } catch (error) {

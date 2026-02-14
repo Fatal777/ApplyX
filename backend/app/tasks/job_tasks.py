@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import List, Dict, Any, Optional
+from celery.schedules import crontab
 
 try:
     from app.tasks.celery_app import celery_app  # existing celery instance
@@ -264,6 +265,129 @@ def index_jobs_for_fast_search(self, jobs: List[Dict[str, Any]]) -> Dict[str, An
     return {"status": "ok", "indexed": indexed}
 
 
+@celery_app.task(name="populate_job_feed", bind=True, max_retries=2, default_retry_delay=300, time_limit=600, soft_time_limit=540)
+def populate_job_feed(self) -> Dict[str, Any]:
+    """
+    Populate the PostgreSQL jobs table from ALL available sources.
+    
+    This combines:
+    1. Free API sources (Adzuna, JSearch, Remotive) via scrape_and_store_all_jobs
+    2. Enhanced ATS sources (Greenhouse, Lever, Workday, SmartRecruiters, Ashby)
+    
+    The result is a full database of jobs that can be served instantly
+    via GET /jobs/feed without any live API calls.
+    
+    Runs every 4 hours via Celery Beat + can be triggered manually via POST /jobs/populate.
+    """
+    from datetime import datetime
+    
+    logger.info("Starting job feed population from all sources...")
+    total_stored = 0
+    total_duplicates = 0
+    errors = []
+    
+    # ---- Part 1: Fetch from free API portals and store in DB ----
+    # Broad keyword list for all job types in India
+    all_keywords = [
+        'software engineer', 'developer', 'data scientist', 'frontend', 'backend',
+        'full stack', 'devops', 'machine learning', 'product manager', 'designer',
+        'marketing', 'sales', 'business analyst', 'data analyst', 'project manager',
+        'cloud engineer', 'mobile developer', 'QA engineer', 'cyber security',
+        'HR', 'finance', 'content writer', 'operations', 'customer support',
+    ]
+    
+    try:
+        from app.tasks.scraping_tasks import scrape_and_store_all_jobs
+        result = scrape_and_store_all_jobs(keywords=all_keywords, location="India")
+        total_stored += result.get("stored", 0)
+        total_duplicates += result.get("duplicates", 0)
+        logger.info("API portals: stored=%d, duplicates=%d", result.get("stored", 0), result.get("duplicates", 0))
+    except Exception as e:
+        logger.error("Error fetching from API portals: %s", e)
+        errors.append(f"api_portals: {str(e)}")
+    
+    # ---- Part 2: Fetch from enhanced ATS sources and store in DB ----
+    try:
+        from app.services.enhanced_job_scraper import get_sync_job_scraper
+        from app.db.database import SessionLocal
+        from app.models.job import Job
+        
+        scraper = get_sync_job_scraper()
+        enhanced_keywords = ['software engineer', 'developer', 'data scientist', 'product manager', 'designer']
+        
+        enhanced_jobs = scraper.fetch_jobs(enhanced_keywords, "India")
+        logger.info("Enhanced sources returned %d jobs", len(enhanced_jobs))
+        
+        if enhanced_jobs:
+            db = SessionLocal()
+            try:
+                stored = 0
+                dupes = 0
+                for job_data in enhanced_jobs:
+                    title = job_data.get('title', '')
+                    company = job_data.get('company', '')
+                    redirect_url = job_data.get('redirect_url', '') or job_data.get('url', '')
+                    
+                    # Skip if no title
+                    if not title:
+                        continue
+                    
+                    # Deduplicate by URL or title+company
+                    existing = None
+                    if redirect_url:
+                        existing = db.query(Job).filter(Job.source_url == redirect_url).first()
+                    if not existing and title and company:
+                        existing = db.query(Job).filter(
+                            (Job.title == title) & (Job.company == company)
+                        ).first()
+                    
+                    if existing:
+                        dupes += 1
+                        continue
+                    
+                    job = Job(
+                        title=title,
+                        company=company,
+                        location=job_data.get('location', 'India'),
+                        description=job_data.get('description', ''),
+                        skills_required=job_data.get('skills', []),
+                        source=job_data.get('portal', 'enhanced'),
+                        source_url=redirect_url,
+                        apply_url=redirect_url,
+                        scraped_at=datetime.utcnow(),
+                        is_active=True,
+                    )
+                    db.add(job)
+                    stored += 1
+                    
+                    if stored % 10 == 0:
+                        db.commit()
+                
+                db.commit()
+                total_stored += stored
+                total_duplicates += dupes
+                logger.info("Enhanced sources: stored=%d, duplicates=%d", stored, dupes)
+            except Exception as e:
+                db.rollback()
+                logger.error("Error storing enhanced jobs: %s", e)
+                errors.append(f"enhanced_store: {str(e)}")
+            finally:
+                db.close()
+    except Exception as e:
+        logger.error("Error fetching enhanced jobs: %s", e)
+        errors.append(f"enhanced_fetch: {str(e)}")
+    
+    result = {
+        "status": "success" if not errors else "partial",
+        "total_stored": total_stored,
+        "total_duplicates": total_duplicates,
+        "errors": errors,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+    logger.info("Job feed population complete: %s", result)
+    return result
+
+
 # Celery Beat schedule for automated tasks
 celery_app.conf.beat_schedule = celery_app.conf.beat_schedule or {}
 celery_app.conf.beat_schedule.update({
@@ -274,7 +398,11 @@ celery_app.conf.beat_schedule.update({
     'fetch-jobs-every-4-hours': {
         'task': 'fetch_jobs_from_portals',
         'schedule': 4 * 60 * 60,  # 4 hours
-        'args': (['python', 'developer', 'software engineer'], 'India'),
+        'args': (['python', 'developer', 'software engineer', 'data analyst', 'product manager'], 'India'),
+    },
+    'populate-job-feed-every-4-hours': {
+        'task': 'populate_job_feed',
+        'schedule': 4 * 60 * 60,  # 4 hours
     },
     'fetch-enhanced-jobs-every-2-hours': {
         'task': 'fetch_enhanced_jobs',
@@ -287,10 +415,7 @@ celery_app.conf.beat_schedule.update({
     },
     'reset-daily-credits-midnight': {
         'task': 'reset_daily_credits',
-        'schedule': {
-            'hour': 0,
-            'minute': 0,
-        },  # Midnight UTC
+        'schedule': crontab(hour=0, minute=0),  # Midnight
     },
 })
 
