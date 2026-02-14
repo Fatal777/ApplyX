@@ -240,7 +240,7 @@ async def interview_session(ctx: agents.JobContext):
             smart_format=True,
             punctuate=True,
             filler_words=True,
-            keywords=[("interviewer", 1.5), ("candidate", 1.5)],
+            keyterms=["interviewer", "candidate"],
         ),
         # LLM — DO Gradient (Llama 3.3-70B) via OpenAI-compatible API
         llm=openai.LLM(
