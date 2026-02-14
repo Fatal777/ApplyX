@@ -513,11 +513,7 @@ class HighPerfSearchService:
             jobs = self._index.get_jobs(job_ids)
             
             # Apply additional filters
-            if query.location and query.location != "India":
-                jobs = [
-                    j for j in jobs
-                    if query.location.lower() in j.get("location", "").lower()
-                ]
+            jobs = self._filter_by_location(jobs, query.location)
             
             if query.experience_level:
                 jobs = self._filter_by_experience(jobs, query.experience_level)
@@ -535,6 +531,17 @@ class HighPerfSearchService:
         
         # L4: Live fetch (slowest, but ensures fresh data)
         jobs = await self._live_search(query)
+        
+        # Filter live results by location
+        jobs = self._filter_by_location(jobs, query.location)
+        
+        if query.experience_level:
+            jobs = self._filter_by_experience(jobs, query.experience_level)
+        
+        if query.portal:
+            jobs = [j for j in jobs if j.get("portal") == query.portal]
+        
+        jobs = jobs[:query.limit]
         
         # Index and cache
         if jobs:
@@ -608,6 +615,42 @@ class HighPerfSearchService:
                 filtered.append(job)
         
         return filtered if filtered else jobs  # Return all if no matches
+    
+    def _filter_by_location(
+        self,
+        jobs: List[Dict[str, Any]],
+        location: Optional[str]
+    ) -> List[Dict[str, Any]]:
+        """Filter jobs by location.
+        
+        For India, matches major Indian cities + "India" + "remote".
+        For other locations, simple substring match.
+        """
+        if not location:
+            return jobs
+        
+        loc_lower = location.lower()
+        
+        # For India, be inclusive — match any Indian city or "India" or "remote"
+        if loc_lower == "india":
+            india_markers = [
+                "india", "bangalore", "bengaluru", "mumbai", "delhi",
+                "hyderabad", "chennai", "pune", "kolkata", "noida",
+                "gurgaon", "gurugram", "ahmedabad", "jaipur", "kochi",
+                "thiruvananthapuram", "chandigarh", "indore", "lucknow",
+                "coimbatore", "nagpur", "visakhapatnam", "bhubaneswar",
+                "mysore", "mysuru", "mangalore", "mangaluru", "surat",
+                "vadodara", "remote",
+            ]
+            return [
+                j for j in jobs
+                if any(marker in j.get("location", "").lower() for marker in india_markers)
+            ]
+        else:
+            return [
+                j for j in jobs
+                if loc_lower in j.get("location", "").lower()
+            ]
     
     def _cache_results(self, key: str, jobs: List[Dict[str, Any]]) -> None:
         """Cache results in both L1 and L2."""

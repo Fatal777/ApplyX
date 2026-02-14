@@ -88,6 +88,16 @@ const JobsPage = () => {
     loadAllJobs();
   }, []);
 
+  // Re-search when filters change (only if user has searched)
+  useEffect(() => {
+    if (searchQuery && searchResults.length > 0) {
+      const timeoutId = setTimeout(() => {
+        searchJobs();
+      }, 300); // Debounce to avoid rapid re-searches
+      return () => clearTimeout(timeoutId);
+    }
+  }, [filters]); // Watch filters, not searchQuery or searchResults to avoid loops
+
   // Pagination logic
   const totalPages = Math.ceil(allJobs.length / jobsPerPage);
   const paginatedJobs = allJobs.slice(
@@ -444,7 +454,10 @@ const JobsPage = () => {
               <div className="flex items-center justify-center gap-2 flex-wrap">
                 <Button
                   variant="outline"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  onClick={() => {
+                    setCurrentPage(prev => Math.max(1, prev - 1));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
                   disabled={currentPage === 1}
                   className="rounded-xl"
                 >
@@ -464,7 +477,10 @@ const JobsPage = () => {
                       )}
                       <Button
                         variant={currentPage === page ? "default" : "outline"}
-                        onClick={() => setCurrentPage(page)}
+                        onClick={() => {
+                          setCurrentPage(page);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
                         className={cn(
                           "rounded-xl min-w-[44px]",
                           currentPage === page && "bg-primary text-white"
@@ -478,7 +494,10 @@ const JobsPage = () => {
 
                 <Button
                   variant="outline"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  onClick={() => {
+                    setCurrentPage(prev => Math.min(totalPages, prev + 1));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
                   disabled={currentPage === totalPages}
                   className="rounded-xl"
                 >

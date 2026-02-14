@@ -63,11 +63,12 @@ class JobScraperService:
     """
 
     # Per-minute soft limits
+    # Arbeitnow disabled — primarily European (German) jobs, no India filter
     _RATE_LIMITS = {
         "adzuna": 5,      # ~250/month ≈ 8/day, be conservative
         "jsearch": 3,     # 200/month ≈ 6/day
         "remotive": 10,   # Free, generous
-        "arbeitnow": 10,  # Free, no auth required
+        # "arbeitnow": 10,  # Disabled — returns German/European jobs
     }
 
     # API endpoints
