@@ -256,9 +256,9 @@ const ResumeAnalysis = () => {
   }
 
   const score = atsData?.ats_score || resume.analysis_score || 0;
-  const atsScore = atsData?.ats_score || score || 75;
+  const atsScore = atsData?.ats_score || score || 0;
   const keywordsFound = resume.keywords?.length || atsData?.keyword_analysis?.density_score || 0;
-  const impactScore = atsData?.section_scores?.find((s: any) => s.section?.includes('Experience'))?.score || 78;
+  const impactScore = atsData?.section_scores?.find((s: any) => s.section?.includes('Experience'))?.score || 0;
   const analysisTime = atsData ? new Date().toLocaleString() : new Date(resume.processed_at || resume.created_at).toLocaleString();
 
   return (

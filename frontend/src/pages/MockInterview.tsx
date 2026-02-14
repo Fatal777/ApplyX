@@ -1,3 +1,4 @@
+import { useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Video, CheckCircle, Clock, BarChart, Sparkles, ArrowRight, Brain, Target, MessageSquare } from "lucide-react";
@@ -9,6 +10,14 @@ import Footer from "@/components/Footer";
 import ThreeBackground from "@/components/ThreeBackground";
 
 const MockInterview = () => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop += e.deltaY;
+      scrollRef.current.scrollLeft += e.deltaX;
+    }
+  }, []);
+
   const features = [
     {
       icon: Video,
@@ -42,7 +51,7 @@ const MockInterview = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div ref={scrollRef} onWheel={handleWheel} className="h-screen overflow-y-auto bg-gray-50" style={{ scrollbarWidth: 'thin' }}>
       <nav className="border-b border-gray-200 bg-white sticky top-0 z-50 shadow-sm">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between px-4 md:px-8 py-4">
           <div className="flex items-center gap-3">

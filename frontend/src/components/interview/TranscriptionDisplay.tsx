@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Mic, Volume2, User, Bot, MessageSquare } from 'lucide-react';
 import type { TranscriptEntry } from '@/hooks/useLiveKitInterview';
@@ -23,11 +23,12 @@ interface ConsolidatedMessage {
 }
 
 /**
- * TranscriptionDisplay Component (v2.0 — Premium)
+ * TranscriptionDisplay Component (v3.0 — Dark / immersive)
  *
  * - Consolidates consecutive same-speaker segments into a single bubble
  * - Auto-scrolls smoothly as new text arrives
- * - Premium glassmorphism styling with larger chat area
+ * - Dark theme to match interview room
+ * - Explicit onWheel handler for scroll fix (react-resizable-panels issue)
  */
 export function TranscriptionDisplay({
     transcripts,
@@ -38,6 +39,14 @@ export function TranscriptionDisplay({
     const scrollRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
 
+    // Explicit wheel handler — fixes scroll blocked by parent layout
+    const handleWheel = useCallback((e: React.WheelEvent) => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop += e.deltaY;
+            scrollRef.current.scrollLeft += e.deltaX;
+        }
+    }, []);
+
     // Consolidate consecutive same-speaker segments into single messages
     const consolidated = useMemo<ConsolidatedMessage[]>(() => {
         if (transcripts.length === 0) return [];
@@ -47,17 +56,13 @@ export function TranscriptionDisplay({
 
         for (const entry of transcripts) {
             if (current && current.speaker === entry.speaker) {
-                // Same speaker — merge text into current bubble
-                // Avoid duplicating if the new segment text is already at the end
                 const trimmedNew = entry.text.trim();
                 if (trimmedNew && !current.text.endsWith(trimmedNew)) {
                     current.text = current.text.trimEnd() + ' ' + trimmedNew;
                 }
-                // Still live if any segment is not final
                 if (!entry.isFinal) current.isLive = true;
                 current.key += '|' + entry.id;
             } else {
-                // Speaker changed — close current and start new group
                 if (current) groups.push(current);
                 current = {
                     key: entry.id,
@@ -82,30 +87,24 @@ export function TranscriptionDisplay({
 
     return (
         <div className={cn(
-            'flex flex-col rounded-2xl overflow-hidden',
-            'bg-white/80 backdrop-blur-xl border border-white/20 shadow-lg',
+            'flex flex-col overflow-hidden',
             className,
         )}>
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-gray-50">
-                <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                        <MessageSquare className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                        <h3 className="font-semibold text-gray-900 text-sm">Live Transcript</h3>
-                        <p className="text-[11px] text-gray-400">Real-time conversation</p>
-                    </div>
+            {/* Slim header strip */}
+            <div className="flex items-center justify-between px-5 py-2.5 border-b border-gray-800/60 bg-gray-900/80 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-indigo-400" />
+                    <span className="font-medium text-gray-300 text-xs">Live Transcript</span>
                 </div>
                 <div className="flex items-center gap-2">
                     {agentIsSpeaking && (
-                        <span className="flex items-center gap-1.5 text-[11px] font-medium text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full ring-1 ring-indigo-100">
+                        <span className="flex items-center gap-1 text-[11px] font-medium text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">
                             <Volume2 className="w-3 h-3 animate-pulse" />
                             AI Speaking
                         </span>
                     )}
                     {isMicEnabled && (
-                        <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full ring-1 ring-emerald-100">
+                        <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
                             <Mic className="w-3 h-3" />
                             Mic On
                         </span>
@@ -113,34 +112,37 @@ export function TranscriptionDisplay({
                 </div>
             </div>
 
-            {/* Transcript Content — much taller */}
-            <div
-                ref={scrollRef}
-                className="flex-1 px-5 py-4 space-y-3 overflow-y-auto min-h-[400px] max-h-[60vh] scroll-smooth"
-                style={{ scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 transparent' }}
-            >
-                {consolidated.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-16 text-gray-300">
-                        <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mb-4">
-                            <Bot className="w-8 h-8" />
+            {/* Transcript Content — fills available space */}
+            <div className="relative flex-1 min-h-0">
+                <div
+                    ref={scrollRef}
+                    onWheel={handleWheel}
+                    className="absolute inset-0 px-5 py-4 space-y-4 overflow-y-auto scroll-smooth"
+                    style={{ scrollbarWidth: 'thin', scrollbarColor: '#4b5563 transparent' }}
+                >
+                    {consolidated.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-20 text-gray-600">
+                            <div className="w-14 h-14 rounded-2xl bg-gray-800 flex items-center justify-center mb-4">
+                                <Bot className="w-7 h-7 text-gray-500" />
+                            </div>
+                            <p className="text-sm font-medium text-gray-500">Waiting for conversation…</p>
+                            <p className="text-xs text-gray-600 mt-1">The transcript will appear here in real time</p>
                         </div>
-                        <p className="text-sm font-medium text-gray-400">Waiting for conversation…</p>
-                        <p className="text-xs text-gray-300 mt-1">The transcript will appear here in real time</p>
-                    </div>
-                )}
+                    )}
 
-                {consolidated.map((msg) => (
-                    <TranscriptMessage
-                        key={msg.key}
-                        speaker={msg.speaker}
-                        text={msg.text}
-                        isLive={msg.isLive}
-                        timestamp={msg.timestamp}
-                    />
-                ))}
+                    {consolidated.map((msg) => (
+                        <TranscriptMessage
+                            key={msg.key}
+                            speaker={msg.speaker}
+                            text={msg.text}
+                            isLive={msg.isLive}
+                            timestamp={msg.timestamp}
+                        />
+                    ))}
 
-                {/* Scroll sentinel */}
-                <div ref={bottomRef} className="h-0" />
+                    {/* Scroll sentinel */}
+                    <div ref={bottomRef} className="h-0" />
+                </div>
             </div>
         </div>
     );
@@ -165,10 +167,10 @@ function TranscriptMessage({
             {/* Avatar */}
             <div
                 className={cn(
-                    'flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center shadow-sm',
+                    'flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center',
                     isAI
-                        ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'
-                        : 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white',
+                        ? 'bg-indigo-500/20 text-indigo-400'
+                        : 'bg-emerald-500/20 text-emerald-400',
                 )}
             >
                 {isAI ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
@@ -179,21 +181,21 @@ function TranscriptMessage({
                 <div className="flex items-center gap-2 mb-1">
                     <span className={cn(
                         'text-[11px] font-semibold',
-                        isAI ? 'text-indigo-600' : 'text-emerald-600',
+                        isAI ? 'text-indigo-400' : 'text-emerald-400',
                     )}>
                         {isAI ? 'AI Interviewer' : 'You'}
                     </span>
-                    <span className="text-[10px] text-gray-300">{time}</span>
+                    <span className="text-[10px] text-gray-600">{time}</span>
                 </div>
                 <div
                     className={cn(
                         'px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed transition-all duration-200',
                         isAI
-                            ? 'bg-gray-50 text-gray-800 rounded-tl-md border border-gray-100'
-                            : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-tr-md shadow-md shadow-indigo-200/50',
-                        isLive && 'ring-2 ring-offset-1',
-                        isLive && isAI && 'ring-indigo-200',
-                        isLive && !isAI && 'ring-purple-300',
+                            ? 'bg-gray-800/80 text-gray-200 rounded-tl-md border border-gray-700/50'
+                            : 'bg-indigo-600 text-white rounded-tr-md shadow-md shadow-indigo-900/30',
+                        isLive && 'ring-2 ring-offset-1 ring-offset-gray-950',
+                        isLive && isAI && 'ring-indigo-500/40',
+                        isLive && !isAI && 'ring-indigo-400/50',
                     )}
                 >
                     {text}

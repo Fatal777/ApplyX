@@ -133,14 +133,19 @@ class LiveKitService {
 
     /**
      * Signal that the interview is complete (triggers backend cleanup / feedback).
+     * Sends the full transcript so the evaluation LLM can generate real feedback.
      */
-    async endInterview(roomName: string, sessionId: string): Promise<void> {
+    async endInterview(roomName: string, sessionId: string, transcript?: string): Promise<void> {
         const headers = await this.getAuthHeaders();
 
         const response = await fetch(`${this.baseUrl}/livekit/end-interview`, {
             method: 'POST',
             headers,
-            body: JSON.stringify({ room_name: roomName, session_id: sessionId }),
+            body: JSON.stringify({
+                room_name: roomName,
+                session_id: sessionId,
+                transcript: transcript || null,
+            }),
         });
 
         if (!response.ok) {

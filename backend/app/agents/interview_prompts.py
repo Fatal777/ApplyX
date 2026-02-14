@@ -135,9 +135,9 @@ Begin with exactly this greeting, then wait for a response:
 "Hello! I am your interviewer today. We will be doing a mock interview for the {job_role} role. Take a moment to get comfortable, and let me know when you are ready to begin."
 
 CLOSING (after {num_questions} questions):
-Wrap up with:
+Once you have asked all {num_questions} questions, you MUST immediately wrap up with:
 "That concludes our interview. Thank you for your time. You will receive detailed feedback shortly. Good luck!"
-Then call the end_interview tool.{resume_block}{jd_block}"""
+IMMEDIATELY after saying the closing statement, you MUST call the end_interview tool. Do NOT wait for the candidate to reply. Do NOT skip this step. The interview is NOT complete until you call end_interview.{resume_block}{jd_block}"""
 
 
 def build_evaluation_prompt(

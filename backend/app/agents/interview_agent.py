@@ -92,6 +92,7 @@ class InterviewerAgent(Agent):
         self._num_questions = num_questions
         self._question_index = 0
         self._started_at: float = 0.0
+        self._ended = False
         self._responses: list[dict[str, Any]] = []
 
         instructions = build_interviewer_instructions(
@@ -134,9 +135,11 @@ class InterviewerAgent(Agent):
         )
 
         if remaining <= 0:
+            # Start safety-net timer in case LLM forgets to call end_interview
+            asyncio.create_task(self._auto_end_after_delay(60.0))
             return (
                 f"Question {self._question_index} of {self._num_questions}. "
-                "All questions complete — please wrap up and call end_interview."
+                "All questions complete — you MUST now give a brief closing statement and IMMEDIATELY call end_interview."
             )
         return (
             f"Question {self._question_index} of {self._num_questions}. "
@@ -170,6 +173,9 @@ class InterviewerAgent(Agent):
 
         Triggers feedback generation and notifies the frontend.
         """
+        if self._ended:
+            return "Interview already ended."
+        self._ended = True
         duration = time.time() - self._started_at if self._started_at else 0
 
         summary = {
@@ -196,7 +202,30 @@ class InterviewerAgent(Agent):
     async def on_enter(self) -> None:
         """Called when the agent joins the session."""
         self._started_at = time.time()
+        self._ended = False
         logger.info("InterviewerAgent entered session")
+
+    async def _auto_end_after_delay(self, delay: float = 60.0) -> None:
+        """Safety net: auto-end the interview if the LLM fails to call end_interview."""
+        await asyncio.sleep(delay)
+        if not self._ended:
+            logger.warning("Auto-ending interview — LLM did not call end_interview within %.0fs", delay)
+            self._ended = True
+            duration = time.time() - self._started_at if self._started_at else 0
+            summary = {
+                "type": "interview_complete",
+                "questions_asked": self._question_index,
+                "duration_seconds": round(duration),
+                "response_scores": self._responses,
+            }
+            try:
+                room = agents.get_job_context().room
+                await room.local_participant.publish_data(
+                    json.dumps(summary).encode(),
+                )
+                logger.info("Auto-end: interview_complete message sent")
+            except Exception as exc:
+                logger.error("Auto-end failed to publish data: %s", exc)
 
 
 # ── Agent Server & Session wiring ───────────────────────────────────────────

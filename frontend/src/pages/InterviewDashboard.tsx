@@ -3,7 +3,7 @@
  * Aligned with ApplyX design system - light theme, minimal aesthetic
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -38,6 +38,16 @@ const InterviewDashboard = () => {
   const [currentView, setCurrentView] = useState<DashboardView>('overview');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
+
+  // Scroll fix — explicit wheel handler
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    const el = (e.currentTarget as HTMLDivElement);
+    if (el) {
+      el.scrollTop += e.deltaY;
+      el.scrollLeft += e.deltaX;
+    }
+  }, []);
 
   // Real stats state
   const [stats, setStats] = useState({
@@ -186,6 +196,7 @@ const InterviewDashboard = () => {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="h-full overflow-y-auto"
+              onWheel={handleWheel}
             >
               <div className="max-w-5xl mx-auto px-8 py-8">
                 {/* Header */}
@@ -339,6 +350,7 @@ const InterviewDashboard = () => {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="h-full overflow-y-auto"
+              onWheel={handleWheel}
             >
               <div className="max-w-5xl mx-auto px-8 py-8">
                 <header className="mb-8">
@@ -358,6 +370,7 @@ const InterviewDashboard = () => {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="h-full overflow-y-auto"
+              onWheel={handleWheel}
             >
               <div className="max-w-5xl mx-auto px-8 py-8">
                 <header className="mb-8">
@@ -377,6 +390,7 @@ const InterviewDashboard = () => {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="h-full overflow-y-auto"
+              onWheel={handleWheel}
             >
               <div className="max-w-3xl mx-auto px-8 py-8">
                 <header className="mb-8">

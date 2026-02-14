@@ -1,5 +1,4 @@
 import { Mic, MicOff, Volume2, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 type AgentState = 'idle' | 'listening' | 'speaking' | 'thinking';
@@ -17,10 +16,11 @@ interface VoiceAgentProps {
 }
 
 /**
- * VoiceAgent Component (v2.0 — Premium)
+ * VoiceAgent Component (v3.0 — Compact Inline)
  *
- * Pure state-driven visualization — no audio playback logic.
- * LiveKit handles all audio routing; we just render the avatar and controls.
+ * Minimal inline indicator for the AI interviewer status.
+ * Shows a small avatar + name + status badge.
+ * Mute/unmute button is no longer here — it lives in the parent control bar.
  */
 export function VoiceAgent({
   agentState,
@@ -29,28 +29,14 @@ export function VoiceAgent({
   persona = 'professional',
   className,
 }: VoiceAgentProps) {
-
   const isSpeaking = agentState === 'speaking';
   const isListening = agentState === 'listening';
   const isThinking = agentState === 'thinking';
 
-  // Persona gradients
   const personaGradient = {
-    friendly: 'from-emerald-400 via-green-500 to-teal-600',
-    professional: 'from-indigo-500 via-purple-500 to-violet-600',
-    challenging: 'from-orange-500 via-red-500 to-rose-600',
-  }[persona];
-
-  const personaRingColor = {
-    friendly: 'border-emerald-300',
-    professional: 'border-indigo-300',
-    challenging: 'border-orange-300',
-  }[persona];
-
-  const personaGlow = {
-    friendly: 'shadow-emerald-300/40',
-    professional: 'shadow-indigo-400/40',
-    challenging: 'shadow-orange-300/40',
+    friendly: 'from-emerald-400 to-teal-600',
+    professional: 'from-indigo-500 to-violet-600',
+    challenging: 'from-orange-500 to-rose-600',
   }[persona];
 
   const personaName = {
@@ -60,115 +46,72 @@ export function VoiceAgent({
   }[persona];
 
   return (
-    <div className={cn('flex flex-col items-center py-4', className)}>
-      {/* AI Avatar */}
-      <div className="relative mb-5">
-        {/* Outer glow rings when speaking */}
+    <div className={cn('flex items-center gap-3', className)}>
+      {/* Small animated avatar */}
+      <div className="relative flex-shrink-0">
         {isSpeaking && (
-          <>
-            <div className={cn(
-              'absolute -inset-5 rounded-full bg-gradient-to-r opacity-15 animate-ping',
-              personaGradient,
-            )} />
-            <div className={cn(
-              'absolute -inset-3 rounded-full bg-gradient-to-r opacity-20 animate-pulse',
-              personaGradient,
-            )} />
-          </>
-        )}
-
-        {/* Listening ring */}
-        {isListening && (
           <div className={cn(
-            'absolute -inset-2 rounded-full border-2 opacity-60 animate-pulse',
-            personaRingColor,
+            'absolute -inset-1 rounded-full bg-gradient-to-r opacity-30 animate-pulse',
+            personaGradient,
           )} />
         )}
-
-        {/* Avatar circle */}
         <div className={cn(
-          'w-24 h-24 rounded-full bg-gradient-to-br flex items-center justify-center relative z-10',
-          'transition-all duration-300 shadow-xl',
+          'w-9 h-9 rounded-full bg-gradient-to-br flex items-center justify-center relative z-10',
+          'transition-all duration-300 shadow-md',
           personaGradient,
-          isSpeaking && personaGlow,
-          isSpeaking && 'shadow-2xl scale-105',
-          isThinking && 'opacity-85',
+          isSpeaking && 'scale-110',
         )}>
           {isThinking ? (
-            <Loader2 className="w-10 h-10 text-white animate-spin" />
+            <Loader2 className="w-4 h-4 text-white animate-spin" />
           ) : isSpeaking ? (
-            <Volume2 className="w-10 h-10 text-white animate-pulse" />
+            <Volume2 className="w-4 h-4 text-white animate-pulse" />
           ) : (
-            <span className="text-3xl font-bold text-white drop-shadow-sm">
+            <span className="text-sm font-bold text-white">
               {personaName.charAt(0)}
             </span>
           )}
         </div>
       </div>
 
-      {/* Interviewer name */}
-      <h3 className="text-base font-semibold text-gray-900 mb-0.5">
-        {personaName}
-      </h3>
-      <p className="text-xs text-gray-400 mb-4 capitalize">{persona} interviewer</p>
+      {/* Name + role */}
+      <div className="flex flex-col min-w-0">
+        <span className="text-sm font-semibold text-gray-900 leading-tight">{personaName}</span>
+        <span className="text-[11px] text-gray-400 leading-tight capitalize">{persona} interviewer</span>
+      </div>
 
-      {/* Status indicator */}
-      <div className="flex items-center gap-2 mb-4 h-5">
+      {/* Status badge */}
+      <div className="ml-1 flex-shrink-0">
         {isThinking && (
-          <span className="text-xs text-amber-600 flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded-full">
+          <span className="text-[11px] text-amber-600 flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-full">
             <Loader2 className="w-3 h-3 animate-spin" />
-            Thinking…
+            Thinking
           </span>
         )}
         {isSpeaking && (
-          <span className="text-xs text-indigo-600 flex items-center gap-1.5 bg-indigo-50 px-2.5 py-1 rounded-full">
+          <span className="text-[11px] text-indigo-600 flex items-center gap-1 bg-indigo-50 px-2 py-0.5 rounded-full">
             <Volume2 className="w-3 h-3" />
-            Speaking…
+            Speaking
           </span>
         )}
         {isListening && (
-          <span className="text-xs text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-full">
+          <span className="text-[11px] text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full">
             <Mic className="w-3 h-3 animate-pulse" />
-            Listening…
+            Listening
           </span>
         )}
         {agentState === 'idle' && (
-          <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">Ready</span>
+          <span className="text-[11px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">Idle</span>
         )}
       </div>
 
-      {/* Mic toggle — premium button */}
-      <Button
-        onClick={onToggleMic}
-        size="lg"
-        className={cn(
-          'gap-2 rounded-full px-8 font-medium transition-all duration-200',
-          isMicEnabled
-            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg shadow-indigo-200/50'
-            : 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200/50',
-        )}
-      >
-        {isMicEnabled ? (
-          <>
-            <Mic className="w-4 h-4" />
-            Mute
-          </>
-        ) : (
-          <>
-            <MicOff className="w-4 h-4" />
-            Unmute
-          </>
-        )}
-      </Button>
-
-      {/* Live indicator */}
+      {/* LIVE dot when mic active and agent listening */}
       {isMicEnabled && isListening && (
-        <div className="mt-3 flex items-center gap-1.5">
-          <span className="relative flex h-2.5 w-2.5">
+        <div className="flex items-center gap-1 ml-auto flex-shrink-0">
+          <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
           </span>
-          <span className="text-xs font-medium text-red-500">Live</span>
+          <span className="text-[10px] font-medium text-red-500">LIVE</span>
         </div>
       )}
     </div>

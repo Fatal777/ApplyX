@@ -70,6 +70,7 @@ class StartInterviewResponse(BaseModel):
 class EndInterviewRequest(BaseModel):
     room_name: str
     session_id: str
+    transcript: Optional[str] = None  # Full conversation transcript from frontend
 
 
 # ── Endpoints ───────────────────────────────────────────────────────────────
@@ -216,6 +217,7 @@ async def end_interview(
         user_id=str(current_user.id),
         job_role=room_meta.get("job_role", "Software Engineer"),
         difficulty=room_meta.get("difficulty", "intermediate"),
+        transcript=request.transcript,
     )
 
     return {
@@ -231,23 +233,27 @@ async def _generate_and_store_feedback(
     user_id: str,
     job_role: str = "Software Engineer",
     difficulty: str = "intermediate",
+    transcript: str | None = None,
 ) -> None:
-    """Background task: call the Gradient evaluation agent and cache results."""
+    """Background task: call evaluation LLM and cache results."""
     import traceback
 
     try:
         from app.services.gradient_service import gradient_service
 
-        # For now we don't have the full transcript stored — use a summary
-        # In production, store transcripts in DB via a webhook or agent data channel
-        transcript_placeholder = (
-            f"[Interview session {session_id} in room {room_name} for user {user_id}. "
-            "Full transcript would be stored via LiveKit webhook or agent data channel.]"
-        )
+        # Use the real transcript from the frontend, or a minimal fallback
+        if not transcript or len(transcript.strip()) < 50:
+            logger.warning("No real transcript provided for session %s — using minimal fallback", session_id)
+            transcript = (
+                f"[Interview session {session_id} for {job_role} role. "
+                "No transcript was captured. Please provide a general evaluation.]"
+            )
+        else:
+            logger.info("Using real transcript for session %s (%d chars)", session_id, len(transcript))
 
         raw = await gradient_service.generate_feedback(
             job_role=job_role,
-            transcript=transcript_placeholder,
+            transcript=transcript,
             difficulty=difficulty,
         )
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -34,6 +34,15 @@ const InterviewSetup = () => {
   const { toast } = useToast();
   const { isLimitReached, plan, consumeCredit } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Scroll fix — explicit wheel handler
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop += e.deltaY;
+      scrollRef.current.scrollLeft += e.deltaX;
+    }
+  }, []);
   
   // Interview configuration state
   const [interviewType, setInterviewType] = useState<InterviewType>('mixed');
@@ -82,7 +91,7 @@ const InterviewSetup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div ref={scrollRef} onWheel={handleWheel} className="h-screen overflow-y-auto bg-gray-50" style={{ scrollbarWidth: 'thin' }}>
       <main className="max-w-4xl mx-auto px-4 py-12 pt-24">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

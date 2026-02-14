@@ -30,15 +30,15 @@ class GradientServiceError(Exception):
 
 class GradientService:
     """
-    Client for the deployed Gradient ADK evaluation agent.
-
-    The agent is deployed via ``gradient agent deploy`` and exposes a
-    REST endpoint at ``GRADIENT_EVAL_AGENT_URL/run``.
+    Client for interview evaluation — uses Gradient ADK agent if deployed,
+    otherwise falls back to direct LLM call via OpenAI-compatible API.
     """
 
     def __init__(self) -> None:
         self.agent_url: str = settings.GRADIENT_EVAL_AGENT_URL or ""
         self.api_token: str = settings.GRADIENT_MODEL_ACCESS_KEY or ""
+        self._do_genai_key: str = getattr(settings, "DO_GENAI_API_KEY", "") or ""
+        self._openai_key: str = getattr(settings, "OPENAI_API_KEY", "") or ""
         self._client: Optional[httpx.AsyncClient] = None
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -46,12 +46,24 @@ class GradientService:
             self._client = httpx.AsyncClient(timeout=_TIMEOUT)
         return self._client
 
+    def _llm_api_key(self) -> str:
+        return self.api_token or self._do_genai_key or self._openai_key or ""
+
+    def _llm_base_url(self) -> str:
+        if self.api_token or self._do_genai_key:
+            return "https://inference.do-ai.run/v1"
+        return "https://api.openai.com/v1"
+
+    def _llm_model(self) -> str:
+        if self.api_token or self._do_genai_key:
+            return "llama3.3-70b-instruct"
+        return "gpt-4.1-mini"
+
     async def _call_agent(self, prompt: str) -> str:
         """POST prompt to the Gradient agent and return the response text."""
         if not self.agent_url:
-            raise GradientServiceError(
-                "GRADIENT_EVAL_AGENT_URL not configured", status_code=503
-            )
+            # Fallback to direct LLM call
+            return await self._call_llm_direct(prompt)
 
         client = await self._get_client()
 
@@ -75,13 +87,59 @@ class GradientService:
                 exc.response.status_code,
                 exc.response.text[:200],
             )
-            raise GradientServiceError(
-                f"Gradient agent error: {exc.response.status_code}",
-                status_code=exc.response.status_code,
-            )
+            # Fall back to direct LLM
+            logger.info("Falling back to direct LLM call")
+            return await self._call_llm_direct(prompt)
         except httpx.RequestError as exc:
             logger.error("Gradient agent request failed: %s", exc)
-            raise GradientServiceError(f"Connection error: {exc}", status_code=503)
+            logger.info("Falling back to direct LLM call")
+            return await self._call_llm_direct(prompt)
+
+    async def _call_llm_direct(self, prompt: str) -> str:
+        """Call OpenAI-compatible chat completions API directly."""
+        api_key = self._llm_api_key()
+        if not api_key:
+            raise GradientServiceError(
+                "No LLM API key configured (GRADIENT_MODEL_ACCESS_KEY, DO_GENAI_API_KEY, or OPENAI_API_KEY)",
+                status_code=503,
+            )
+
+        client = await self._get_client()
+        base_url = self._llm_base_url()
+        model = self._llm_model()
+
+        logger.info("Direct LLM call: %s model=%s", base_url, model)
+
+        try:
+            resp = await client.post(
+                f"{base_url}/chat/completions",
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": "You are a senior hiring manager and interview evaluator. Return ONLY valid JSON, no other text."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 2000,
+                },
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {api_key}",
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return data["choices"][0]["message"]["content"]
+
+        except httpx.HTTPStatusError as exc:
+            logger.error("Direct LLM HTTP %d: %s", exc.response.status_code, exc.response.text[:300])
+            raise GradientServiceError(
+                f"LLM API error: {exc.response.status_code}",
+                status_code=exc.response.status_code,
+            )
+        except (httpx.RequestError, KeyError, IndexError) as exc:
+            logger.error("Direct LLM request failed: %s", exc)
+            raise GradientServiceError(f"LLM connection error: {exc}", status_code=503)
 
     # ── Public methods ──────────────────────────────────────────────────
 

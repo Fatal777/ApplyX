@@ -1,18 +1,20 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
-  Settings,
   PhoneOff,
   Loader2,
   AlertCircle,
   LogIn,
   Crown,
   Sparkles,
+  Mic,
+  MicOff,
+  Video,
+  VideoOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
@@ -80,6 +82,9 @@ export function InterviewRoom() {
   const [webcamActive, setWebcamActive] = useState(true);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
+  // Ref to always access latest transcripts inside callbacks
+  const transcriptsRef = useRef<{ speaker: string; text: string; isFinal: boolean }[]>([]);
+
   // Config from URL params
   const [config] = useState<InterviewConfig>(() => ({
     interviewType: (searchParams.get('type') as InterviewType) || 'mixed',
@@ -117,7 +122,8 @@ export function InterviewRoom() {
       try {
         // Notify backend — triggers background feedback generation
         if (sessionData) {
-          await liveKitService.endInterview(sessionData.room_name, sessionData.session_id);
+          const transcriptText = buildTranscriptText();
+          await liveKitService.endInterview(sessionData.room_name, sessionData.session_id, transcriptText);
 
           toast({ title: 'Interview complete!', description: 'Generating feedback…' });
 
@@ -189,6 +195,22 @@ export function InterviewRoom() {
     return 'idle' as const;
   })();
 
+  // Build formatted transcript string from transcript entries for feedback generation
+  const buildTranscriptText = useCallback(() => {
+    // Use ref so this works inside stale closures (e.g. hook callbacks)
+    const t = transcriptsRef.current;
+    if (!t || t.length === 0) return '';
+    return t
+      .filter(e => e.isFinal)
+      .map(e => `${e.speaker === 'ai' ? 'Interviewer' : 'Candidate'}: ${e.text}`)
+      .join('\n');
+  }, []);
+
+  // Keep ref in sync with hook state
+  useEffect(() => {
+    transcriptsRef.current = transcripts;
+  }, [transcripts]);
+
   // ── Interview lifecycle ───────────────────────────────────────────────────
 
   const startInterview = useCallback(async () => {
@@ -250,6 +272,22 @@ export function InterviewRoom() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading]);
 
+  // Safety net: if all questions done but interview_complete never received, auto-end after 45s
+  useEffect(() => {
+    if (
+      phase === 'in-progress' &&
+      questionProgress &&
+      questionProgress.current >= questionProgress.total
+    ) {
+      const timer = setTimeout(() => {
+        console.warn('[Interview] Auto-ending — all questions done but no interview_complete received');
+        handleEndInterview();
+      }, 45_000);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, questionProgress]);
+
   const handleEndInterview = async () => {
     setShowExitDialog(false);
     disconnect();
@@ -258,7 +296,8 @@ export function InterviewRoom() {
       setPhase('analyzing');
 
       try {
-        await liveKitService.endInterview(sessionData.room_name, sessionData.session_id);
+        const transcriptText = buildTranscriptText();
+        await liveKitService.endInterview(sessionData.room_name, sessionData.session_id, transcriptText);
         toast({ title: 'Interview ended', description: 'Generating your feedback report…' });
 
         const poll = await liveKitService.waitForFeedback(sessionData.session_id, 2000, 30);
@@ -312,13 +351,21 @@ export function InterviewRoom() {
     startInterview();
   };
 
-  // Progress bar
-  const progress = questionProgress
-    ? (questionProgress.current / questionProgress.total) * 100
-    : 0;
-  const questionLabel = questionProgress
-    ? `Question ${questionProgress.current} of ${questionProgress.total}`
-    : 'Starting…';
+  // Progress bar — show contextual label based on phase/connection state
+  const progress = (() => {
+    if (phase === 'analyzing' || phase === 'feedback') return 100;
+    if (questionProgress) return (questionProgress.current / questionProgress.total) * 100;
+    return 0;
+  })();
+  const questionLabel = (() => {
+    if (phase === 'analyzing') return 'Analyzing responses…';
+    if (phase === 'feedback') return 'Complete';
+    if (phase === 'setup') return 'Setting up…';
+    if (questionProgress) return `Question ${questionProgress.current} of ${questionProgress.total}`;
+    if (isConnecting) return 'Connecting…';
+    if (isConnected) return 'Interview in Progress';
+    return 'Starting…';
+  })();
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -333,57 +380,121 @@ export function InterviewRoom() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-indigo-50/30">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-xl border-b border-gray-100 px-6 py-3 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Button variant="ghost" onClick={() => setShowExitDialog(true)} className="gap-2 text-gray-500 hover:text-gray-800">
-            <ArrowLeft className="w-4 h-4" />
-            Exit
-          </Button>
+    <div className="h-screen flex flex-col bg-gray-950">
+      {/* ── Header Bar ─────────────────────────────────────────────────── */}
+      <header className="flex-shrink-0 bg-gray-900 border-b border-gray-800 px-4 py-2.5 z-30">
+        <div className="flex items-center justify-between gap-3">
+          {/* Left: Exit + Agent status */}
+          <div className="flex items-center gap-3 min-w-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowExitDialog(true)}
+              className="text-gray-400 hover:text-white hover:bg-gray-800 gap-1.5 flex-shrink-0"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Exit</span>
+            </Button>
+            <div className="h-5 w-px bg-gray-700 flex-shrink-0" />
+            {phase === 'in-progress' && (
+              <VoiceAgent
+                agentState={agentState}
+                isMicEnabled={isMicEnabled}
+                onToggleMic={toggleMic}
+                persona={config.persona}
+                className="[&_span]:text-gray-300 [&_span.text-gray-900]:text-gray-100 [&_span.text-gray-400]:text-gray-500"
+              />
+            )}
+          </div>
 
-          <div className="flex items-center gap-4">
-            <span className="text-xs font-medium text-gray-500">{questionLabel}</span>
-            <div className="w-40">
-              <Progress value={progress} className="h-1.5" />
+          {/* Center: Progress */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <span className="text-xs font-medium text-gray-400 whitespace-nowrap">{questionLabel}</span>
+            <div className="w-28 sm:w-40">
+              <Progress value={progress} className="h-1.5 bg-gray-700" />
             </div>
           </div>
 
-          <Button variant="ghost" size="icon" onClick={() => setWebcamActive((p) => !p)} className="text-gray-400 hover:text-gray-600">
-            <Settings className="w-4 h-4" />
-          </Button>
+          {/* Right: Controls */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {phase === 'in-progress' && (
+              <>
+                {/* Mic toggle */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleMic}
+                  className={`gap-1.5 rounded-full px-3 ${
+                    isMicEnabled
+                      ? 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10'
+                      : 'text-red-400 hover:text-red-300 hover:bg-red-500/10'
+                  }`}
+                >
+                  {isMicEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                  <span className="hidden sm:inline text-xs">{isMicEnabled ? 'Mute' : 'Unmute'}</span>
+                </Button>
+
+                {/* Cam toggle */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setWebcamActive(p => !p)}
+                  className={`gap-1.5 rounded-full px-3 ${
+                    webcamActive
+                      ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-500/10'
+                      : 'text-gray-500 hover:text-gray-400 hover:bg-gray-700'
+                  }`}
+                >
+                  {webcamActive ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+                </Button>
+
+                <div className="h-5 w-px bg-gray-700" />
+
+                {/* End Interview */}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-1.5 rounded-full px-4 bg-red-600 hover:bg-red-700 text-white"
+                  onClick={() => setShowExitDialog(true)}
+                >
+                  <PhoneOff className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline text-xs">End</span>
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto p-6">
+      {/* ── Main Content ───────────────────────────────────────────────── */}
+      <div className="flex-1 min-h-0 relative">
         <AnimatePresence mode="wait">
           {/* Setup/Loading */}
           {phase === 'setup' && (
-            <motion.div key="setup" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center min-h-[60vh]">
-              <Loader2 className="w-12 h-12 animate-spin text-indigo-600 mb-4" />
-              <h2 className="text-xl font-semibold mb-2">Setting up your interview…</h2>
-              <p className="text-gray-600">Creating room & connecting to the AI interviewer</p>
+            <motion.div key="setup" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center h-full">
+              <Loader2 className="w-12 h-12 animate-spin text-indigo-400 mb-4" />
+              <h2 className="text-xl font-semibold mb-2 text-white">Setting up your interview…</h2>
+              <p className="text-gray-400">Creating room & connecting to the AI interviewer</p>
             </motion.div>
           )}
 
           {/* Analyzing */}
           {phase === 'analyzing' && (
-            <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center min-h-[60vh]">
-              <Loader2 className="w-12 h-12 animate-spin text-indigo-600 mb-4" />
-              <h2 className="text-xl font-semibold mb-2">Analyzing your interview…</h2>
-              <p className="text-gray-600">Generating comprehensive feedback</p>
+            <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center h-full">
+              <Loader2 className="w-12 h-12 animate-spin text-indigo-400 mb-4" />
+              <h2 className="text-xl font-semibold mb-2 text-white">Analyzing your interview…</h2>
+              <p className="text-gray-400">Generating comprehensive feedback</p>
             </motion.div>
           )}
 
           {/* Auth Required */}
           {phase === 'auth-required' && (
-            <motion.div key="auth" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center min-h-[60vh]">
-              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-                <LogIn className="w-10 h-10 text-primary" />
+            <motion.div key="auth" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center h-full">
+              <div className="w-20 h-20 rounded-full bg-indigo-500/10 flex items-center justify-center mb-6">
+                <LogIn className="w-10 h-10 text-indigo-400" />
               </div>
-              <h2 className="text-2xl font-semibold mb-2">Sign In Required</h2>
-              <p className="text-gray-600 mb-6 text-center max-w-md">
+              <h2 className="text-2xl font-semibold mb-2 text-white">Sign In Required</h2>
+              <p className="text-gray-400 mb-6 text-center max-w-md">
                 Please sign in to start a mock interview session.
               </p>
               <div className="flex gap-4">
@@ -397,10 +508,10 @@ export function InterviewRoom() {
 
           {/* Error */}
           {phase === 'error' && (
-            <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center min-h-[60vh]">
+            <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center h-full">
               <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-              <h2 className="text-xl font-semibold mb-2">Something went wrong</h2>
-              <p className="text-gray-600 mb-6">{error || livekitError}</p>
+              <h2 className="text-xl font-semibold mb-2 text-white">Something went wrong</h2>
+              <p className="text-gray-400 mb-6">{error || livekitError}</p>
               <div className="flex gap-4">
                 <Button onClick={handleRetry}>Try Again</Button>
                 <Button variant="outline" onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
@@ -410,12 +521,12 @@ export function InterviewRoom() {
 
           {/* Subscription Required */}
           {phase === 'subscription-required' && (
-            <motion.div key="sub" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center min-h-[60vh]">
+            <motion.div key="sub" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center h-full">
               <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#c7ff6b] to-[#a8e063] flex items-center justify-center mb-6 shadow-lg">
                 <Crown className="w-12 h-12 text-black" />
               </div>
-              <h2 className="text-2xl font-bold mb-2">Subscription Required</h2>
-              <p className="text-gray-600 mb-6 text-center max-w-md">
+              <h2 className="text-2xl font-bold mb-2 text-white">Subscription Required</h2>
+              <p className="text-gray-400 mb-6 text-center max-w-md">
                 Unlock AI-powered mock interviews with personalized feedback.
               </p>
               <div className="flex gap-4">
@@ -427,59 +538,35 @@ export function InterviewRoom() {
             </motion.div>
           )}
 
-          {/* In Progress — the actual interview */}
+          {/* ── In Progress — the actual interview ─────────────────── */}
           {phase === 'in-progress' && (
-            <motion.div key="in-progress" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid lg:grid-cols-3 gap-5 h-[calc(100vh-80px)]">
-              {/* Voice Agent + Transcript — main area */}
-              <div className="lg:col-span-2 flex flex-col min-h-0">
-                <Card className="flex flex-col flex-1 min-h-0 p-6 bg-white/70 backdrop-blur-sm border-white/40 shadow-xl shadow-gray-200/30 rounded-2xl">
-                  <VoiceAgent
-                    agentState={agentState}
-                    isMicEnabled={isMicEnabled}
-                    onToggleMic={toggleMic}
-                    persona={config.persona}
-                  />
-
-                  <TranscriptionDisplay
-                    transcripts={transcripts}
-                    agentIsSpeaking={agentIsSpeaking}
-                    isMicEnabled={isMicEnabled}
-                    className="mt-4 flex-1 min-h-0"
-                  />
-                </Card>
+            <motion.div
+              key="in-progress"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="h-full flex flex-col"
+            >
+              {/* Transcript takes up the full space */}
+              <div className="flex-1 min-h-0">
+                <TranscriptionDisplay
+                  transcripts={transcripts}
+                  agentIsSpeaking={agentIsSpeaking}
+                  isMicEnabled={isMicEnabled}
+                  className="h-full rounded-none border-0 shadow-none bg-gray-950"
+                />
               </div>
 
-              {/* Sidebar */}
-              <div className="space-y-4">
-                <WebcamDisplay isActive={webcamActive} className="aspect-video w-full rounded-2xl overflow-hidden shadow-lg" />
-
-                <Card className="p-4 bg-white/70 backdrop-blur-sm border-white/40 shadow-md rounded-2xl">
-                  <h3 className="font-semibold text-sm text-gray-900 mb-3">Interview Details</h3>
-                  <div className="space-y-2 text-xs text-gray-600">
-                    <div className="flex justify-between"><span className="text-gray-400">Type</span><span className="font-medium capitalize">{config.interviewType.replace('_', ' ')}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-400">Difficulty</span><span className="font-medium capitalize">{config.difficulty}</span></div>
-                    {config.jobRole && <div className="flex justify-between"><span className="text-gray-400">Role</span><span className="font-medium">{config.jobRole}</span></div>}
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Status</span>
-                      {isConnecting && <span className="text-amber-600 font-medium">Connecting…</span>}
-                      {isConnected && <span className="text-emerald-600 font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Connected</span>}
-                    </div>
-                  </div>
-                </Card>
-
-                <Button
-                  variant="destructive"
-                  className="w-full gap-2 rounded-xl shadow-lg shadow-red-100/50 font-medium"
-                  onClick={() => setShowExitDialog(true)}
-                >
-                  <PhoneOff className="w-4 h-4" />
-                  End Interview
-                </Button>
-              </div>
+              {/* Webcam PIP overlay — bottom right */}
+              {webcamActive && (
+                <div className="absolute bottom-4 right-4 z-20 w-40 lg:w-52 aspect-video rounded-xl overflow-hidden shadow-2xl ring-2 ring-gray-700/50">
+                  <WebcamDisplay isActive={webcamActive} className="w-full h-full" />
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
-      </main>
+      </div>
 
       {/* Exit Dialog */}
       <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>

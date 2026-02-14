@@ -242,6 +242,19 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 logger.info("ProxyHeadersMiddleware enabled for HTTPS behind nginx")
 
+# Security middleware (order matters - added first = processed last in Starlette)
+# Phase 4: Performance metrics middleware
+app.add_middleware(PerformanceMiddleware)
+logger.info("Performance metrics middleware enabled")
+
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(RequestValidationMiddleware)
+app.add_middleware(DDoSProtectionMiddleware)  # First line of defense
+app.add_middleware(TimeoutMiddleware, default_timeout=60)  # Global request timeout
+
+# CORS must be added LAST so it is processed FIRST (outermost)
+# This ensures preflight OPTIONS requests get CORS headers before any other middleware rejects them
 cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
 logger.info(f"CORS Origins configured: {cors_origins}")
 
@@ -255,17 +268,6 @@ app.add_middleware(
     max_age=3600,
 )
 logger.info("CORS middleware configured with all methods including OPTIONS")
-
-# Phase 4: Performance metrics middleware
-app.add_middleware(PerformanceMiddleware)
-logger.info("Performance metrics middleware enabled")
-
-# Security middleware (order matters - DDoS first, then validation, then logging, then headers)
-app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(RequestLoggingMiddleware)
-app.add_middleware(RequestValidationMiddleware)
-app.add_middleware(DDoSProtectionMiddleware)  # First line of defense
-app.add_middleware(TimeoutMiddleware, default_timeout=60)  # Global request timeout
 
 # Exception handlers
 @app.exception_handler(RateLimitExceeded)
