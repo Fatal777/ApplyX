@@ -25,7 +25,12 @@ def seed_admin_user(db: Session) -> None:
     - is_verified = True
     - Pro+ subscription with unlimited access
     """
-    admin_email = f"{settings.ADMIN_USERNAME}@applyx.in"
+    # Support ADMIN_USERNAME as full email or just username
+    admin_username = settings.ADMIN_USERNAME or ''
+    if '@' in admin_username:
+        admin_email = admin_username  # Already a full email
+    else:
+        admin_email = f"{admin_username}@applyx.in"
     
     try:
         # Check if admin user exists
