@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Mic, Volume2, User, Bot, MessageSquare } from 'lucide-react';
 import type { TranscriptEntry } from '@/hooks/useLiveKitInterview';
@@ -23,12 +23,12 @@ interface ConsolidatedMessage {
 }
 
 /**
- * TranscriptionDisplay Component (v3.0 — Dark / immersive)
+ * TranscriptionDisplay Component (v4.0 — Dark / immersive / smooth)
  *
  * - Consolidates consecutive same-speaker segments into a single bubble
- * - Auto-scrolls smoothly as new text arrives
+ * - Reliable auto-scroll with user-scroll-override detection
+ * - Smooth word-by-word text appearance via CSS animation
  * - Dark theme to match interview room
- * - Explicit onWheel handler for scroll fix (react-resizable-panels issue)
  */
 export function TranscriptionDisplay({
     transcripts,
@@ -38,9 +38,17 @@ export function TranscriptionDisplay({
 }: TranscriptionDisplayProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
+    const userScrolledUp = useRef(false);
 
-    // Native wheel handler with { passive: false } — React's onWheel is passive
-    // and cannot call preventDefault, so we use a direct DOM listener instead
+    // Detect if user manually scrolled up (disable auto-scroll until they scroll back down)
+    const handleScroll = useCallback(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+        userScrolledUp.current = distFromBottom > 80;
+    }, []);
+
+    // Native wheel handler — fixes react-resizable-panels passive event issue
     useEffect(() => {
         const el = scrollRef.current;
         if (!el) return;
@@ -85,11 +93,15 @@ export function TranscriptionDisplay({
         return groups;
     }, [transcripts]);
 
-    // Smooth auto-scroll on every transcript change
+    // Reliable auto-scroll: use requestAnimationFrame + scrollTo for smoothness
     useEffect(() => {
-        if (bottomRef.current) {
-            bottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-        }
+        if (userScrolledUp.current) return;
+        const el = scrollRef.current;
+        if (!el) return;
+        // Use rAF to ensure DOM has painted the new content
+        requestAnimationFrame(() => {
+            el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        });
     }, [consolidated]);
 
     return (
@@ -123,6 +135,7 @@ export function TranscriptionDisplay({
             <div className="relative flex-1 min-h-0">
                 <div
                     ref={scrollRef}
+                    onScroll={handleScroll}
                     className="absolute inset-0 px-5 py-4 space-y-4 overflow-y-auto scroll-smooth"
                     style={{ scrollbarWidth: 'thin', scrollbarColor: '#4b5563 transparent' }}
                 >
@@ -169,7 +182,9 @@ function TranscriptMessage({
     const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     return (
-        <div className={cn('flex gap-3', !isAI && 'flex-row-reverse')}>
+        <div
+            className={cn('flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300', !isAI && 'flex-row-reverse')}
+        >
             {/* Avatar */}
             <div
                 className={cn(
@@ -195,31 +210,43 @@ function TranscriptMessage({
                 </div>
                 <div
                     className={cn(
-                        'px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed transition-all duration-200',
+                        'px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed transition-all duration-300',
                         isAI
                             ? 'bg-gray-800/80 text-gray-200 rounded-tl-md border border-gray-700/50'
                             : 'bg-indigo-600 text-white rounded-tr-md shadow-md shadow-indigo-900/30',
-                        isLive && 'ring-2 ring-offset-1 ring-offset-gray-950',
-                        isLive && isAI && 'ring-indigo-500/40',
-                        isLive && !isAI && 'ring-indigo-400/50',
+                        isLive && 'ring-1 ring-offset-1 ring-offset-gray-950',
+                        isLive && isAI && 'ring-indigo-500/30',
+                        isLive && !isAI && 'ring-indigo-400/40',
                     )}
                 >
-                    {text}
-                    {isLive && (
-                        <span className="inline-flex ml-1.5 gap-0.5 align-middle">
-                            <span className={cn(
-                                'w-1 h-1 rounded-full animate-bounce',
-                                isAI ? 'bg-indigo-400' : 'bg-white/80',
-                            )} style={{ animationDelay: '0ms' }} />
-                            <span className={cn(
-                                'w-1 h-1 rounded-full animate-bounce',
-                                isAI ? 'bg-indigo-400' : 'bg-white/80',
-                            )} style={{ animationDelay: '150ms' }} />
-                            <span className={cn(
-                                'w-1 h-1 rounded-full animate-bounce',
-                                isAI ? 'bg-indigo-400' : 'bg-white/80',
-                            )} style={{ animationDelay: '300ms' }} />
+                    {isLive ? (
+                        <span className="inline">
+                            {text.split(' ').map((word, i) => (
+                                <span
+                                    key={i}
+                                    className="inline animate-in fade-in duration-200"
+                                    style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
+                                >
+                                    {word}{' '}
+                                </span>
+                            ))}
+                            <span className="inline-flex ml-0.5 gap-0.5 align-middle">
+                                <span className={cn(
+                                    'w-1 h-1 rounded-full animate-bounce',
+                                    isAI ? 'bg-indigo-400' : 'bg-white/80',
+                                )} style={{ animationDelay: '0ms' }} />
+                                <span className={cn(
+                                    'w-1 h-1 rounded-full animate-bounce',
+                                    isAI ? 'bg-indigo-400' : 'bg-white/80',
+                                )} style={{ animationDelay: '150ms' }} />
+                                <span className={cn(
+                                    'w-1 h-1 rounded-full animate-bounce',
+                                    isAI ? 'bg-indigo-400' : 'bg-white/80',
+                                )} style={{ animationDelay: '300ms' }} />
+                            </span>
                         </span>
+                    ) : (
+                        text
                     )}
                 </div>
             </div>

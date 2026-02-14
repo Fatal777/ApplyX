@@ -75,6 +75,8 @@ interface UserData {
     } | null;
 }
 
+const PLAN_OPTIONS = ['free', 'basic', 'pro', 'pro_plus'] as const;
+
 const AdminPanel = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -85,6 +87,7 @@ const AdminPanel = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' });
     const [showAuthDialog, setShowAuthDialog] = useState(true);
+    const [changingPlan, setChangingPlan] = useState<number | null>(null);
 
     // Check if user needs to authenticate
     useEffect(() => {
@@ -141,6 +144,30 @@ const AdminPanel = () => {
             fetchDashboard();
         }
     }, [adminCredentials, showAuthDialog]);
+
+    const handlePlanChange = async (userId: number, newPlan: string) => {
+        if (!adminCredentials.username) return;
+        setChangingPlan(userId);
+        const authHeader = 'Basic ' + btoa(`${adminCredentials.username}:${adminCredentials.password}`);
+        try {
+            const res = await fetch(`${ADMIN_API_BASE}/users/${userId}/plan?plan=${newPlan}`, {
+                method: 'PUT',
+                headers: { Authorization: authHeader },
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({ detail: 'Failed' }));
+                throw new Error(data.detail || 'Failed to update plan');
+            }
+            // Update local state
+            setUsers(prev => prev.map(u => u.id === userId ? { ...u, subscription: { plan: newPlan, status: 'active' } } : u));
+            // Refresh stats
+            fetchDashboard();
+        } catch (err: any) {
+            alert('Error changing plan: ' + err.message);
+        } finally {
+            setChangingPlan(null);
+        }
+    };
 
     const handleAdminLogin = (e: React.FormEvent) => {
         e.preventDefault();
@@ -379,6 +406,7 @@ const AdminPanel = () => {
                                         <th className="text-left py-3 px-4 font-medium text-muted-foreground">User</th>
                                         <th className="text-left py-3 px-4 font-medium text-muted-foreground">Phone</th>
                                         <th className="text-left py-3 px-4 font-medium text-muted-foreground">Plan</th>
+                                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Change Plan</th>
                                         <th className="text-left py-3 px-4 font-medium text-muted-foreground">Joined</th>
                                         <th className="text-left py-3 px-4 font-medium text-muted-foreground">Last Login</th>
                                     </tr>
@@ -407,6 +435,18 @@ const AdminPanel = () => {
                                                         }`}>
                                                         {u.subscription?.plan || 'free'}
                                                     </span>
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <select
+                                                        value={u.subscription?.plan || 'free'}
+                                                        onChange={(e) => handlePlanChange(u.id, e.target.value)}
+                                                        disabled={changingPlan === u.id}
+                                                        className="text-xs border rounded-md px-2 py-1.5 bg-background text-foreground cursor-pointer disabled:opacity-50"
+                                                    >
+                                                        {PLAN_OPTIONS.map(p => (
+                                                            <option key={p} value={p}>{p.replace('_', ' ').toUpperCase()}</option>
+                                                        ))}
+                                                    </select>
                                                 </td>
                                                 <td className="py-3 px-4 text-sm text-muted-foreground">{formatDate(u.created_at)}</td>
                                                 <td className="py-3 px-4 text-sm text-muted-foreground">{formatDate(u.last_login)}</td>

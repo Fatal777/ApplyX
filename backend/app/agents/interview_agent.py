@@ -30,7 +30,7 @@ from livekit.agents import (
 )
 from livekit.plugins import deepgram, noise_cancellation, openai, silero
 
-from app.agents.interview_prompts import build_interviewer_instructions
+from app.agents.interview_prompts import build_interviewer_instructions, PERSONA_VOICE
 
 load_dotenv(".env.local")
 load_dotenv(".env")
@@ -89,6 +89,7 @@ class InterviewerAgent(Agent):
     ) -> None:
         self._job_role = job_role
         self._difficulty = difficulty
+        self._persona = persona
         self._num_questions = num_questions
         self._question_index = 0
         self._started_at: float = 0.0
@@ -135,11 +136,14 @@ class InterviewerAgent(Agent):
         )
 
         if remaining <= 0:
-            # Start safety-net timer in case LLM forgets to call end_interview
-            asyncio.create_task(self._auto_end_after_delay(15.0))
+            # Start safety-net timers in case LLM forgets to call end_interview
+            asyncio.create_task(self._auto_end_after_delay(10.0))
+            asyncio.create_task(self._auto_end_after_delay(20.0))  # second safety net
             return (
-                f"Question {self._question_index} of {self._num_questions}. "
-                "All questions complete — you MUST now give a brief closing statement and IMMEDIATELY call end_interview."
+                f"All {self._num_questions} questions are now COMPLETE. "
+                "You MUST immediately say your closing statement and then call end_interview. "
+                "Do NOT ask any more questions. Do NOT wait for the candidate. "
+                "Say goodbye and call end_interview NOW."
             )
         return (
             f"Question {self._question_index} of {self._num_questions}. "
@@ -259,6 +263,11 @@ async def interview_session(ctx: agents.JobContext):
         job_description=meta.get("job_description"),
     )
 
+    # Select persona-specific voice
+    persona = meta.get("persona", "professional")
+    tts_voice = PERSONA_VOICE.get(persona, "aura-asteria-en")
+    logger.info("Using TTS voice '%s' for persona '%s'", tts_voice, persona)
+
     # Build the voice session with industry-best pipeline
     session = AgentSession(
         # STT — Deepgram Nova-3 with enhanced settings
@@ -277,10 +286,10 @@ async def interview_session(ctx: agents.JobContext):
             model=_llm_model(),
             base_url=_llm_base_url(),
         ),
-        # TTS — Deepgram Aura (professional female voice)
+        # TTS — Deepgram Aura, voice selected per persona
         tts=deepgram.TTS(
             api_key=_DEEPGRAM_API_KEY,
-            model="aura-asteria-en",
+            model=tts_voice,
         ),
         # VAD — Silero voice activity detection
         vad=silero.VAD.load(

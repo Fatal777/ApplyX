@@ -208,6 +208,56 @@ async def get_users_list(
     }
 
 
+@router.put("/users/{user_id}/plan")
+async def update_user_plan(
+    user_id: int,
+    plan: str,
+    admin: str = Depends(verify_admin),
+    db: Session = Depends(get_db)
+):
+    """Change a user's subscription plan. Admin only."""
+    from app.models.subscription import SubscriptionPlan, SubscriptionStatus
+    
+    # Validate plan
+    valid_plans = {p.value: p for p in SubscriptionPlan}
+    if plan not in valid_plans:
+        raise HTTPException(status_code=400, detail=f"Invalid plan. Must be one of: {list(valid_plans.keys())}")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    subscription = db.query(Subscription).filter(Subscription.user_id == user_id).first()
+    
+    if subscription:
+        old_plan = subscription.plan.value
+        subscription.plan = valid_plans[plan]
+        subscription.status = SubscriptionStatus.ACTIVE
+        # Reset usage counters on plan change
+        subscription.resume_edits_used = 0
+        subscription.interviews_used = 0
+        subscription.resume_analyses_used = 0
+    else:
+        old_plan = "none"
+        subscription = Subscription(
+            user_id=user_id,
+            plan=valid_plans[plan],
+            status=SubscriptionStatus.ACTIVE,
+        )
+        db.add(subscription)
+    
+    db.commit()
+    logger.info(f"Admin {admin} changed user {user.email} plan: {old_plan} → {plan}")
+    
+    return {
+        "status": "success",
+        "user_id": user_id,
+        "email": user.email,
+        "old_plan": old_plan,
+        "new_plan": plan,
+    }
+
+
 @router.get("/payments")
 async def get_payments_list(
     limit: int = 50,
