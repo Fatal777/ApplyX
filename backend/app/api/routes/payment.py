@@ -58,7 +58,100 @@ class SubscriptionStatusResponse(BaseModel):
     is_paid: bool
 
 
-# ============== API Endpoints ==============
+# ============== Usage / Freemium Endpoints ==============
+
+@router.get("/usage")
+async def get_usage(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get current user's usage limits and remaining credits.
+    
+    Used by the frontend to show usage indicators and decide
+    whether to show the upgrade modal before an action.
+    """
+    from app.models.subscription import Subscription, SubscriptionPlan, SubscriptionStatus, PLAN_LIMITS
+    
+    subscription = db.query(Subscription).filter(
+        Subscription.user_id == current_user.id
+    ).first()
+    
+    if not subscription:
+        # Auto-create a FREE subscription if missing (defensive)
+        subscription = Subscription(
+            user_id=current_user.id,
+            plan=SubscriptionPlan.FREE,
+            status=SubscriptionStatus.ACTIVE,
+        )
+        subscription.apply_plan_limits()
+        db.add(subscription)
+        db.commit()
+        db.refresh(subscription)
+    
+    return subscription.usage_dict()
+
+
+@router.post("/consume-credit")
+async def consume_credit(
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Explicitly consume a usage credit after a successful action.
+    
+    The frontend calls this AFTER a resume upload/analysis/interview succeeds,
+    so the credit is only deducted for successful operations (not failed ones).
+    
+    Body: { "type": "resume_edits" | "resume_analyses" | "interviews" }
+    """
+    from app.models.subscription import Subscription, SubscriptionPlan, SubscriptionStatus
+    
+    body = await request.json()
+    credit_type = body.get("type", "")
+    
+    if credit_type not in ("resume_edits", "resume_analyses", "interviews"):
+        raise HTTPException(status_code=400, detail="Invalid credit type")
+    
+    subscription = db.query(Subscription).filter(
+        Subscription.user_id == current_user.id
+    ).first()
+    
+    if not subscription:
+        raise HTTPException(status_code=402, detail="No subscription found")
+    
+    # Superadmins skip
+    if current_user.is_superadmin:
+        return {"consumed": False, "reason": "admin_bypass"}
+    
+    success = False
+    if credit_type == "resume_edits":
+        success = subscription.use_resume_edit()
+    elif credit_type == "resume_analyses":
+        success = subscription.use_analysis()
+    elif credit_type == "interviews":
+        success = subscription.use_interview()
+    
+    if not success:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "usage_limit_reached",
+                "message": f"Your {subscription.plan.value} plan limit for {credit_type} has been reached.",
+                "upgrade_url": "/pricing",
+            },
+        )
+    
+    db.commit()
+    return {
+        "consumed": True,
+        "credit_type": credit_type,
+        "usage": subscription.usage_dict(),
+    }
+
+
+# ============== Razorpay Order Endpoints ==============
 
 @router.post("/create-order")
 @limiter.limit("10/minute")
@@ -70,9 +163,6 @@ async def create_order(
 ):
     """
     Create a Razorpay order for subscription purchase.
-    
-    Returns order details for frontend Razorpay checkout integration.
-    Supports 1000+ concurrent requests.
     """
     # Normalize plan name
     plan_name = order_request.plan.lower().replace("-", "_").replace("+", "_plus")

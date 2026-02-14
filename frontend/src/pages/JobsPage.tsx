@@ -30,7 +30,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/use-toast';
-import Navbar from '@/components/Navbar';
+
 import Footer from '@/components/Footer';
 import { JobSearch, JobList, JobCard, JobFilters, JobComparison } from '@/components/jobs';
 import { useJobStore } from '@/stores/jobStore';
@@ -67,6 +67,7 @@ const JobsPage = () => {
           location: 'India',
           limit: 100,  // Load 100 jobs
           skipAbort: true,
+          useFastSearch: true,  // Use cached/fast endpoint for instant results
         });
         setAllJobs(response.jobs);
       } catch (error) {
@@ -123,8 +124,6 @@ const JobsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-outfit">
-      <Navbar />
-
       {/* Hero Section */}
       <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden pt-20 bg-gradient-to-br from-primary via-primary to-[#4338ca] text-white">
         {/* Animated background elements */}

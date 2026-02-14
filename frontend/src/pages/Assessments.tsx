@@ -4,7 +4,7 @@ import { Code, CheckCircle, Timer, TrendingUp, Award, Target, Clock, ArrowRight,
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import Navbar from "@/components/Navbar";
+
 import Footer from "@/components/Footer";
 import ThreeBackground from "@/components/ThreeBackground";
 

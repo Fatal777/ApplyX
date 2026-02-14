@@ -251,15 +251,57 @@ export function InterviewRoom() {
   }, [user, authLoading]);
 
   const handleEndInterview = async () => {
+    setShowExitDialog(false);
     disconnect();
+
     if (sessionData && phase === 'in-progress') {
+      setPhase('analyzing');
+
       try {
         await liveKitService.endInterview(sessionData.room_name, sessionData.session_id);
-      } catch {
-        // best-effort
+        toast({ title: 'Interview ended', description: 'Generating your feedback report…' });
+
+        const poll = await liveKitService.waitForFeedback(sessionData.session_id, 2000, 30);
+
+        if (poll.status === 'ready' && poll.feedback) {
+          const fb = poll.feedback;
+          setFeedback({
+            id: 0,
+            session_id: 0,
+            overall_score: fb.overall_score ?? 0,
+            category_scores: fb.category_scores ?? {},
+            strengths: fb.strengths ?? [],
+            improvements: fb.improvements ?? [],
+            detailed_feedback:
+              typeof fb.detailed_feedback === 'string'
+                ? { summary: fb.detailed_feedback }
+                : fb.detailed_feedback ?? {},
+            recommendations: fb.recommendations ?? [],
+            generated_at: fb.generated_at ?? new Date().toISOString(),
+          } as InterviewFeedback);
+          setPhase('feedback');
+          return;
+        }
+      } catch (err) {
+        console.error('Error generating feedback:', err);
       }
+
+      // Fallback if polling failed or timed out
+      setFeedback({
+        id: 0,
+        session_id: 0,
+        overall_score: 50,
+        category_scores: { overall: 50 },
+        strengths: ['Completed the interview session'],
+        improvements: ['Detailed feedback generation timed out — try again'],
+        detailed_feedback: { summary: 'Interview ended by user. Feedback generation timed out.' },
+        recommendations: ['Practice again for more detailed feedback'],
+        generated_at: new Date().toISOString(),
+      } as InterviewFeedback);
+      setPhase('feedback');
+    } else {
+      navigate('/dashboard');
     }
-    navigate('/dashboard');
   };
 
   const handleRetry = () => {
@@ -291,23 +333,23 @@ export function InterviewRoom() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-indigo-50/30">
       {/* Header */}
-      <header className="bg-white border-b px-6 py-4">
+      <header className="bg-white/80 backdrop-blur-xl border-b border-gray-100 px-6 py-3 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Button variant="ghost" onClick={() => setShowExitDialog(true)} className="gap-2">
+          <Button variant="ghost" onClick={() => setShowExitDialog(true)} className="gap-2 text-gray-500 hover:text-gray-800">
             <ArrowLeft className="w-4 h-4" />
-            Exit Interview
+            Exit
           </Button>
 
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">{questionLabel}</span>
-            <div className="w-32">
-              <Progress value={progress} className="h-2" />
+            <span className="text-xs font-medium text-gray-500">{questionLabel}</span>
+            <div className="w-40">
+              <Progress value={progress} className="h-1.5" />
             </div>
           </div>
 
-          <Button variant="outline" size="icon" onClick={() => setWebcamActive((p) => !p)}>
+          <Button variant="ghost" size="icon" onClick={() => setWebcamActive((p) => !p)} className="text-gray-400 hover:text-gray-600">
             <Settings className="w-4 h-4" />
           </Button>
         </div>
@@ -387,10 +429,10 @@ export function InterviewRoom() {
 
           {/* In Progress — the actual interview */}
           {phase === 'in-progress' && (
-            <motion.div key="in-progress" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid lg:grid-cols-3 gap-6">
+            <motion.div key="in-progress" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid lg:grid-cols-3 gap-5 h-[calc(100vh-80px)]">
               {/* Voice Agent + Transcript — main area */}
-              <div className="lg:col-span-2">
-                <Card className="p-8">
+              <div className="lg:col-span-2 flex flex-col min-h-0">
+                <Card className="flex flex-col flex-1 min-h-0 p-6 bg-white/70 backdrop-blur-sm border-white/40 shadow-xl shadow-gray-200/30 rounded-2xl">
                   <VoiceAgent
                     agentState={agentState}
                     isMicEnabled={isMicEnabled}
@@ -402,27 +444,34 @@ export function InterviewRoom() {
                     transcripts={transcripts}
                     agentIsSpeaking={agentIsSpeaking}
                     isMicEnabled={isMicEnabled}
-                    className="mt-6"
+                    className="mt-4 flex-1 min-h-0"
                   />
                 </Card>
               </div>
 
               {/* Sidebar */}
               <div className="space-y-4">
-                <WebcamDisplay isActive={webcamActive} className="aspect-video w-full" />
+                <WebcamDisplay isActive={webcamActive} className="aspect-video w-full rounded-2xl overflow-hidden shadow-lg" />
 
-                <Card className="p-4">
-                  <h3 className="font-medium mb-2">Interview Details</h3>
-                  <div className="space-y-1 text-sm text-gray-600">
-                    <p>Type: <span className="capitalize">{config.interviewType.replace('_', ' ')}</span></p>
-                    <p>Difficulty: <span className="capitalize">{config.difficulty}</span></p>
-                    {config.jobRole && <p>Role: {config.jobRole}</p>}
-                    {isConnecting && <p className="text-yellow-600">Connecting…</p>}
-                    {isConnected && <p className="text-green-600">Connected</p>}
+                <Card className="p-4 bg-white/70 backdrop-blur-sm border-white/40 shadow-md rounded-2xl">
+                  <h3 className="font-semibold text-sm text-gray-900 mb-3">Interview Details</h3>
+                  <div className="space-y-2 text-xs text-gray-600">
+                    <div className="flex justify-between"><span className="text-gray-400">Type</span><span className="font-medium capitalize">{config.interviewType.replace('_', ' ')}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">Difficulty</span><span className="font-medium capitalize">{config.difficulty}</span></div>
+                    {config.jobRole && <div className="flex justify-between"><span className="text-gray-400">Role</span><span className="font-medium">{config.jobRole}</span></div>}
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Status</span>
+                      {isConnecting && <span className="text-amber-600 font-medium">Connecting…</span>}
+                      {isConnected && <span className="text-emerald-600 font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Connected</span>}
+                    </div>
                   </div>
                 </Card>
 
-                <Button variant="destructive" className="w-full gap-2" onClick={() => setShowExitDialog(true)}>
+                <Button
+                  variant="destructive"
+                  className="w-full gap-2 rounded-xl shadow-lg shadow-red-100/50 font-medium"
+                  onClick={() => setShowExitDialog(true)}
+                >
                   <PhoneOff className="w-4 h-4" />
                   End Interview
                 </Button>

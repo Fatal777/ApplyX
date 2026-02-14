@@ -1,30 +1,30 @@
 import { useState, useEffect, useCallback } from 'react';
-import { paymentService, SubscriptionStatus } from '@/services/paymentService';
+import { paymentService, UsageData, CreditType } from '@/services/paymentService';
 import { useAuth } from '@/contexts/AuthContext';
 
 /**
- * useSubscription Hook
- * =====================
- * Provides subscription status and access control for features.
- * 
+ * useSubscription Hook — Freemium Edition
+ * =========================================
+ * Provides plan info, per-feature usage limits, and a credit-consuming helper.
+ *
  * Usage:
  * ```tsx
- * const { subscription, isLoading, canAccessInterview, canAnalyzeResume, refetch } = useSubscription();
- * 
- * if (!canAccessInterview) {
- *   // Show paywall modal
- * }
+ * const { usage, isLoading, isLimitReached, consumeCredit, refetch } = useSubscription();
+ *
+ * if (isLimitReached('interviews')) showUpgradeModal('interviews');
+ * // after successful action:
+ * await consumeCredit('interviews');
  * ```
  */
 export function useSubscription() {
     const { user } = useAuth();
-    const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
+    const [usage, setUsage] = useState<UsageData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchSubscription = useCallback(async () => {
+    const fetchUsage = useCallback(async () => {
         if (!user) {
-            setSubscription(null);
+            setUsage(null);
             setIsLoading(false);
             return;
         }
@@ -32,22 +32,23 @@ export function useSubscription() {
         try {
             setIsLoading(true);
             setError(null);
-            const status = await paymentService.getSubscriptionStatus();
-            setSubscription(status);
+            const data = await paymentService.getUsage();
+            setUsage(data);
         } catch (err: any) {
-            console.error('Failed to fetch subscription status:', err);
-            setError(err.message || 'Failed to fetch subscription status');
-            // Set default free subscription on error
-            setSubscription({
+            console.error('Failed to fetch usage:', err);
+            setError(err.message || 'Failed to fetch usage');
+            // Fallback: assume free with everything at limit so UX blocks gracefully
+            setUsage({
                 plan: 'free',
                 status: 'active',
-                expires_at: null,
-                resume_analysis_count: 0,
-                resume_analysis_limit: 2,
-                resume_analysis_remaining: 2,
-                can_access_interview: false,
-                can_analyze_resume: true,
-                tier: 'free',
+                resume_edits: { used: 0, limit: 1, remaining: 1 },
+                resume_analyses: { used: 0, limit: 1, remaining: 1 },
+                interviews: { used: 0, limit: 1, remaining: 1 },
+                is_limit_reached: {
+                    resume_edits: false,
+                    resume_analyses: false,
+                    interviews: false,
+                },
                 is_paid: false,
             });
         } finally {
@@ -56,30 +57,68 @@ export function useSubscription() {
     }, [user]);
 
     useEffect(() => {
-        fetchSubscription();
-    }, [fetchSubscription]);
+        fetchUsage();
+    }, [fetchUsage]);
+
+    /** Check whether a specific credit type has hit its limit */
+    const isLimitReached = useCallback(
+        (type: CreditType): boolean => {
+            if (!usage) return false;
+            return usage.is_limit_reached[type] ?? false;
+        },
+        [usage],
+    );
+
+    /** Remaining credits for a type (-1 = unlimited) */
+    const remaining = useCallback(
+        (type: CreditType): number => {
+            if (!usage) return 0;
+            return usage[type]?.remaining ?? 0;
+        },
+        [usage],
+    );
+
+    /** Consume a credit after a successful action & update local state */
+    const consumeCredit = useCallback(
+        async (type: CreditType) => {
+            try {
+                const result = await paymentService.consumeCredit(type);
+                if (result.usage) {
+                    setUsage(result.usage);
+                }
+                return result;
+            } catch (err: any) {
+                // If 402 — limit just got reached (race condition). Refetch to sync UI.
+                if (err.response?.status === 402) {
+                    await fetchUsage();
+                }
+                throw err;
+            }
+        },
+        [fetchUsage],
+    );
 
     return {
-        subscription,
+        usage,
         isLoading,
         error,
 
-        // Convenience getters
-        isPaid: subscription?.is_paid ?? false,
-        plan: subscription?.plan ?? 'free',
-        tier: subscription?.tier ?? 'free',
+        // Plan helpers
+        plan: usage?.plan ?? 'free',
+        isPaid: usage?.is_paid ?? false,
 
-        // Feature access
-        canAccessInterview: subscription?.can_access_interview ?? false,
-        canAnalyzeResume: subscription?.can_analyze_resume ?? true,
+        // Per-feature limit checks
+        isLimitReached,
+        remaining,
 
-        // Resume analysis tracking
-        resumeAnalysisCount: subscription?.resume_analysis_count ?? 0,
-        resumeAnalysisLimit: subscription?.resume_analysis_limit ?? 2,
-        resumeAnalysisRemaining: subscription?.resume_analysis_remaining ?? 2,
+        // Legacy compat aliases
+        canAccessInterview: !usage?.is_limit_reached.interviews,
+        canAnalyzeResume: !usage?.is_limit_reached.resume_analyses,
+        canUploadResume: !usage?.is_limit_reached.resume_edits,
 
-        // Refetch function
-        refetch: fetchSubscription,
+        // Actions
+        consumeCredit,
+        refetch: fetchUsage,
     };
 }
 

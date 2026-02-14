@@ -27,7 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import Navbar from "@/components/Navbar";
+
 import Footer from "@/components/Footer";
 import ThreeBackground from "@/components/ThreeBackground";
 import { TestimonialCard, testimonials } from "@/components/ui/TestimonialCard";
@@ -138,7 +138,6 @@ const Landing = () => {
   return (
     <div className="min-h-screen bg-white font-outfit relative overflow-hidden">
       <ThreeBackground />
-      <Navbar />
 
       {/* Hero Section - Resume Focused */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 bg-gradient-to-br from-primary via-primary to-[#4338ca]">

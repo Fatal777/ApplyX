@@ -28,30 +28,45 @@ logger = logging.getLogger(__name__)
 
 class PaywallGuardMiddleware(BaseHTTPMiddleware):
     """
-    Middleware to enforce paywall on protected endpoints.
+    Middleware to enforce freemium usage limits on protected endpoints.
     
-    Blocks access to premium features without valid subscription.
+    All tiers (including Free) get usage-based access.
+    No hard plan-gates — only usage limits enforced here.
     Cannot be bypassed from client-side.
     """
     
-    # Endpoints requiring paid subscription
-    PROTECTED_ENDPOINTS = {
-        "/api/v1/interview/start": ["basic", "pro", "pro_plus"],
-        "/api/v1/interview/session": ["basic", "pro", "pro_plus"],
+    # Endpoints with usage limits — maps path to usage type
+    # Only POST/PUT endpoints that CONSUME a credit are listed.
+    # GET endpoints (view existing data) are never limited.
+    USAGE_LIMITED_ENDPOINTS = {
+        # Resume creation/upload — consumes resume_edits
+        "/api/v1/resumes/upload": "resume_edits",
+        "/api/v1/resumes/": "resume_edits",  # POST to create
+        # Resume analysis — consumes resume_analyses
+        "/api/v1/resumes/analyze": "resume_analyses",
+        "/api/v1/ats/score": "resume_analyses",
+        "/api/v1/ats/analyze": "resume_analyses",
+        # Interviews — consumes interviews
+        "/api/v1/interview/start": "interviews",
+        "/api/v1/interview/session": "interviews",
+        "/api/v1/livekit/start-interview": "interviews",
     }
     
-    # Endpoints with usage limits
-    USAGE_LIMITED_ENDPOINTS = {
-        "/api/v1/resumes/analyze": "resume_edits",
-        "/api/v1/interview/start": "interviews",
-    }
+    # Methods that consume credits (only write operations)
+    CREDIT_CONSUMING_METHODS = {"POST", "PUT"}
     
     async def dispatch(self, request: Request, call_next):
-        """Check subscription before allowing protected endpoints."""
+        """Check usage limits before allowing protected endpoints."""
         path = request.url.path
+        method = request.method
         
-        # Skip if not a protected endpoint
-        if not self._is_protected(path):
+        # Only check credit-consuming methods
+        if method not in self.CREDIT_CONSUMING_METHODS:
+            return await call_next(request)
+        
+        # Find matching usage-limited endpoint
+        usage_type = self._get_usage_type(path)
+        if not usage_type:
             return await call_next(request)
         
         # Get user from request state (set by auth middleware)
@@ -62,57 +77,87 @@ class PaywallGuardMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         
         try:
-            # Check subscription
             db = next(get_db_session())
+            
+            # Check if user is superadmin — skip all limits
+            from app.models.user import User
+            user = db.query(User).filter(User.id == user_id).first()
+            if user and user.is_superadmin:
+                db.close()
+                return await call_next(request)
+            
             subscription = db.query(Subscription).filter(
                 Subscription.user_id == user_id
             ).first()
             
             if not subscription:
-                return self._paywall_response("No active subscription")
+                # Auto-create a FREE subscription for existing users who
+                # registered before the freemium system was added.
+                subscription = Subscription(
+                    user_id=user_id,
+                    plan=SubscriptionPlan.FREE,
+                    status=SubscriptionStatus.ACTIVE,
+                )
+                subscription.apply_plan_limits()
+                db.add(subscription)
+                db.commit()
+                db.refresh(subscription)
             
-            # Check if plan is allowed for this endpoint
-            required_plans = self.PROTECTED_ENDPOINTS.get(path)
-            if required_plans and subscription.plan.value not in required_plans:
+            if subscription.status != SubscriptionStatus.ACTIVE:
+                db.close()
                 return self._paywall_response(
-                    f"This feature requires {', '.join(required_plans)} plan"
+                    "Your subscription is not active. Please renew.",
+                    usage_type,
                 )
             
-            # Check usage limits
-            if not subscription.status == SubscriptionStatus.ACTIVE:
-                return self._paywall_response("Subscription not active")
-            
             # Check specific usage limits
-            usage_type = self.USAGE_LIMITED_ENDPOINTS.get(path)
-            if usage_type:
-                if usage_type == "resume_edits" and not subscription.can_use_resume_edit():
-                    return self._paywall_response("Resume edit limit reached")
-                elif usage_type == "interviews" and not subscription.can_use_interview():
-                    return self._paywall_response("Interview limit reached")
+            if usage_type == "resume_edits" and not subscription.can_use_resume_edit():
+                db.close()
+                return self._paywall_response(
+                    f"You've used all {subscription.resume_edits_limit} resume upload(s) on your {subscription.plan.value} plan. Upgrade for more.",
+                    usage_type,
+                )
+            elif usage_type == "resume_analyses" and not subscription.can_use_analysis():
+                db.close()
+                return self._paywall_response(
+                    f"You've used all {subscription.resume_analyses_limit} resume analysis/analyses on your {subscription.plan.value} plan. Upgrade for more.",
+                    usage_type,
+                )
+            elif usage_type == "interviews" and not subscription.can_use_interview():
+                db.close()
+                return self._paywall_response(
+                    f"You've used all {subscription.interviews_limit} interview(s) on your {subscription.plan.value} plan. Upgrade for more.",
+                    usage_type,
+                )
             
             db.close()
             
         except Exception as e:
             logger.error(f"Paywall check error: {e}")
-            # Fail open for other errors to avoid blocking legitimate requests
+            # Fail open for errors to avoid blocking legitimate requests
         
         return await call_next(request)
     
-    def _is_protected(self, path: str) -> bool:
-        """Check if path is protected."""
-        return (
-            path in self.PROTECTED_ENDPOINTS or 
-            path in self.USAGE_LIMITED_ENDPOINTS
-        )
+    def _get_usage_type(self, path: str) -> Optional[str]:
+        """Find matching usage type for a path (supports prefix matching)."""
+        # Exact match first
+        if path in self.USAGE_LIMITED_ENDPOINTS:
+            return self.USAGE_LIMITED_ENDPOINTS[path]
+        # Prefix match for paths like /api/v1/resumes/{id}/...
+        for endpoint, utype in self.USAGE_LIMITED_ENDPOINTS.items():
+            if path.startswith(endpoint):
+                return utype
+        return None
     
-    def _paywall_response(self, message: str) -> JSONResponse:
-        """Generate paywall error response."""
+    def _paywall_response(self, message: str, usage_type: str = "") -> JSONResponse:
+        """Generate paywall error response with upgrade prompt."""
         return JSONResponse(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             content={
-                "error": "subscription_required",
+                "error": "usage_limit_reached",
                 "message": message,
-                "upgrade_url": "/pricing"
+                "usage_type": usage_type,
+                "upgrade_url": "/pricing",
             }
         )
 

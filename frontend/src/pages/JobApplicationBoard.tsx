@@ -67,7 +67,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/components/ui/use-toast';
-import Navbar from '@/components/Navbar';
+
 import Footer from '@/components/Footer';
 import { ResumeCustomizer } from '@/components/jobs';
 import { applicationsService, creditsService, JobApplication, UserCredits } from '@/services/applicationService';
@@ -633,8 +633,6 @@ const JobApplicationBoard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-outfit">
-      <Navbar />
-      
       <div className="pt-20 pb-12">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}

@@ -9,7 +9,7 @@ import { Search, Loader2, Briefcase, Sparkles, TrendingUp, ArrowUpDown } from 'l
 import JobCard from '../components/jobs/JobCard';
 import JobFilters from '../components/jobs/JobFilters';
 import AdvancedJobSearch from '../components/jobs/AdvancedJobSearch';
-import Navbar from '@/components/Navbar';
+
 import axios from 'axios';
 
 const JobPortal = () => {
@@ -158,8 +158,7 @@ const JobPortal = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-primary/5">
-            {/* Use same Navbar as landing page */}
-            <Navbar />
+
 
             {/* Hero Section with Search - Consistent with app design */}
             <section className="pt-24 pb-12 bg-white dark:bg-gray-900">

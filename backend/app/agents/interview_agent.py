@@ -232,11 +232,15 @@ async def interview_session(ctx: agents.JobContext):
 
     # Build the voice session with industry-best pipeline
     session = AgentSession(
-        # STT — Deepgram Nova-3 (multi-language capable)
+        # STT — Deepgram Nova-3 with enhanced settings
         stt=deepgram.STT(
             api_key=_DEEPGRAM_API_KEY,
             model="nova-3",
-            language="multi",
+            language="en",
+            smart_format=True,
+            punctuate=True,
+            filler_words=True,
+            keywords=[("interviewer", 1.5), ("candidate", 1.5)],
         ),
         # LLM — DO Gradient (Llama 3.3-70B) via OpenAI-compatible API
         llm=openai.LLM(
@@ -250,13 +254,16 @@ async def interview_session(ctx: agents.JobContext):
             model="aura-asteria-en",
         ),
         # VAD — Silero voice activity detection
-        vad=silero.VAD.load(),
-        # Interruption & turn settings
+        vad=silero.VAD.load(
+            min_speech_duration=0.25,
+            min_silence_duration=0.5,
+        ),
+        # Interruption & turn settings — tuned for interview cadence
         allow_interruptions=True,
-        min_interruption_duration=0.5,
+        min_interruption_duration=0.8,
         resume_false_interruption=True,
-        min_endpointing_delay=0.5,
-        max_endpointing_delay=3.0,
+        min_endpointing_delay=1.0,
+        max_endpointing_delay=5.0,
     )
 
     await session.start(

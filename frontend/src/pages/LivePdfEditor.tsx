@@ -8,6 +8,8 @@ import { pdfjs } from 'react-pdf';
 import { InteractivePdfViewer } from "@/components/pdf-editor/InteractivePdfViewer";
 import { applyEditsToFP, downloadPdf } from "@/services/pdfExportService";
 import { toast } from "sonner";
+import useSubscription from "@/hooks/useSubscription";
+import UpgradeModal from "@/components/shared/UpgradeModal";
 
 // Set worker source
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -26,6 +28,8 @@ export default function LivePdfEditor() {
   const [pdfBytes, setPdfBytes] = useState<ArrayBuffer | null>(null);
   const [loading, setLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const { isPaid, plan } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // Fetch the ORIGINAL PDF using resumeId
   useEffect(() => {
@@ -109,6 +113,11 @@ export default function LivePdfEditor() {
       const modifiedBytes = await applyEditsToFP(pdfBytes, []);
       downloadPdf(modifiedBytes, `${doc?.title || 'resume'}_edited.pdf`);
       toast.success("PDF exported successfully!");
+
+      // Show upgrade nudge for free users after export
+      if (!isPaid) {
+        setTimeout(() => setShowUpgradeModal(true), 1500);
+      }
     } catch (error) {
       console.error("Export failed:", error);
       toast.error("Failed to export PDF");
@@ -137,7 +146,7 @@ export default function LivePdfEditor() {
               variant="ghost"
               size="icon"
               className="rounded-full hover:bg-gray-100"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/dashboard')}
             >
               <ArrowLeft className="h-5 w-5 text-gray-500" />
             </Button>
@@ -199,6 +208,15 @@ export default function LivePdfEditor() {
           </div>
         </div>
       </div>
+
+      {/* Post-export upgrade nudge for free users */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureKey="resume_edits"
+        plan={plan}
+        message="Love the editor? Upgrade for unlimited resume uploads and AI-powered ATS optimization."
+      />
     </div>
   );
 }

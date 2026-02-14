@@ -22,7 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import Navbar from '@/components/Navbar';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -220,8 +220,7 @@ const AdminPanel = () => {
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-                <Navbar />
-                <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="flex items-center justify-center min-h-[60vh] pt-24">
                     <RefreshCw className="w-8 h-8 animate-spin text-primary" />
                 </div>
             </div>
@@ -231,8 +230,7 @@ const AdminPanel = () => {
     if (error) {
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-                <Navbar />
-                <div className="flex flex-col items-center justify-center min-h-[60vh]">
+                <div className="flex flex-col items-center justify-center min-h-[60vh] pt-24">
                     <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
                     <p className="text-red-500 mb-4">{error}</p>
                     <Button onClick={fetchDashboard}>Retry</Button>
@@ -243,8 +241,6 @@ const AdminPanel = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            <Navbar />
-
             <div className="pt-24 pb-12 px-4 md:px-8 max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">

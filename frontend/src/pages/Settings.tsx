@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import Navbar from "@/components/Navbar";
+
 import Footer from "@/components/Footer";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -242,8 +242,6 @@ const Settings = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
-      
       <div className="pt-32 pb-20">
         <div className="container mx-auto px-4 max-w-6xl">
           {/* Header */}

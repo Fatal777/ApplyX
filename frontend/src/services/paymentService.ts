@@ -54,6 +54,29 @@ export interface SubscriptionStatus {
     interviews_limit?: number;
 }
 
+/** Structured usage data returned by the new /usage endpoint */
+export interface UsageBucket {
+    used: number;
+    limit: number;   // -1 = unlimited
+    remaining: number; // -1 = unlimited
+}
+
+export interface UsageData {
+    plan: "free" | "basic" | "pro" | "pro_plus";
+    status: string;
+    resume_edits: UsageBucket;
+    resume_analyses: UsageBucket;
+    interviews: UsageBucket;
+    is_limit_reached: {
+        resume_edits: boolean;
+        resume_analyses: boolean;
+        interviews: boolean;
+    };
+    is_paid: boolean;
+}
+
+export type CreditType = "resume_edits" | "resume_analyses" | "interviews";
+
 export interface PaymentOrder {
     order_id: string;
     amount: number;
@@ -110,10 +133,27 @@ const loadRazorpayScript = (): Promise<boolean> => {
 
 export const paymentService = {
     /**
-     * Get current user's subscription status
+     * Get current user's subscription status (legacy endpoint)
      */
     async getSubscriptionStatus(): Promise<SubscriptionStatus> {
         const response = await api.get("/api/v1/payment/subscription-status");
+        return response.data;
+    },
+
+    /**
+     * Get current user's structured usage data (new freemium endpoint)
+     */
+    async getUsage(): Promise<UsageData> {
+        const response = await api.get("/api/v1/payment/usage");
+        return response.data;
+    },
+
+    /**
+     * Consume a usage credit after a successful action.
+     * Call AFTER the action succeeds so failures don't waste credits.
+     */
+    async consumeCredit(type: CreditType): Promise<{ consumed: boolean; usage: UsageData }> {
+        const response = await api.post("/api/v1/payment/consume-credit", { type });
         return response.data;
     },
 

@@ -9,6 +9,8 @@ import { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
+import useSubscription from "@/hooks/useSubscription";
+import UpgradeModal from "@/components/shared/UpgradeModal";
 
 const ResumeBuilder = () => {
   const { uploadResume, loading, error } = useResumes();
@@ -19,6 +21,8 @@ const ResumeBuilder = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { isLimitReached, plan, consumeCredit } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -58,6 +62,12 @@ const ResumeBuilder = () => {
       return;
     }
 
+    // Check freemium limit BEFORE uploading
+    if (isLimitReached('resume_edits')) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     if (useJD && !jobDescription.trim()) {
       toast({
         title: "Job Description Required",
@@ -69,6 +79,10 @@ const ResumeBuilder = () => {
 
     try {
       const result: any = await uploadResume(file, useJD ? jobDescription : undefined);
+
+      // Consume credit only after successful upload
+      try { await consumeCredit('resume_edits'); } catch { /* middleware already enforces */ }
+
       toast({
         title: "Success",
         description: result.message || "Resume uploaded successfully!",
@@ -84,6 +98,11 @@ const ResumeBuilder = () => {
         navigate(`/resume/${result.id}`);
       }
     } catch (err: any) {
+      // Handle 402 from middleware (race condition / limit just reached)
+      if (err.response?.status === 402) {
+        setShowUpgradeModal(true);
+        return;
+      }
       const errorMessage = err.response?.data?.detail || err.message || "Failed to upload resume. Please try again.";
       toast({
         title: "Error",
@@ -375,6 +394,14 @@ const ResumeBuilder = () => {
       </div>
 
       <Footer />
+
+      {/* Freemium Upgrade Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureKey="resume_edits"
+        plan={plan}
+      />
     </div>
   );
 };

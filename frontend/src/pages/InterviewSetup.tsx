@@ -19,8 +19,10 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import Navbar from '@/components/Navbar';
+
 import Footer from '@/components/Footer';
+import useSubscription from '@/hooks/useSubscription';
+import UpgradeModal from '@/components/shared/UpgradeModal';
 import type { InterviewType, DifficultyLevel, InterviewPersona } from '@/services/interviewService';
 
 /**
@@ -30,6 +32,8 @@ import type { InterviewType, DifficultyLevel, InterviewPersona } from '@/service
 const InterviewSetup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isLimitReached, plan, consumeCredit } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // Interview configuration state
   const [interviewType, setInterviewType] = useState<InterviewType>('mixed');
@@ -39,7 +43,13 @@ const InterviewSetup = () => {
   const [jobRole, setJobRole] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   
-  const handleStartInterview = () => {
+  const handleStartInterview = async () => {
+    // Check freemium limit BEFORE starting interview
+    if (isLimitReached('interviews')) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     // Validate custom interview type requires job details
     if (interviewType === 'custom' && !jobDescription.trim()) {
       toast({
@@ -64,15 +74,16 @@ const InterviewSetup = () => {
       title: "Starting interview",
       description: `Preparing ${numQuestions} ${difficulty} questions...`,
     });
+
+    // Consume interview credit now (before navigating away)
+    try { await consumeCredit('interviews'); } catch { /* middleware enforces on backend too */ }
     
     navigate(`/interview/room?${params.toString()}`);
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      
-      <main className="max-w-4xl mx-auto px-4 py-12">
+      <main className="max-w-4xl mx-auto px-4 py-12 pt-24">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -341,6 +352,14 @@ const InterviewSetup = () => {
       </main>
 
       <Footer />
+
+      {/* Freemium Upgrade Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureKey="interviews"
+        plan={plan}
+      />
     </div>
   );
 };

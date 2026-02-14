@@ -124,8 +124,8 @@ class User(Base):
             db.add(user)
             db.flush()  # Get user ID for subscription
             
-            # Create Pro+ subscription for admin
             if is_admin:
+                # Create Pro+ subscription for admin
                 admin_subscription = Subscription(
                     user_id=user.id,
                     plan=SubscriptionPlan.PRO_PLUS,
@@ -138,6 +138,15 @@ class User(Base):
                     current_period_end=datetime.utcnow() + timedelta(days=36500),  # 100 years
                 )
                 db.add(admin_subscription)
+            else:
+                # Create FREE subscription for every new user
+                free_subscription = Subscription(
+                    user_id=user.id,
+                    plan=SubscriptionPlan.FREE,
+                    status=SubscriptionStatus.ACTIVE,
+                )
+                free_subscription.apply_plan_limits()
+                db.add(free_subscription)
         else:
             # Update existing user
             user.is_verified = user_data.get('email_confirmed_at') is not None
@@ -165,11 +174,31 @@ class User(Base):
                     user.subscription.status = SubscriptionStatus.ACTIVE
                     user.subscription.resume_edits_limit = -1
                     user.subscription.interviews_limit = -1
+            else:
+                # Ensure non-admin existing users have at least a FREE subscription
+                if not user.subscription:
+                    free_subscription = Subscription(
+                        user_id=user.id,
+                        plan=SubscriptionPlan.FREE,
+                        status=SubscriptionStatus.ACTIVE,
+                    )
+                    free_subscription.apply_plan_limits()
+                    db.add(free_subscription)
             
             # Update name from Google if not already set
             if not user.full_name:
                 metadata = user_data.get('user_metadata', {})
                 user.full_name = metadata.get('full_name') or metadata.get('name', '')
+            
+            # Ensure every non-admin user has a subscription (backfill)
+            if not is_admin and not user.subscription:
+                free_subscription = Subscription(
+                    user_id=user.id,
+                    plan=SubscriptionPlan.FREE,
+                    status=SubscriptionStatus.ACTIVE,
+                )
+                free_subscription.apply_plan_limits()
+                db.add(free_subscription)
         
         db.commit()
         db.refresh(user)

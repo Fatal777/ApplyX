@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { 
   FileText, Plus, Search, Filter, MoreVertical, Download, 
   Trash2, Eye, TrendingUp, Clock, CheckCircle, AlertCircle,
-  BarChart2, Target, Zap, ArrowRight, X, User
+  BarChart2, Target, Zap, ArrowRight, X, User, Crown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useResumes } from "@/hooks/useResumes";
-import Navbar from "@/components/Navbar";
+
 import Footer from "@/components/Footer";
 import {
   DropdownMenu,
@@ -30,6 +30,7 @@ import {
   MagneticButton,
   Spotlight
 } from "@/components/effects";
+import useSubscription from "@/hooks/useSubscription";
 
 interface ProfileStatus {
   is_complete: boolean;
@@ -48,6 +49,7 @@ const Dashboard = () => {
   const [profileStatus, setProfileStatus] = useState<ProfileStatus | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const { toast } = useToast();
+  const { usage, plan, isPaid, isLoading: subLoading } = useSubscription();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -129,8 +131,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
-
       <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 md:py-12 mt-24 md:mt-28">
         {/* Profile Completion Banner - Subtle, dismissible */}
         {profileStatus?.needs_attention && !bannerDismissed && (
@@ -278,6 +278,68 @@ const Dashboard = () => {
               </TiltCard>
             </StaggerItem>
           </StaggerContainer>
+
+          {/* Usage / Plan Card */}
+          {usage && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="mb-6"
+            >
+              <Card className="border-2 border-gray-200 rounded-xl overflow-hidden">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Crown className="w-4 h-4 text-amber-500" />
+                      <span className="font-semibold text-sm text-gray-900 capitalize">
+                        {usage.plan.replace('_', ' ')} Plan
+                      </span>
+                      {!isPaid && (
+                        <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 bg-amber-50">
+                          Free Tier
+                        </Badge>
+                      )}
+                    </div>
+                    {!isPaid && (
+                      <Button
+                        size="sm"
+                        className="bg-gradient-to-r from-[#c7ff6b] to-[#a8e063] text-black text-xs font-semibold hover:brightness-110"
+                        onClick={() => navigate('/pricing')}
+                      >
+                        Upgrade
+                        <ArrowRight className="w-3 h-3 ml-1" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Resume Uploads */}
+                    <UsageBar
+                      label="Resume Uploads"
+                      used={usage.resume_edits.used}
+                      limit={usage.resume_edits.limit}
+                      color="bg-blue-500"
+                    />
+                    {/* Analyses */}
+                    <UsageBar
+                      label="Resume Analyses"
+                      used={usage.resume_analyses.used}
+                      limit={usage.resume_analyses.limit}
+                      color="bg-emerald-500"
+                    />
+                    {/* Interviews */}
+                    <UsageBar
+                      label="Mock Interviews"
+                      used={usage.interviews.used}
+                      limit={usage.interviews.limit}
+                      color="bg-violet-500"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
 
           {/* Search and Filter */}
           <div className="space-y-3">
@@ -608,3 +670,37 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
+/** Small usage bar subcomponent */
+function UsageBar({ label, used, limit, color }: { label: string; used: number; limit: number; color: string }) {
+  const isUnlimited = limit === -1;
+  const pct = isUnlimited ? 0 : limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 100;
+  const remaining = isUnlimited ? '∞' : Math.max(0, limit - used);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+        <span>{label}</span>
+        <span className="font-medium text-gray-900">
+          {used} / {isUnlimited ? '∞' : limit}
+        </span>
+      </div>
+      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+        {!isUnlimited && (
+          <motion.div
+            className={`h-full rounded-full ${color}`}
+            initial={{ width: 0 }}
+            animate={{ width: `${pct}%` }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+          />
+        )}
+        {isUnlimited && (
+          <div className={`h-full rounded-full ${color} opacity-30 w-full`} />
+        )}
+      </div>
+      <p className="text-[10px] text-gray-400 mt-0.5">
+        {isUnlimited ? 'Unlimited' : `${remaining} remaining`}
+      </p>
+    </div>
+  );
+}

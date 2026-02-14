@@ -9,10 +9,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import Navbar from "@/components/Navbar";
+
 import Footer from "@/components/Footer";
 import jsPDF from "jspdf";
 import { useToast } from "@/components/ui/use-toast";
+import useSubscription from "@/hooks/useSubscription";
+import UpgradeModal from "@/components/shared/UpgradeModal";
 
 interface Template {
   id: string;
@@ -48,6 +50,8 @@ interface FormData {
 const ATSTemplates = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const { isPaid, plan } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     fullName: "",
     email: "",
@@ -255,13 +259,16 @@ const ATSTemplates = () => {
       title: "Resume downloaded!",
       description: `Your ${selectedTemplate?.name || 'ATS'} resume has been downloaded successfully`
     });
+
+    // Show upgrade nudge for free users after download
+    if (!isPaid) {
+      setTimeout(() => setShowUpgradeModal(true), 1500);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
-
-      <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 md:py-12">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 md:py-12 pt-24">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -627,6 +634,15 @@ const ATSTemplates = () => {
       </div>
 
       <Footer />
+
+      {/* Post-download upgrade nudge for free users */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureKey="resume_edits"
+        plan={plan}
+        message="Want more powerful resume tools? Upgrade for unlimited uploads, AI analysis, and premium templates."
+      />
     </div>
   );
 };

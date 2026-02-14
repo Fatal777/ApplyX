@@ -2,12 +2,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SmoothScrollProvider } from "@/components/effects";
 import { SentryErrorBoundary, setUser, clearUser } from "@/lib/sentry";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
-import React, { useEffect } from "react"; // Added React import
+import React, { useEffect } from "react";
+import AppLayout from "@/components/layouts/AppLayout";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -118,176 +119,61 @@ const ErrorFallback = ({ error, resetError }: { error: Error; resetError: () => 
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/landing" element={<Landing />} />
-      <Route path="/signup" element={<Auth />} />
-      <Route path="/login" element={<Auth />} />
-      <Route path="/auth/callback" element={<AuthCallback />} />
+      {/* ============================================================
+          Routes WITH persistent Navbar (via AppLayout)
+          ============================================================ */}
+      <Route element={<AppLayout />}>
+        {/* Public pages */}
+        <Route path="/" element={<Index />} />
+        <Route path="/landing" element={<Landing />} />
+        <Route path="/signup" element={<Auth />} />
+        <Route path="/login" element={<Auth />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/job-search" element={<JobsPage />} />
 
-      {/* Protected Routes */}
-      <Route path="/resume" element={
-        <ProtectedRoute>
-          <ResumeLanding />
-        </ProtectedRoute>
-      } />
-      <Route path="/resume-builder" element={
-        <ProtectedRoute>
-          <ResumeBuilder />
-        </ProtectedRoute>
-      } />
+        {/* Protected pages that need Navbar */}
+        <Route path="/resume" element={<ProtectedRoute><ResumeLanding /></ProtectedRoute>} />
+        <Route path="/resume-builder" element={<ProtectedRoute><ResumeBuilder /></ProtectedRoute>} />
+        <Route path="/resume/:id" element={<ProtectedRoute><ResumeAnalysis /></ProtectedRoute>} />
+        <Route path="/mock-interview" element={<ProtectedRoute><MockInterview /></ProtectedRoute>} />
+        <Route path="/interview/setup" element={<ProtectedRoute><InterviewSetup /></ProtectedRoute>} />
+        <Route path="/interview/dashboard" element={<ProtectedRoute><InterviewDashboard /></ProtectedRoute>} />
+        <Route path="/jobs" element={<ProtectedRoute><JobsPage /></ProtectedRoute>} />
+        <Route path="/applications" element={<ProtectedRoute><ApplicationsPage /></ProtectedRoute>} />
+        <Route path="/job-board" element={<ProtectedRoute><JobApplicationBoard /></ProtectedRoute>} />
+        <Route path="/certifications" element={<ProtectedRoute><Certifications /></ProtectedRoute>} />
+        <Route path="/college-solutions" element={<ProtectedRoute><CollegeSolutions /></ProtectedRoute>} />
+        <Route path="/assessments" element={<ProtectedRoute><Assessments /></ProtectedRoute>} />
+        <Route path="/employers" element={<ProtectedRoute><Employers /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/ats-templates" element={<ProtectedRoute><ATSTemplates /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/nexus-control" element={<AdminDashboard />} />
+        <Route path="/admin" element={<AdminPanel />} />
+        <Route path="*" element={<NotFound />} />
+      </Route>
 
-      <Route path="/resume-editor" element={
-        <ProtectedRoute>
-          <ResumeEditor />
-        </ProtectedRoute>
-      } />
+      {/* ============================================================
+          Full-screen routes WITHOUT Navbar (interview room, editors)
+          ============================================================ */}
+      <Route path="/interview/room" element={<ProtectedRoute><InterviewRoomPage /></ProtectedRoute>} />
 
-      {/* Live PDF Editor - must come BEFORE /resume-editor/:id */}
+      {/* Resume Editors — full-screen experience */}
+      <Route path="/resume-editor" element={<ProtectedRoute><ResumeEditor /></ProtectedRoute>} />
       <Route path="/resume-editor/live/:id" element={
         <React.Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
-          <ProtectedRoute>
-            <LivePdfEditor />
-          </ProtectedRoute>
+          <ProtectedRoute><LivePdfEditor /></ProtectedRoute>
         </React.Suspense>
       } />
-
-      <Route path="/resume-editor/:id" element={
-        <ProtectedRoute>
-          <ResumeEditor />
-        </ProtectedRoute>
-      } />
-
-      <Route path="/resume/:id" element={
-        <ProtectedRoute>
-          <ResumeAnalysis />
-        </ProtectedRoute>
-      } />
-
-      <Route path="/mock-interview" element={
-        <ProtectedRoute>
-          <MockInterview />
-        </ProtectedRoute>
-      } />
-
-      <Route path="/interview/setup" element={
-        <ProtectedRoute>
-          <InterviewSetup />
-        </ProtectedRoute>
-      } />
-
-      <Route path="/interview/room" element={
-        <ProtectedRoute>
-          <InterviewRoomPage />
-        </ProtectedRoute>
-      } />
-
-      {/* Interview Dashboard - Full-screen premium experience */}
-      <Route path="/interview/dashboard" element={
-        <ProtectedRoute>
-          <InterviewDashboard />
-        </ProtectedRoute>
-      } />
-
-      <Route path="/jobs" element={
-        <ProtectedRoute>
-          <JobsPage />
-        </ProtectedRoute>
-      } />
-
-      {/* Public Job Search - accessible without login */}
-      <Route path="/job-search" element={<JobsPage />} />
-
-      {/* Applications Dashboard - Track saved/applied jobs */}
-      <Route path="/applications" element={
-        <ProtectedRoute>
-          <ApplicationsPage />
-        </ProtectedRoute>
-      } />
-
-      {/* Job Application Board - Kanban-style job tracking */}
-      <Route path="/job-board" element={
-        <ProtectedRoute>
-          <JobApplicationBoard />
-        </ProtectedRoute>
-      } />
-
-      <Route path="/certifications" element={
-        <ProtectedRoute>
-          <Certifications />
-        </ProtectedRoute>
-      } />
-
-      <Route path="/college-solutions" element={
-        <ProtectedRoute>
-          <CollegeSolutions />
-        </ProtectedRoute>
-      } />
-
-      <Route path="/assessments" element={
-        <ProtectedRoute>
-          <Assessments />
-        </ProtectedRoute>
-      } />
-
-      <Route path="/employers" element={
-        <ProtectedRoute>
-          <Employers />
-        </ProtectedRoute>
-      } />
-
-      <Route path="/settings" element={
-        <ProtectedRoute>
-          <Settings />
-        </ProtectedRoute>
-      } />
-
-      <Route path="/ats-templates" element={
-        <ProtectedRoute>
-          <ATSTemplates />
-        </ProtectedRoute>
-      } />
-
-      <Route path="/dashboard" element={
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      } />
-
-      {/* PDF Editor - Redirect to Live Editor (deprecated) */}
-      <Route path="/pdf-editor/:id" element={
-        <ProtectedRoute>
-          <LivePdfEditor />
-        </ProtectedRoute>
-      } />
-
-      {/* Live PDF Editor - WYSIWYG resume editing */}
-      <Route path="/live-editor" element={
-        <ProtectedRoute>
-          <LivePdfEditor />
-        </ProtectedRoute>
-      } />
-      <Route path="/live-editor/:id" element={
-        <ProtectedRoute>
-          <LivePdfEditor />
-        </ProtectedRoute>
-      } />
-
-      {/* Demo Editor - No authentication required */}
+      <Route path="/resume-editor/:id" element={<ProtectedRoute><ResumeEditor /></ProtectedRoute>} />
+      <Route path="/pdf-editor/:id" element={<ProtectedRoute><LivePdfEditor /></ProtectedRoute>} />
+      <Route path="/live-editor" element={<ProtectedRoute><LivePdfEditor /></ProtectedRoute>} />
+      <Route path="/live-editor/:id" element={<ProtectedRoute><LivePdfEditor /></ProtectedRoute>} />
       <Route path="/demo/pdf-editor" element={<LivePdfEditor />} />
       <Route path="/demo/live-editor" element={<LivePdfEditor />} />
-
-      <Route path="/pricing" element={<Pricing />} />
-      <Route path="/privacy" element={<Privacy />} />
-      <Route path="/terms" element={<Terms />} />
-
-      {/* Hidden Admin Dashboard - Not linked anywhere */}
-      <Route path="/nexus-control" element={<AdminDashboard />} />
-
-      {/* Admin Panel - HTTPBasic Auth protected */}
-      <Route path="/admin" element={<AdminPanel />} />
-
-      {/* Catch-all route */}
-      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };

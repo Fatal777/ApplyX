@@ -4,7 +4,7 @@ import { Check, X, Sparkles, Zap, Crown, ArrowRight, AlertCircle, Star } from "l
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import Navbar from "@/components/Navbar";
+
 import Footer from "@/components/Footer";
 import { Link, useNavigate } from "react-router-dom";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/effects";
@@ -122,8 +122,6 @@ const Pricing = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
-
       <div className="pt-20 md:pt-28 pb-20">
         <div className="container mx-auto px-4">
           {/* Header */}

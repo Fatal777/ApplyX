@@ -51,10 +51,10 @@ class PaymentStatus(str, Enum):
 
 # Plan limits configuration
 PLAN_LIMITS = {
-    SubscriptionPlan.FREE: {"resume_edits": 2, "interviews": 0},
-    SubscriptionPlan.BASIC: {"resume_edits": 10, "interviews": 1},
-    SubscriptionPlan.PRO: {"resume_edits": -1, "interviews": 5},  # -1 = unlimited
-    SubscriptionPlan.PRO_PLUS: {"resume_edits": -1, "interviews": -1},
+    SubscriptionPlan.FREE: {"resume_edits": 1, "resume_analyses": 1, "interviews": 1},
+    SubscriptionPlan.BASIC: {"resume_edits": 10, "resume_analyses": 10, "interviews": 3},
+    SubscriptionPlan.PRO: {"resume_edits": -1, "resume_analyses": -1, "interviews": 10},  # -1 = unlimited
+    SubscriptionPlan.PRO_PLUS: {"resume_edits": -1, "resume_analyses": -1, "interviews": -1},
 }
 
 
@@ -78,9 +78,11 @@ class Subscription(Base):
     
     # Usage tracking
     resume_edits_used = Column(Integer, default=0, nullable=False)
-    resume_edits_limit = Column(Integer, default=2, nullable=False)  # Based on plan
+    resume_edits_limit = Column(Integer, default=1, nullable=False)  # Based on plan
+    resume_analyses_used = Column(Integer, default=0, nullable=False)
+    resume_analyses_limit = Column(Integer, default=1, nullable=False)  # Based on plan
     interviews_used = Column(Integer, default=0, nullable=False)
-    interviews_limit = Column(Integer, default=0, nullable=False)  # Based on plan
+    interviews_limit = Column(Integer, default=1, nullable=False)  # Based on plan
     
     # Razorpay subscription ID (for recurring)
     razorpay_subscription_id = Column(String(255), nullable=True, unique=True)
@@ -111,17 +113,23 @@ class Subscription(Base):
     
     def is_paid(self) -> bool:
         """Check if user has a paid subscription."""
-        return self.plan in (SubscriptionPlan.BASIC, SubscriptionPlan.PRO, SubscriptionPlan.ENTERPRISE)
+        return self.plan in (SubscriptionPlan.BASIC, SubscriptionPlan.PRO, SubscriptionPlan.PRO_PLUS)
     
     def has_interview_access(self) -> bool:
-        """Check if user can access interview platform (needs Basic+)."""
-        return self.is_active() and self.is_paid() and self.can_use_interview()
+        """Check if user can access interview platform (free tier gets 1)."""
+        return self.is_active() and self.can_use_interview()
     
     def can_use_resume_edit(self) -> bool:
         """Check if user can perform a resume edit."""
         if self.resume_edits_limit == -1:  # Unlimited
             return True
         return self.resume_edits_used < self.resume_edits_limit
+    
+    def can_use_analysis(self) -> bool:
+        """Check if user can perform a resume analysis."""
+        if self.resume_analyses_limit == -1:  # Unlimited
+            return True
+        return self.resume_analyses_used < self.resume_analyses_limit
     
     def can_use_interview(self) -> bool:
         """Check if user can access an interview."""
@@ -137,6 +145,14 @@ class Subscription(Base):
             self.resume_edits_used += 1
         return True
     
+    def use_analysis(self) -> bool:
+        """Use one resume analysis. Returns True if successful."""
+        if not self.can_use_analysis():
+            return False
+        if self.resume_analyses_limit != -1:
+            self.resume_analyses_used += 1
+        return True
+    
     def use_interview(self) -> bool:
         """Use one interview. Returns True if successful."""
         if not self.can_use_interview():
@@ -148,12 +164,14 @@ class Subscription(Base):
     def reset_usage_for_new_period(self):
         """Reset usage counters for new billing period."""
         self.resume_edits_used = 0
+        self.resume_analyses_used = 0
         self.interviews_used = 0
     
     def apply_plan_limits(self):
         """Apply limits based on current plan."""
         limits = PLAN_LIMITS.get(self.plan, PLAN_LIMITS[SubscriptionPlan.FREE])
         self.resume_edits_limit = limits["resume_edits"]
+        self.resume_analyses_limit = limits["resume_analyses"]
         self.interviews_limit = limits["interviews"]
     
     def to_dict(self) -> dict:
@@ -167,6 +185,34 @@ class Subscription(Base):
             "cancel_at_period_end": self.cancel_at_period_end,
             "has_interview_access": self.has_interview_access(),
             "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+    
+    def usage_dict(self) -> dict:
+        """Return usage info for frontend consumption."""
+        return {
+            "plan": self.plan.value,
+            "status": self.status.value,
+            "resume_edits": {
+                "used": self.resume_edits_used,
+                "limit": self.resume_edits_limit,
+                "remaining": max(0, self.resume_edits_limit - self.resume_edits_used) if self.resume_edits_limit != -1 else -1,
+            },
+            "resume_analyses": {
+                "used": self.resume_analyses_used,
+                "limit": self.resume_analyses_limit,
+                "remaining": max(0, self.resume_analyses_limit - self.resume_analyses_used) if self.resume_analyses_limit != -1 else -1,
+            },
+            "interviews": {
+                "used": self.interviews_used,
+                "limit": self.interviews_limit,
+                "remaining": max(0, self.interviews_limit - self.interviews_used) if self.interviews_limit != -1 else -1,
+            },
+            "is_limit_reached": {
+                "resume_edits": not self.can_use_resume_edit(),
+                "resume_analyses": not self.can_use_analysis(),
+                "interviews": not self.can_use_interview(),
+            },
+            "is_paid": self.is_paid(),
         }
 
 

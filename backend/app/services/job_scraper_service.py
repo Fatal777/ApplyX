@@ -27,6 +27,7 @@ import logging
 import re
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -41,8 +42,8 @@ logger = logging.getLogger(__name__)
 def _create_session() -> requests.Session:
     session = requests.Session()
     retry_strategy = Retry(
-        total=3,
-        backoff_factor=1,
+        total=1,
+        backoff_factor=0.5,
         status_forcelist=[429, 500, 502, 503, 504],
     )
     adapter = HTTPAdapter(max_retries=retry_strategy)
@@ -113,11 +114,24 @@ class JobScraperService:
             return []
 
     def fetch_all_portals(self, keywords: List[str], location: str = "India") -> List[Dict[str, Any]]:
-        """Fetch from all available portals and combine results."""
+        """Fetch from all available portals in parallel and combine results."""
         all_jobs = []
-        for portal in self._RATE_LIMITS.keys():
-            jobs = self.fetch_jobs(portal, keywords, location)
-            all_jobs.extend(jobs)
+        portals = list(self._RATE_LIMITS.keys())
+        
+        with ThreadPoolExecutor(max_workers=len(portals)) as executor:
+            future_to_portal = {
+                executor.submit(self.fetch_jobs, portal, keywords, location): portal
+                for portal in portals
+            }
+            for future in as_completed(future_to_portal, timeout=8):
+                portal = future_to_portal[future]
+                try:
+                    jobs = future.result(timeout=1)
+                    all_jobs.extend(jobs)
+                    logger.info("Portal %s returned %d jobs", portal, len(jobs))
+                except Exception as e:
+                    logger.warning("Portal %s failed: %s", portal, str(e))
+        
         return all_jobs
 
     # -------------- Real API Fetchers --------------
@@ -155,7 +169,7 @@ class JobScraperService:
         url = f"{self.ADZUNA_BASE_URL}/{country}/search/1"
         
         try:
-            response = self._session.get(url, params=params, timeout=10)
+            response = self._session.get(url, params=params, timeout=5)
             response.raise_for_status()
             data = response.json()
             
@@ -189,7 +203,7 @@ class JobScraperService:
                 "description": description[:500],  # Truncate for storage
                 "skills": skills,
                 # Resolve Adzuna tracking URL to get actual job page
-                "redirect_url": self._resolve_redirect_url(item.get("redirect_url", "")),
+                "redirect_url": item.get("redirect_url", ""),
                 "portal": "adzuna",
                 "posted_date": item.get("created", datetime.now().isoformat())[:10],
                 "salary_min": item.get("salary_min"),
@@ -234,7 +248,7 @@ class JobScraperService:
                 self.JSEARCH_BASE_URL, 
                 headers=headers, 
                 params=params, 
-                timeout=15
+                timeout=5
             )
             response.raise_for_status()
             data = response.json()
@@ -311,7 +325,7 @@ class JobScraperService:
             response = self._session.get(
                 self.REMOTIVE_BASE_URL,
                 params=params,
-                timeout=10
+                timeout=5
             )
             response.raise_for_status()
             data = response.json()
@@ -390,7 +404,7 @@ class JobScraperService:
             response = self._session.get(
                 self.ARBEITNOW_BASE_URL,
                 params=params,
-                timeout=10
+                timeout=5
             )
             response.raise_for_status()
             data = response.json()
@@ -481,7 +495,7 @@ class JobScraperService:
             response = self._session.get(
                 self.SERPAPI_BASE_URL,
                 params=params,
-                timeout=15
+                timeout=5
             )
             response.raise_for_status()
             data = response.json()
