@@ -244,6 +244,15 @@ async def interview_session(ctx: agents.JobContext):
     Reads room metadata to configure the interview, then starts a voice session.
     """
     logger.info("Agent dispatched → room=%s", ctx.room.name)
+
+    # Connect to the room first so room state (including metadata) is synced
+    # Without this, ctx.room.metadata may be empty on dispatch.
+    try:
+        await ctx.connect()
+        logger.info("Connected to room, metadata synced")
+    except Exception as conn_err:
+        logger.warning("ctx.connect() failed or unavailable: %s", conn_err)
+
     logger.info("Room metadata raw: %s", repr(ctx.room.metadata))
 
     # Parse config from room metadata (set when the room is created via API)
@@ -253,6 +262,16 @@ async def interview_session(ctx: agents.JobContext):
             meta = json.loads(ctx.room.metadata)
         except (json.JSONDecodeError, TypeError):
             meta = {}
+
+    # If metadata is still empty, try waiting briefly for room sync
+    if not meta:
+        logger.warning("Metadata empty after connect, waiting 2s for room sync...")
+        await asyncio.sleep(2)
+        if ctx.room.metadata:
+            try:
+                meta = json.loads(ctx.room.metadata)
+            except (json.JSONDecodeError, TypeError):
+                meta = {}
 
     logger.info("Parsed meta: job_role=%s, difficulty=%s, persona=%s, type=%s",
                 meta.get("job_role"), meta.get("difficulty"),
