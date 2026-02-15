@@ -710,7 +710,7 @@ Provide feedback in this exact JSON format:
             "available": self.model is not None,
             "provider": self.provider,
             "model": self.model_name,
-            "concurrency_limit": settings.GEMINI_MAX_CONCURRENT if self.provider == "gemini" else None,
+            "concurrency_limit": getattr(settings, "GEMINI_MAX_CONCURRENT", 5) if self.provider == "gemini" else None,
         }
 
 

@@ -243,6 +243,16 @@ const QuickStartPanel = ({ onStartInterview, fullWidth = false }: QuickStartPane
   };
 
   const handleStartInterview = () => {
+    if (!config.jobRole || !config.jobRole.trim()) {
+      // Highlight the job role field
+      const jobRoleInput = document.getElementById('qsp-jobRole');
+      if (jobRoleInput) {
+        jobRoleInput.focus();
+        jobRoleInput.classList.add('ring-2', 'ring-red-400');
+        setTimeout(() => jobRoleInput.classList.remove('ring-2', 'ring-red-400'), 2000);
+      }
+      return;
+    }
     setShowConfigModal(false);
     onStartInterview(config);
   };
@@ -302,16 +312,21 @@ const QuickStartPanel = ({ onStartInterview, fullWidth = false }: QuickStartPane
           <div className="space-y-6 py-4">
             {/* Job Role */}
             <div className="space-y-2">
-              <Label className="text-gray-700">Target Job Role</Label>
+              <Label className="text-gray-700">Target Job Role <span className="text-red-500">*</span></Label>
               <div className="relative">
                 <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
+                  id="qsp-jobRole"
                   value={config.jobRole}
                   onChange={(e) => setConfig(prev => ({ ...prev, jobRole: e.target.value }))}
-                  placeholder="e.g., Senior Software Engineer"
-                  className="pl-10 border-gray-200 text-gray-900 placeholder:text-gray-400"
+                  placeholder="e.g., Product Manager, Data Scientist, Software Engineer"
+                  className={`pl-10 border-gray-200 text-gray-900 placeholder:text-gray-400 ${!config.jobRole?.trim() ? 'border-red-300' : ''}`}
+                  required
                 />
               </div>
+              {!config.jobRole?.trim() && (
+                <p className="text-xs text-red-500">Required — specify the role for tailored questions</p>
+              )}
             </div>
 
             {/* Resume Selection */}

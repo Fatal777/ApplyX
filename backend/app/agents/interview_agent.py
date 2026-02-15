@@ -79,7 +79,7 @@ class InterviewerAgent(Agent):
 
     def __init__(
         self,
-        job_role: str = "Software Engineer",
+        job_role: str = "General",
         difficulty: str = "intermediate",
         persona: str = "professional",
         interview_type: str = "mixed",
@@ -254,7 +254,7 @@ async def interview_session(ctx: agents.JobContext):
             meta = {}
 
     agent = InterviewerAgent(
-        job_role=meta.get("job_role", "Software Engineer"),
+        job_role=meta.get("job_role", "General"),
         difficulty=meta.get("difficulty", "intermediate"),
         persona=meta.get("persona", "professional"),
         interview_type=meta.get("interview_type", "mixed"),

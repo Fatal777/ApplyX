@@ -75,6 +75,16 @@ const InterviewSetup = () => {
       return;
     }
 
+    // Validate job role is specified
+    if (!jobRole.trim()) {
+      toast({
+        title: "Job role required",
+        description: "Please specify the role you're interviewing for (e.g., Product Manager, Data Scientist, Software Engineer)",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const params = new URLSearchParams({
       type: interviewType,
       difficulty,
@@ -291,7 +301,7 @@ const InterviewSetup = () => {
             </Card>
           </motion.div>
 
-          {/* Optional: Job Details */}
+          {/* Target Role (Required) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -299,21 +309,25 @@ const InterviewSetup = () => {
           >
             <Card>
               <CardHeader>
-                <CardTitle>Target Role (Optional)</CardTitle>
+                <CardTitle>Target Role <span className="text-red-500">*</span></CardTitle>
                 <CardDescription>
-                  Add job details for more relevant questions
+                  Specify the role for tailored interview questions
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="jobRole">Job Title</Label>
+                  <Label htmlFor="jobRole">Job Title <span className="text-red-500">*</span></Label>
                   <Input
                     id="jobRole"
-                    placeholder="e.g., Software Engineer, Product Manager"
+                    placeholder="e.g., Software Engineer, Product Manager, Data Scientist"
                     value={jobRole}
                     onChange={(e) => setJobRole(e.target.value)}
-                    className="mt-1"
+                    className={`mt-1 ${!jobRole.trim() ? 'border-red-300 focus:border-red-500' : ''}`}
+                    required
                   />
+                  {!jobRole.trim() && (
+                    <p className="text-xs text-red-500 mt-1">Please specify the role you're interviewing for</p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="jobDesc">Job Description</Label>

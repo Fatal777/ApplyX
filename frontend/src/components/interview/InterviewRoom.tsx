@@ -237,7 +237,7 @@ export function InterviewRoom() {
 
       // Create room + get token via the new start-interview endpoint
       const result = await liveKitService.startInterview({
-        job_role: config.jobRole || 'Software Engineer',
+        job_role: config.jobRole || 'General',
         difficulty: config.difficulty,
         persona: config.persona,
         interview_type: config.interviewType,

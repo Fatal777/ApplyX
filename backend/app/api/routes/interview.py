@@ -73,8 +73,14 @@ async def require_interview_subscription(
 @router.get("/health")
 async def interview_health_check():
     """Check health of interview services"""
-    speech_health = await speech_service.health_check()
-    ai_health = await interview_ai_service.health_check()
+    try:
+        speech_health = await speech_service.health_check()
+    except Exception:
+        speech_health = {"stt_available": False, "error": "speech service unavailable"}
+    try:
+        ai_health = await interview_ai_service.health_check()
+    except Exception:
+        ai_health = {"available": False, "error": "ai service unavailable"}
     
     return {
         "status": "healthy" if (speech_health.get("stt_available") and ai_health.get("available")) else "degraded",

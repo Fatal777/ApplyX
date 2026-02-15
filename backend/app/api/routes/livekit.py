@@ -51,7 +51,7 @@ class LiveKitStatus(BaseModel):
 
 
 class StartInterviewRequest(BaseModel):
-    job_role: str = "Software Engineer"
+    job_role: str  # Required — user must specify the role
     difficulty: str = "intermediate"
     persona: str = "professional"
     interview_type: str = "mixed"
@@ -215,7 +215,7 @@ async def end_interview(
         session_id=request.session_id,
         room_name=request.room_name,
         user_id=str(current_user.id),
-        job_role=room_meta.get("job_role", "Software Engineer"),
+        job_role=room_meta.get("job_role", "General"),
         difficulty=room_meta.get("difficulty", "intermediate"),
         transcript=request.transcript,
     )
@@ -231,7 +231,7 @@ async def _generate_and_store_feedback(
     session_id: str,
     room_name: str,
     user_id: str,
-    job_role: str = "Software Engineer",
+    job_role: str = "General",
     difficulty: str = "intermediate",
     transcript: str | None = None,
 ) -> None:

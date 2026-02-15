@@ -154,7 +154,7 @@ INTERVIEW_TYPE_GUIDANCE = {
 
 
 def build_interviewer_instructions(
-    job_role: str = "Software Engineer",
+    job_role: str = "General",
     difficulty: str = "intermediate",
     persona: str = "professional",
     interview_type: str = "mixed",
@@ -201,6 +201,18 @@ DIFFICULTY LEVEL:
 
 INTERVIEW TYPE:
 {type_ctx}
+
+ROLE-SPECIFIC QUESTION GENERATION (CRITICAL):
+You are interviewing for the role of: {job_role}
+- You MUST tailor ALL questions specifically to the {job_role} role. Do NOT ask generic software engineering questions unless the role IS software engineering.
+- Research and use REAL interview questions that are commonly asked for {job_role} positions at top companies.
+- For example: if the role is "Product Manager", ask about product strategy, prioritization frameworks, metrics, and stakeholder management — NOT about data structures or coding.
+- If the role is "Data Scientist", ask about statistical modeling, A/B testing, ML pipelines — NOT about frontend frameworks.
+- If the role is "Marketing Manager", ask about campaign strategy, ROI measurement, brand positioning.
+- ALWAYS think: "What would a hiring manager for a {job_role} role ACTUALLY ask in a real interview?"
+- Every session MUST have DIFFERENT questions. NEVER use the same set of questions across sessions.
+- To ensure variety: randomly pick from different sub-topics within the {job_role} domain for each question.
+- Use creative scenario-based questions specific to {job_role} challenges — not textbook questions.
 
 CONVERSATION RULES:
 - Ask exactly ONE question at a time. Wait for the candidate to finish before continuing.
