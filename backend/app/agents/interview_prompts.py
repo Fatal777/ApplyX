@@ -68,87 +68,91 @@ PERSONA_VOICE = {
     "challenging": "aura-orion-en",      # Jordan — authoritative, direct male voice
 }
 
-# ── Interview type question guidance (DETAILED) ────────────────────────────
+# ── Interview type question guidance (ROLE-ADAPTIVE) ───────────────────────
+# These are intentionally role-agnostic. The LLM uses the job_role from
+# the system prompt to generate domain-appropriate questions on the fly.
 
 INTERVIEW_TYPE_GUIDANCE = {
     "behavioral": (
-        "Focus EXCLUSIVELY on behavioral and situational questions. "
+        "Focus EXCLUSIVELY on behavioral and situational questions relevant to the TARGET ROLE. "
         "Use the STAR method (Situation, Task, Action, Result) as your framework. "
         "You MUST ask questions from DIFFERENT categories — do NOT repeat the same theme. "
         "Cover these categories across your questions (pick one per question):\n"
-        "  1. TEAMWORK & COLLABORATION: 'Tell me about a time you worked on a cross-functional team. What was your role and how did you handle differing opinions?'\n"
-        "  2. CONFLICT RESOLUTION: 'Describe a situation where you had a disagreement with a teammate or manager. How did you resolve it?'\n"
-        "  3. LEADERSHIP & INITIATIVE: 'Give me an example of when you took the lead on something without being asked. What was the outcome?'\n"
-        "  4. FAILURE & LEARNING: 'Tell me about a project or task that did not go as planned. What happened and what did you learn?'\n"
-        "  5. PROBLEM-SOLVING UNDER PRESSURE: 'Describe a time you had to make a difficult decision with incomplete information. How did you approach it?'\n"
-        "  6. ADAPTABILITY: 'Tell me about a time you had to quickly adapt to a major change at work. How did you handle it?'\n"
-        "  7. COMMUNICATION: 'Describe a situation where you had to explain something complex to a non-technical audience.'\n"
-        "  8. TIME MANAGEMENT: 'How did you handle a situation where you had multiple competing deadlines?'\n"
-        "Pick different categories for each question. NEVER ask two questions from the same category."
+        "  1. TEAMWORK & COLLABORATION — working with cross-functional teams in the context of this role\n"
+        "  2. CONFLICT RESOLUTION — disagreements with stakeholders relevant to this role\n"
+        "  3. LEADERSHIP & INITIATIVE — taking ownership of projects or tasks in this domain\n"
+        "  4. FAILURE & LEARNING — setbacks or mistakes specific to the challenges of this role\n"
+        "  5. PROBLEM-SOLVING UNDER PRESSURE — making decisions with incomplete information in this field\n"
+        "  6. ADAPTABILITY — handling change in the context of this role's responsibilities\n"
+        "  7. COMMUNICATION — explaining role-specific concepts or persuading stakeholders\n"
+        "  8. TIME MANAGEMENT — prioritizing competing demands typical of this role\n"
+        "Pick different categories for each question. NEVER ask two questions from the same category. "
+        "Frame every question around the specific challenges and scenarios that someone in this TARGET ROLE would actually face."
     ),
     "technical": (
-        "Focus on technical knowledge and practical problem-solving. "
-        "Ask about real-world engineering concepts — NOT textbook definitions. "
-        "You MUST vary your questions across these technical areas (pick different ones):\n"
-        "  1. SYSTEM DESIGN: 'How would you design a URL shortening service like bit.ly? Walk me through the key components.'\n"
-        "  2. DATA STRUCTURES: 'When would you choose a hash map over a balanced BST? What are the trade-offs in a real system?'\n"
-        "  3. ALGORITHMS: 'If you needed to find the top K most frequent items in a data stream, how would you approach it?'\n"
-        "  4. DATABASE DESIGN: 'How would you model a social media feed in a database? SQL vs NoSQL? What are the trade-offs?'\n"
-        "  5. API DESIGN: 'Walk me through how you would design a REST API for a task management app. What endpoints, error handling, and versioning?'\n"
-        "  6. CONCURRENCY: 'Explain a race condition you have encountered or could encounter. How would you prevent it?'\n"
-        "  7. ARCHITECTURE: 'Microservices vs monolith — when would you choose each? What are the operational costs?'\n"
-        "  8. DEBUGGING: 'Your API response time suddenly increased 10x. Walk me through your debugging process step by step.'\n"
-        "Tailor questions to the specific job role. Ask follow-ups about trade-offs and edge cases."
+        "Focus on domain-specific knowledge and practical problem-solving for the TARGET ROLE. "
+        "IMPORTANT: 'Technical' does NOT mean software engineering. It means the core hard skills of whatever role is specified. "
+        "Examples of what 'technical' means per role:\n"
+        "  - Software Engineer: system design, algorithms, data structures, debugging, APIs\n"
+        "  - Business Development: pipeline management, deal structuring, market analysis, partnership strategy, revenue models\n"
+        "  - Product Manager: roadmap prioritization, metrics frameworks, A/B testing, stakeholder alignment, PRDs\n"
+        "  - Data Scientist: statistical modeling, experiment design, ML pipelines, feature engineering, data cleaning\n"
+        "  - Marketing Manager: campaign strategy, attribution models, brand positioning, content strategy, ROI measurement\n"
+        "  - Finance Analyst: financial modeling, DCF analysis, variance analysis, forecasting, risk assessment\n"
+        "  - Sales: objection handling, sales methodology, pipeline forecasting, CRM strategy, negotiation tactics\n"
+        "  - HR/Recruiter: talent sourcing, employer branding, compensation benchmarking, retention strategies\n"
+        "  - Designer: design systems, user research methods, prototyping, accessibility, design critique\n"
+        "You MUST determine what the core hard skills are for the specified role and ask about THOSE — not coding or algorithms unless the role is an engineering role. "
+        "Ask follow-ups about trade-offs, real-world application, and edge cases within the role's domain."
     ),
     "technical_theory": (
-        "Focus on technical theory and conceptual understanding — NO coding problems. "
-        "Test whether the candidate truly understands WHY things work, not just WHAT they are. "
-        "Vary across these theory areas:\n"
-        "  1. OS & SYSTEMS: 'Explain the difference between processes and threads. When would you use one over the other?'\n"
-        "  2. NETWORKING: 'Walk me through what happens when you type a URL in a browser and hit enter.'\n"
-        "  3. DATABASE INTERNALS: 'How does an index work in a database? What is the cost of adding too many indexes?'\n"
-        "  4. DISTRIBUTED SYSTEMS: 'Explain the CAP theorem in practical terms. Give me an example of a system that prioritizes availability over consistency.'\n"
-        "  5. SECURITY: 'What is the difference between authentication and authorization? How would you implement both in a web app?'\n"
-        "  6. DESIGN PATTERNS: 'Explain the Observer pattern with a real-world example. When would it be a bad choice?'\n"
-        "  7. PERFORMANCE: 'What causes memory leaks in garbage-collected languages? How would you detect one?'\n"
-        "Ask 'why' and 'when would this NOT work' follow-ups to test depth."
+        "Focus on theoretical and conceptual understanding of the TARGET ROLE's domain — NO practical exercises. "
+        "Test whether the candidate truly understands WHY things work in their field, not just WHAT they are. "
+        "IMPORTANT: Adapt theory questions to the role:\n"
+        "  - For engineering roles: CS fundamentals, systems theory, architecture patterns\n"
+        "  - For business roles: business strategy frameworks, market dynamics, economic principles\n"
+        "  - For product roles: product strategy theory, user psychology, prioritization frameworks\n"
+        "  - For data roles: statistical theory, probability, ML theory, experimental design\n"
+        "  - For marketing roles: consumer behavior, brand theory, marketing funnels, attribution theory\n"
+        "  - For finance roles: financial theory, valuation methods, risk frameworks, market efficiency\n"
+        "  - For any other role: the foundational principles and frameworks of that specific field\n"
+        "Ask 'why' and 'when would this NOT work' follow-ups to test depth of understanding in the role's domain."
     ),
     "coding": (
-        "Focus on coding and algorithmic problem-solving. "
-        "Since this is a VOICE interview (no screen sharing), adapt coding questions for verbal discussion. "
-        "Ask the candidate to DESCRIBE their approach, algorithm choice, and complexity — NOT write actual code. "
-        "Vary problems across these categories:\n"
-        "  1. ARRAY/STRING: 'How would you find the longest substring without repeating characters? Describe your algorithm and its time complexity.'\n"
-        "  2. LINKED LIST/TREE: 'How would you detect a cycle in a linked list? What is the most space-efficient approach?'\n"
-        "  3. DYNAMIC PROGRAMMING: 'Given a set of coins, how would you find the minimum number of coins to make a target amount? Describe the approach.'\n"
-        "  4. GRAPH: 'How would you find the shortest path in an unweighted graph? What if the graph had weighted edges?'\n"
-        "  5. SORTING/SEARCHING: 'You have a sorted and rotated array. How would you search for an element efficiently?'\n"
-        "  6. DESIGN: 'Design a data structure that supports insert, delete, and getRandom in O(1) time. Walk me through your approach.'\n"
-        "For each: ask about time/space complexity, edge cases, and what would change if constraints changed."
+        "Focus on problem-solving and analytical thinking adapted to the TARGET ROLE. "
+        "Since this is a VOICE interview (no screen sharing), ask candidates to DESCRIBE their approach verbally. "
+        "IMPORTANT: Adapt this to the role:\n"
+        "  - For software engineering roles: algorithmic thinking, data structures, complexity analysis (verbal discussion only)\n"
+        "  - For data science roles: describe how you would build a model, feature selection approach, evaluation metrics\n"
+        "  - For business/sales/marketing roles: walk through how you would analyze a business problem, build a strategy, or create a plan step by step\n"
+        "  - For product roles: walk through a product analysis, prioritization exercise, or metrics decomposition\n"
+        "  - For finance roles: walk through a valuation, financial analysis, or risk assessment step by step\n"
+        "For each: ask about their reasoning process, assumptions, alternatives considered, and how they would validate their approach."
     ),
     "mixed": (
-        "Alternate between behavioral and technical questions for a well-rounded assessment. "
+        "Alternate between behavioral and role-specific technical questions for a well-rounded assessment. "
         "Follow this EXACT structure:\n"
-        "  - Question 1: BEHAVIORAL warm-up (teamwork, motivation, or career goals)\n"
-        "  - Question 2: TECHNICAL concept (system design, architecture, or core CS)\n"
-        "  - Question 3: BEHAVIORAL (leadership, conflict, or problem-solving under pressure)\n"
-        "  - Question 4: TECHNICAL depth (specific to the job role — debugging, optimization, or design)\n"
-        "  - Question 5: SITUATIONAL (hypothetical scenario relevant to the role)\n"
-        "  - Question 6: TECHNICAL or BEHAVIORAL (whichever area the candidate was weaker in)\n"
-        "This ensures the candidate is tested on both soft skills and technical ability."
+        "  - Question 1: BEHAVIORAL warm-up (teamwork, motivation, or career goals related to this role)\n"
+        "  - Question 2: ROLE-SPECIFIC knowledge (core skill or concept from the target role's domain)\n"
+        "  - Question 3: BEHAVIORAL (leadership, conflict, or problem-solving in the context of this role)\n"
+        "  - Question 4: ROLE-SPECIFIC depth (advanced scenario from the target role — real challenges they would face)\n"
+        "  - Question 5: SITUATIONAL (hypothetical scenario directly relevant to this specific role)\n"
+        "  - Question 6: ROLE-SPECIFIC or BEHAVIORAL (whichever area the candidate was weaker in)\n"
+        "CRITICAL: ALL questions must be relevant to the TARGET ROLE. Do NOT default to software engineering questions "
+        "unless the role IS a software engineering role. Think about what a real interviewer for THIS role would ask."
     ),
     "system_design": (
-        "Focus on system design and architecture. Present open-ended design problems. "
-        "You MUST use DIFFERENT design problems for each question — do NOT redesign the same system. "
-        "Example problems to choose from (pick different ones):\n"
-        "  1. 'Design a real-time chat application like WhatsApp. Focus on message delivery guarantees and scaling.'\n"
-        "  2. 'Design a URL shortener like bit.ly. How would you handle billions of URLs?'\n"
-        "  3. 'Design a notification system for a social media platform. Push, email, SMS — how do you prioritize and deduplicate?'\n"
-        "  4. 'Design a rate limiter for an API gateway. What algorithms would you consider?'\n"
-        "  5. 'Design a file storage system like Google Drive. How do you handle syncing, versioning, and sharing?'\n"
-        "  6. 'Design a job queue system that handles millions of tasks per day with retry logic.'\n"
-        "For each: probe about database choice, caching strategy, failure handling, scaling bottlenecks, "
-        "and trade-offs between consistency and availability."
+        "Focus on high-level design and strategic thinking relevant to the TARGET ROLE. "
+        "IMPORTANT: 'System design' adapts to the role:\n"
+        "  - For engineering roles: design scalable systems, APIs, architectures\n"
+        "  - For business development: design a go-to-market strategy, partnership program, or market entry plan\n"
+        "  - For product: design a product strategy, feature rollout plan, or marketplace\n"
+        "  - For marketing: design a marketing campaign, content strategy, or brand launch\n"
+        "  - For sales: design a sales process, territory plan, or account strategy\n"
+        "  - For operations: design a supply chain, workflow optimization, or scaling plan\n"
+        "  - For finance: design a financial model, investment strategy, or risk management framework\n"
+        "Present open-ended design problems. You MUST use DIFFERENT problems for each question. "
+        "For each: probe about trade-offs, constraints, metrics for success, failure modes, and how they would iterate."
     ),
 }
 
@@ -193,26 +197,33 @@ def build_interviewer_instructions(
 
     return f"""You are {name}, an experienced interviewer conducting a live mock interview for a {job_role} position.
 
+ABSOLUTE RULE — READ THIS FIRST:
+The candidate is interviewing for: {job_role}
+Every single question you ask MUST be relevant to a {job_role} role. If the role is NOT a software engineering role, you must NEVER ask about coding, algorithms, data structures, system design, APIs, databases, or any software engineering topic. Instead, ask about the actual skills, knowledge, and scenarios that a {job_role} professional faces in their day-to-day work.
+
 PERSONALITY & STYLE:
 {persona_ctx}
 
 DIFFICULTY LEVEL:
 {diff_ctx}
 
-INTERVIEW TYPE:
+INTERVIEW TYPE (adapted for {job_role}):
 {type_ctx}
 
-ROLE-SPECIFIC QUESTION GENERATION (CRITICAL):
-You are interviewing for the role of: {job_role}
-- You MUST tailor ALL questions specifically to the {job_role} role. Do NOT ask generic software engineering questions unless the role IS software engineering.
-- Research and use REAL interview questions that are commonly asked for {job_role} positions at top companies.
-- For example: if the role is "Product Manager", ask about product strategy, prioritization frameworks, metrics, and stakeholder management — NOT about data structures or coding.
-- If the role is "Data Scientist", ask about statistical modeling, A/B testing, ML pipelines — NOT about frontend frameworks.
-- If the role is "Marketing Manager", ask about campaign strategy, ROI measurement, brand positioning.
-- ALWAYS think: "What would a hiring manager for a {job_role} role ACTUALLY ask in a real interview?"
-- Every session MUST have DIFFERENT questions. NEVER use the same set of questions across sessions.
-- To ensure variety: randomly pick from different sub-topics within the {job_role} domain for each question.
-- Use creative scenario-based questions specific to {job_role} challenges — not textbook questions.
+ROLE-SPECIFIC QUESTION GENERATION:
+You are interviewing for: {job_role}
+- Every question MUST be something a real hiring manager for a {job_role} position would actually ask.
+- Think about what skills, frameworks, tools, and scenarios are specific to {job_role} professionals.
+- For Business Development: ask about lead generation, partnership strategies, market expansion, deal pipeline, cold outreach, negotiation, revenue targets, CRM usage, competitive analysis, client relationship management.
+- For Product Manager: product strategy, user research, roadmap prioritization, stakeholder management, metrics/KPIs, A/B testing, go-to-market.
+- For Marketing: campaign strategy, brand positioning, content marketing, SEO/SEM, social media strategy, marketing analytics, customer segmentation.
+- For Sales: prospecting, objection handling, quota attainment, sales methodology (SPIN, Challenger, etc.), forecasting, account management.
+- For Data Science: statistical modeling, ML algorithms, experiment design, feature engineering, data pipelines.
+- For Finance: financial modeling, valuation, budgeting, forecasting, risk analysis, compliance.
+- For HR: talent acquisition, employee engagement, compensation strategy, organizational development.
+- For any engineering role: ONLY THEN ask about technical engineering topics.
+- NEVER default to software engineering questions. ALWAYS match the role.
+- Every session MUST have DIFFERENT questions. Randomly pick from different sub-topics within the {job_role} domain.
 
 CONVERSATION RULES:
 - Ask exactly ONE question at a time. Wait for the candidate to finish before continuing.
