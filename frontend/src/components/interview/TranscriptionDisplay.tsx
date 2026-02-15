@@ -48,17 +48,21 @@ export function TranscriptionDisplay({
         userScrolledUp.current = distFromBottom > 80;
     }, []);
 
-    // Native wheel handler — fixes react-resizable-panels passive event issue
+    // Touchpad/trackpad scroll: let native scroll work (don't preventDefault)
+    // Only intercept if the scroll container isn't the target (e.g. parent panels)
     useEffect(() => {
         const el = scrollRef.current;
         if (!el) return;
         const handler = (e: WheelEvent) => {
-            e.preventDefault();
-            e.stopPropagation();
-            el.scrollTop += e.deltaY;
-            el.scrollLeft += e.deltaX;
+            // Allow native scroll — just update our scroll detection
+            const atTop = el.scrollTop <= 0;
+            const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+            // Only prevent default if we're mid-scroll (not at edges) to keep focus in this panel
+            if (!atTop && !atBottom) {
+                e.stopPropagation();
+            }
         };
-        el.addEventListener('wheel', handler, { passive: false });
+        el.addEventListener('wheel', handler, { passive: true });
         return () => el.removeEventListener('wheel', handler);
     }, []);
 
@@ -221,16 +225,8 @@ function TranscriptMessage({
                 >
                     {isLive ? (
                         <span className="inline">
-                            {text.split(' ').map((word, i) => (
-                                <span
-                                    key={i}
-                                    className="inline animate-in fade-in duration-200"
-                                    style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
-                                >
-                                    {word}{' '}
-                                </span>
-                            ))}
-                            <span className="inline-flex ml-0.5 gap-0.5 align-middle">
+                            {text}
+                            <span className="inline-flex ml-1 gap-0.5 align-middle">
                                 <span className={cn(
                                     'w-1 h-1 rounded-full animate-bounce',
                                     isAI ? 'bg-indigo-400' : 'bg-white/80',

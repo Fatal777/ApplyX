@@ -118,34 +118,31 @@ const difficultyLevels = [
   { id: 'expert', label: 'Expert', description: 'Staff/Principal level' },
 ];
 
-// Persona options with human photos
+// Persona options — names match the actual AI agent persona names
 const personas = [
   {
     id: 'friendly',
     label: 'Friendly',
     emoji: '😊',
-    name: 'Emily Parker',
+    name: 'Alex',
     role: 'Career Coach',
-    photo: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop&crop=face',
-    description: 'Supportive and encouraging approach'
+    description: 'Warm, supportive, and encouraging approach'
   },
   {
     id: 'professional',
     label: 'Professional',
     emoji: '👔',
-    name: 'Michael Chen',
+    name: 'Taylor',
     role: 'Senior Recruiter',
-    photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
-    description: 'Corporate and structured style'
+    description: 'Polished, corporate, and structured style'
   },
   {
     id: 'challenging',
     label: 'Challenging',
     emoji: '🔥',
-    name: 'Sarah Kim',
-    role: 'Tech Lead',
-    photo: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&h=100&fit=crop&crop=face',
-    description: 'Tough questions, high standards'
+    name: 'Jordan',
+    role: 'Hiring Manager',
+    description: 'Tough questions, rigorous standards'
   },
 ];
 
@@ -402,20 +399,20 @@ const QuickStartPanel = ({ onStartInterview, fullWidth = false }: QuickStartPane
                       }
                     `}
                   >
-                    {/* Human Photo */}
+                    {/* Emoji Avatar */}
                     <div className="relative w-14 h-14 mx-auto mb-2">
-                      <img
-                        src={persona.photo}
-                        alt={persona.name}
+                      <div
                         className={`
-                          w-full h-full rounded-full object-cover
+                          w-full h-full rounded-full flex items-center justify-center text-2xl
                           transition-all duration-300
                           ${config.persona === persona.id
-                            ? 'ring-2 ring-lime-500 ring-offset-2'
-                            : 'grayscale-[20%] hover:grayscale-0'
+                            ? 'ring-2 ring-lime-500 ring-offset-2 bg-lime-50'
+                            : 'bg-gray-100 hover:bg-gray-50'
                           }
                         `}
-                      />
+                      >
+                        {persona.emoji}
+                      </div>
                       {config.persona === persona.id && (
                         <motion.div
                           initial={{ scale: 0 }}

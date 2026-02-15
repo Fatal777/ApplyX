@@ -9,10 +9,12 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.orm import Session as DBSession
 
 from app.api.dependencies import get_current_user
 from app.core.livekit_config import (
@@ -21,6 +23,8 @@ from app.core.livekit_config import (
     generate_room_token,
     is_livekit_configured,
 )
+from app.db.session import get_db
+from app.models.interview import InterviewSession, InterviewStatus, InterviewType, DifficultyLevel
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +113,7 @@ async def get_room_token(
 async def start_interview(
     request: StartInterviewRequest,
     current_user=Depends(get_current_user),
+    db: DBSession = Depends(get_db),
 ):
     """
     Create a LiveKit room with interview metadata, generate a participant
@@ -161,6 +166,52 @@ async def start_interview(
         # Cache metadata so end-interview can pass it to feedback generation
         _room_metadata_cache[room_name] = room_metadata
 
+        # ── Persist session in DB so it appears in session history ──────
+        try:
+            # Map string types to enums (with fallback)
+            type_map = {
+                "behavioral": InterviewType.BEHAVIORAL,
+                "technical": InterviewType.TECHNICAL_THEORY,
+                "technical_theory": InterviewType.TECHNICAL_THEORY,
+                "mixed": InterviewType.MIXED,
+                "coding": InterviewType.TECHNICAL_THEORY,
+                "system_design": InterviewType.TECHNICAL_THEORY,
+                "custom": InterviewType.CUSTOM,
+            }
+            diff_map = {
+                "beginner": DifficultyLevel.BEGINNER,
+                "intermediate": DifficultyLevel.INTERMEDIATE,
+                "advanced": DifficultyLevel.ADVANCED,
+                "expert": DifficultyLevel.EXPERT,
+            }
+            db_session = InterviewSession(
+                user_id=current_user.id,
+                interview_type=type_map.get(request.interview_type, InterviewType.MIXED),
+                difficulty=diff_map.get(request.difficulty, DifficultyLevel.INTERMEDIATE),
+                target_role=request.job_role,
+                status=InterviewStatus.IN_PROGRESS,
+                total_questions=request.num_questions,
+                started_at=datetime.now(timezone.utc),
+                config={
+                    "job_role": request.job_role,
+                    "difficulty": request.difficulty,
+                    "persona": request.persona,
+                    "interview_type": request.interview_type,
+                    "num_questions": request.num_questions,
+                    "room_name": room_name,
+                    "livekit_session_id": session_id,
+                },
+            )
+            db.add(db_session)
+            db.commit()
+            db.refresh(db_session)
+            # Also store the DB session ID in the cache for end-interview
+            _room_metadata_cache[room_name]["db_session_id"] = db_session.id
+            logger.info("DB session created: id=%d for room=%s", db_session.id, room_name)
+        except Exception as db_err:
+            logger.warning("Failed to create DB session (non-fatal): %s", db_err)
+            db.rollback()
+
         # Generate participant token
         token = generate_room_token(
             room_name=room_name,
@@ -193,6 +244,7 @@ async def end_interview(
     request: EndInterviewRequest,
     background_tasks: BackgroundTasks,
     current_user=Depends(get_current_user),
+    db: DBSession = Depends(get_db),
 ):
     """
     Signal the backend that an interview has ended.
@@ -208,6 +260,22 @@ async def end_interview(
 
     # Retrieve room metadata (job_role, difficulty, etc.) that we stored at creation
     room_meta = _room_metadata_cache.get(request.room_name, {})
+
+    # ── Mark the DB session as completed ───────────────────────────────
+    db_session_id = room_meta.get("db_session_id")
+    if db_session_id:
+        try:
+            db_session = db.query(InterviewSession).filter(
+                InterviewSession.id == db_session_id
+            ).first()
+            if db_session:
+                db_session.status = InterviewStatus.COMPLETED
+                db_session.completed_at = datetime.now(timezone.utc)
+                db.commit()
+                logger.info("DB session %d marked as completed", db_session_id)
+        except Exception as db_err:
+            logger.warning("Failed to update DB session (non-fatal): %s", db_err)
+            db.rollback()
 
     # Fire-and-forget: generate feedback in the background
     background_tasks.add_task(
