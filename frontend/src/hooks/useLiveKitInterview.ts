@@ -256,9 +256,19 @@ export function useLiveKitInterview(
 
     const disconnect = useCallback(() => {
         if (roomRef.current) {
-            roomRef.current.disconnect();
+            // Explicitly disable mic before disconnecting
+            try {
+                roomRef.current.localParticipant.setMicrophoneEnabled(false);
+            } catch (_) { /* ignore */ }
+            roomRef.current.disconnect(true); // stopTracks=true
             roomRef.current = null;
         }
+        // Kill any orphaned audio elements from agent
+        document.querySelectorAll('audio[id^="lk-audio-"]').forEach(el => el.remove());
+        // Nuclear cleanup: stop ALL getUserMedia tracks in case anything leaked
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+            s.getTracks().forEach(t => t.stop());
+        }).catch(() => {});
         setIsConnected(false);
         setIsMicEnabled(false);
         setAgentIsSpeaking(false);

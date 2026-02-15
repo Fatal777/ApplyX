@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { Video, VideoOff, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -21,23 +21,27 @@ export function WebcamDisplay({
   showPlaceholder = true 
 }: WebcamDisplayProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [hasStream, setHasStream] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (isActive) {
-      startWebcam();
-    } else {
-      stopWebcam();
+  const stopWebcam = useCallback(() => {
+    // Use ref to always access the current stream (no stale closure)
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+        track.enabled = false;
+      });
+      streamRef.current = null;
+      setHasStream(false);
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  }, []);
 
-    return () => {
-      stopWebcam();
-    };
-  }, [isActive]);
-
-  const startWebcam = async () => {
+  const startWebcam = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -48,13 +52,14 @@ export function WebcamDisplay({
           height: { ideal: 480 },
           facingMode: 'user',
         },
-        audio: false, // Audio handled separately
+        audio: false,
       });
 
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
-      setStream(mediaStream);
+      streamRef.current = mediaStream;
+      setHasStream(true);
     } catch (err) {
       console.error('Webcam error:', err);
       if (err instanceof Error) {
@@ -69,17 +74,19 @@ export function WebcamDisplay({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const stopWebcam = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
+  useEffect(() => {
+    if (isActive) {
+      startWebcam();
+    } else {
+      stopWebcam();
     }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  };
+
+    return () => {
+      stopWebcam();
+    };
+  }, [isActive, startWebcam, stopWebcam]);
 
   return (
     <div 
@@ -125,7 +132,7 @@ export function WebcamDisplay({
       )}
 
       {/* Self-view label */}
-      {isActive && stream && (
+      {isActive && hasStream && (
         <div className="absolute bottom-3 left-3 bg-black/50 px-2 py-1 rounded text-xs text-white">
           You
         </div>
