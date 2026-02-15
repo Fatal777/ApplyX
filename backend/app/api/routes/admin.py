@@ -237,6 +237,8 @@ async def update_user_plan(
         subscription.resume_edits_used = 0
         subscription.interviews_used = 0
         subscription.resume_analyses_used = 0
+        # Apply correct limits for the new plan
+        subscription.apply_plan_limits()
     else:
         old_plan = "none"
         subscription = Subscription(
@@ -244,6 +246,7 @@ async def update_user_plan(
             plan=valid_plans[plan],
             status=SubscriptionStatus.ACTIVE,
         )
+        subscription.apply_plan_limits()
         db.add(subscription)
     
     db.commit()
