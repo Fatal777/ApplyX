@@ -244,6 +244,7 @@ async def interview_session(ctx: agents.JobContext):
     Reads room metadata to configure the interview, then starts a voice session.
     """
     logger.info("Agent dispatched → room=%s", ctx.room.name)
+    logger.info("Room metadata raw: %s", repr(ctx.room.metadata))
 
     # Parse config from room metadata (set when the room is created via API)
     meta: dict[str, Any] = {}
@@ -252,6 +253,10 @@ async def interview_session(ctx: agents.JobContext):
             meta = json.loads(ctx.room.metadata)
         except (json.JSONDecodeError, TypeError):
             meta = {}
+
+    logger.info("Parsed meta: job_role=%s, difficulty=%s, persona=%s, type=%s",
+                meta.get("job_role"), meta.get("difficulty"),
+                meta.get("persona"), meta.get("interview_type"))
 
     agent = InterviewerAgent(
         job_role=meta.get("job_role", "General"),
