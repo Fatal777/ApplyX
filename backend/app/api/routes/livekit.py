@@ -23,7 +23,7 @@ from app.core.livekit_config import (
     generate_room_token,
     is_livekit_configured,
 )
-from app.db.session import get_db
+from app.db.database import get_db
 from app.models.interview import InterviewSession, InterviewStatus, InterviewType, DifficultyLevel
 
 logger = logging.getLogger(__name__)
