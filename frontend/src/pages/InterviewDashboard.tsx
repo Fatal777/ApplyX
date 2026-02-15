@@ -187,7 +187,7 @@ const InterviewDashboard = () => {
   const userEmail = user?.email;
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-gray-50 flex">
+    <div className="h-screen w-screen overflow-hidden bg-gray-50 flex pt-16">
       {/* Sidebar */}
       <InterviewSidebar
         currentView={currentView}
