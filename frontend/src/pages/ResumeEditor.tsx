@@ -77,7 +77,12 @@ const ResumeEditor = () => {
                     try {
                         const { resumeBuilderApi } = await import("@/services/resumeBuilderApi");
                         const { createDefaultResume } = await import("@/types/resumeBuilder");
-                        const backendDoc = await resumeBuilderApi.get(parseInt(id));
+                        let backendDoc: any = null;
+                        try {
+                            backendDoc = await resumeBuilderApi.get(parseInt(id));
+                        } catch (fetchErr: any) {
+                            console.warn("Backend fetch failed, creating local document:", fetchErr?.message);
+                        }
 
                         // Convert backend document to local format and import
                         if (backendDoc && backendDoc.content) {
@@ -122,8 +127,8 @@ const ResumeEditor = () => {
                             setIsLoading(false);
                         }
                     } catch (error) {
-                        console.error("Failed to load document from API:", error);
-                        toast.error("Failed to load resume");
+                        console.error("Failed to load document:", error);
+                        // Don't throw — just create a fresh document so the page doesn't crash
                         createDocument();
                         setIsLoading(false);
                     }

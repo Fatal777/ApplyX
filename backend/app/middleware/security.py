@@ -269,6 +269,7 @@ class DDoSProtectionMiddleware(BaseHTTPMiddleware):
         "/api/v1/livekit",      # LiveKit start/end interview
         "/api/v1/user",         # profile, settings
         "/api/v1/payment",      # usage checks
+        "/api/v1/resume-builder",  # resume editor CRUD
     ]
     
     async def dispatch(self, request: Request, call_next: Callable):
