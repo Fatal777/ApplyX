@@ -10,6 +10,7 @@ import logging
 import time
 import re
 import hashlib
+import ipaddress
 from typing import Callable, Dict, Set
 from datetime import datetime, timedelta
 from collections import defaultdict
@@ -20,7 +21,50 @@ logger = logging.getLogger(__name__)
 # RATE LIMITING CONFIGURATION
 # =============================================================================
 
-limiter = Limiter(key_func=get_remote_address)
+# ── Trusted proxy / private networks (Docker, localhost, LAN) ───────────
+TRUSTED_NETWORKS = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),   # Docker default range
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+]
+
+
+def _is_trusted_ip(ip: str) -> bool:
+    """Return True if *ip* belongs to a known private / Docker network."""
+    try:
+        addr = ipaddress.ip_address(ip)
+        return any(addr in net for net in TRUSTED_NETWORKS)
+    except ValueError:
+        return False
+
+
+def get_real_client_ip(request: Request) -> str:
+    """
+    Extract the real client IP from proxy headers.
+    Nginx sets X-Real-IP and X-Forwarded-For; prefer those over
+    request.client.host which is always the Docker bridge IP.
+    """
+    # 1. Try X-Real-IP (set by nginx)
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
+
+    # 2. Try X-Forwarded-For (first non-private IP)
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        for ip in xff.split(","):
+            ip = ip.strip()
+            if ip and not _is_trusted_ip(ip):
+                return ip
+        # All IPs are private — return the first one
+        return xff.split(",")[0].strip()
+
+    # 3. Fallback
+    return get_remote_address(request)
+
+
+limiter = Limiter(key_func=get_real_client_ip)
 
 # Rate limit configurations per endpoint type
 RATE_LIMITS = {
@@ -102,6 +146,7 @@ REQUESTS_PER_SECOND_THRESHOLD = 30  # Max requests per second from single IP
 ENDPOINT_DIVERSITY_THRESHOLD = 100  # Hitting too many different endpoints quickly
 SUSPICIOUS_SCORE_THRESHOLD = 200    # Block when score exceeds this
 PATTERN_WINDOW_SECONDS = 60         # Time window for pattern analysis
+SCORE_DECAY_PER_CLEANUP = 50        # Reduce score each cleanup cycle to allow recovery
 
 
 def is_bot_user_agent(user_agent: str) -> tuple[bool, bool]:
@@ -135,11 +180,12 @@ def analyze_request_pattern(ip: str, path: str, method: str) -> int:
     now = datetime.utcnow()
     pattern = _request_patterns[ip]
     
-    # Cleanup old data periodically
+    # Cleanup old data periodically & decay suspicious score
     if (now - pattern["last_cleanup"]).total_seconds() > PATTERN_WINDOW_SECONDS:
         pattern["requests"] = [r for r in pattern["requests"] 
                               if (now - r).total_seconds() < PATTERN_WINDOW_SECONDS]
         pattern["endpoints"] = set()
+        pattern["suspicious_score"] = max(0, pattern["suspicious_score"] - SCORE_DECAY_PER_CLEANUP)
         pattern["last_cleanup"] = now
     
     # Record this request
@@ -212,11 +258,18 @@ class DDoSProtectionMiddleware(BaseHTTPMiddleware):
         "/health", "/", "/docs", "/openapi.json",
         "/api/v1/livekit/status",
         "/api/v1/jobs/search", "/api/v1/jobs/fast-search",
-        "/api/v1/jobs/sources", "/api/v1/auth/login", "/api/v1/auth/register"
+        "/api/v1/jobs/sources", "/api/v1/auth/login", "/api/v1/auth/register",
+        "/api/v1/interview/health",
     ]
     
     # Paths with relaxed checking (still monitored but with higher tolerance)
-    RELAXED_PATHS = ["/api/v1/jobs", "/api/v1/resumes", "/api/v1/interviews"]
+    RELAXED_PATHS = [
+        "/api/v1/jobs", "/api/v1/resumes",
+        "/api/v1/interview",   # interview sessions, health, etc.
+        "/api/v1/livekit",      # LiveKit start/end interview
+        "/api/v1/user",         # profile, settings
+        "/api/v1/payment",      # usage checks
+    ]
     
     async def dispatch(self, request: Request, call_next: Callable):
         path = request.url.path
@@ -229,8 +282,12 @@ class DDoSProtectionMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             return await call_next(request)
         
-        client_ip = get_remote_address(request)
+        client_ip = get_real_client_ip(request)
         user_agent = request.headers.get("user-agent", "")
+
+        # 0. Never block trusted/private IPs (Docker internal traffic)
+        if _is_trusted_ip(client_ip):
+            return await call_next(request)
         
         # 1. Check if IP is already blocked
         if is_ip_blocked(client_ip):
@@ -371,7 +428,7 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
         
         for pattern in self.SUSPICIOUS_PATTERNS:
             if pattern in url_path or pattern in query_string:
-                client_ip = get_remote_address(request)
+                client_ip = get_real_client_ip(request)
                 logger.warning(f"Blocked suspicious request from {client_ip}: {pattern} in {request.url}")
                 
                 # Increase suspicious score for this IP
@@ -414,7 +471,7 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
 
 def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     """Handle rate limit exceeded errors"""
-    client_ip = get_remote_address(request)
+    client_ip = get_real_client_ip(request)
     logger.warning(f"Rate limit exceeded for {client_ip}")
     
     # Increase suspicious score
