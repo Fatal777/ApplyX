@@ -382,7 +382,7 @@ async def get_job_feed(
     location: Optional[str] = Query(None, description="Location filter"),
     job_type: Optional[str] = Query(None, description="Employment type: full-time, part-time, etc."),
     page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(25, ge=1, le=100, description="Results per page"),
+    limit: int = Query(25, ge=1, le=500, description="Results per page"),
 ):
     """
     Get pre-loaded job feed from database.
@@ -523,6 +523,7 @@ async def get_scraped_jobs(
                     Job.location.ilike(f"%{location}%"),
                     Job.city.ilike(f"%{location}%"),
                     Job.state.ilike(f"%{location}%"),
+                    Job.country.ilike(f"%{location}%"),
                 )
             )
         

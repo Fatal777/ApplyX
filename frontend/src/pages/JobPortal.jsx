@@ -34,45 +34,46 @@ const JobPortal = () => {
         total_pages: 0,
     });
 
-    const fetchJobs = async (searchKeywords = 'software,developer,engineer') => {
+    const fetchJobs = async (searchKeywords = '', page = 1) => {
         setLoading(true);
         try {
+            // Primary: query the database via /jobs/feed (all stored jobs, proper filtering)
             const params = {
-                keywords: searchKeywords,
-                location: filters.city || filters.state || 'India',
-                limit: 100, // Get 100 jobs for client-side pagination
-                ...(filters.experience_level && { experience_level: filters.experience_level }),
+                ...(searchKeywords && { keywords: searchKeywords }),
+                location: filters.city || filters.state || '',
+                page: page,
+                limit: pagination.limit,
+                ...(filters.employment_type && { job_type: filters.employment_type }),
             };
 
-            // Use fast-search for cached, faster results
-            const response = await axios.get('/api/v1/jobs/fast-search', { params });
+            const response = await axios.get('/api/v1/jobs/feed', { params });
+            const data = response.data;
 
-            const allJobs = response.data.jobs || [];
-            setJobs(allJobs);
-            setPagination({
-                page: 1,
-                limit: pagination.limit,
-                total: allJobs.length,
-                total_pages: Math.ceil(allJobs.length / pagination.limit),
-            });
+            setJobs(data.jobs || []);
+            setPagination(prev => ({
+                ...prev,
+                page: data.page || page,
+                total: data.total || 0,
+                total_pages: data.total_pages || 1,
+            }));
         } catch (error) {
-            console.error('Error fetching jobs:', error);
-            // Fallback to regular search if fast-search fails
+            console.error('Error fetching jobs from feed:', error);
+            // Fallback: try fast-search (external APIs)
             try {
                 const params = {
-                    keywords: searchKeywords,
-                    location: filters.city || 'India',
+                    keywords: searchKeywords || 'software,developer,engineer',
+                    location: filters.city || filters.state || 'India',
                     limit: 50,
                 };
-                const response = await axios.get('/api/v1/jobs/search', { params });
+                const response = await axios.get('/api/v1/jobs/fast-search', { params });
                 const allJobs = response.data.jobs || [];
                 setJobs(allJobs);
-                setPagination({
+                setPagination(prev => ({
+                    ...prev,
                     page: 1,
-                    limit: pagination.limit,
                     total: allJobs.length,
-                    total_pages: Math.ceil(allJobs.length / pagination.limit),
-                });
+                    total_pages: Math.ceil(allJobs.length / prev.limit),
+                }));
             } catch (fallbackError) {
                 console.error('Fallback search failed:', fallbackError);
                 setJobs([]);
@@ -83,7 +84,7 @@ const JobPortal = () => {
     };
 
     useEffect(() => {
-        fetchJobs();
+        fetchJobs('', 1);
     }, []);
 
     const handleAdvancedSearch = ({ category, query }) => {
@@ -97,7 +98,7 @@ const JobPortal = () => {
             // For role/field, use as search keywords
             setSearchKeywords(query);
         }
-        fetchJobs(query || searchKeywords);
+        fetchJobs(query || searchKeywords, 1);
     };
 
     const handleFilterChange = (key, value) => {
@@ -106,7 +107,7 @@ const JobPortal = () => {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            fetchJobs(filters.skills || searchKeywords);
+            fetchJobs(filters.skills || searchKeywords, 1);
         }, 500);
         return () => clearTimeout(timer);
     }, [filters]);
@@ -125,11 +126,12 @@ const JobPortal = () => {
     };
 
     const goToPage = (page) => {
-        setPagination(prev => ({ ...prev, page }));
+        // Server-side pagination: fetch new page from DB
+        fetchJobs(filters.skills || searchKeywords, page);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // Sort jobs based on selected option
+    // Sort jobs client-side (within current page)
     const sortedJobs = useMemo(() => {
         const sorted = [...jobs];
         switch (sortBy) {
@@ -149,12 +151,8 @@ const JobPortal = () => {
         }
     }, [jobs, sortBy]);
 
-    // Client-side pagination
-    const paginatedJobs = useMemo(() => {
-        const startIndex = (pagination.page - 1) * pagination.limit;
-        const endIndex = startIndex + pagination.limit;
-        return sortedJobs.slice(startIndex, endIndex);
-    }, [sortedJobs, pagination.page, pagination.limit]);
+    // Jobs are already paginated server-side
+    const paginatedJobs = sortedJobs;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-primary/5">
